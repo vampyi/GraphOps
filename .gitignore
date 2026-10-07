@@ -1,0 +1,40 @@
+# os
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+*.swp
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# node
+node_modules/
+dist/
+build/
+.next/
+
+# neo4j and local data
+neo4j/data/
+neo4j/logs/
+neo4j/import/
+data/raw/
+*.gz
+*.zip
+
+# logs
+*.log
