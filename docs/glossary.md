@@ -1,0 +1,171 @@
+# Glossary
+
+Plain-language meanings of the terms used in this project. Grouped so related words sit together.
+
+## Security teams and their tools
+
+**SOC (Security Operations Centre)**
+The team that watches a company's systems for attacks, often around the clock. The people in it are SOC analysts.
+
+**Alert**
+A notification from a security tool that something matched a rule or looked suspicious.
+
+**SIEM (Security Information and Event Management)**
+Software that collects logs from all of a company's systems into one place, searches them and raises alerts based on rules. Examples: Splunk, Microsoft Sentinel, Google Security Operations.
+
+**SOAR (Security Orchestration, Automation and Response)**
+Software that runs automatic response steps, called playbooks, when an alert fires. Example: "if malware is found on a laptop, disconnect it and open a ticket."
+
+**EDR (Endpoint Detection and Response)**
+Software installed on each computer that records what happens on it and flags suspicious activity. Examples: CrowdStrike Falcon, Microsoft Defender for Endpoint.
+
+**XDR (Extended Detection and Response)**
+Like EDR but across many sources: computers, email, identities and cloud. Example: Microsoft Defender XDR.
+
+**UEBA (User and Entity Behaviour Analytics)**
+A feature that learns what is normal for each user and machine and flags unusual behaviour.
+
+**Active Directory (AD)**
+Microsoft's system that manages users, computers and permissions inside most companies. Attackers target it because controlling it means controlling the company. Entra ID is Microsoft's cloud version.
+
+**CMDB (Configuration Management Database)**
+An inventory of every machine and application a company runs, with its owner and how important it is.
+
+## Data
+
+**Telemetry**
+Data that systems send automatically about what they are doing: logins, network connections, programs started.
+
+**Log**
+A timestamped record of one event, for example "10:42, user raja logged into server-7."
+
+**Network flow (NetFlow)**
+A record of which machine talked to which, on which port and when. It does not include the content.
+
+**Port**
+A numbered entry point on a computer for a particular service. Port 3389 is Windows Remote Desktop, a common route for lateral movement.
+
+## How attacks work
+
+**Asset**
+Anything of value: a laptop, a server, a database, an application.
+
+**Crown jewels / critical assets**
+The most valuable assets, such as the customer database or the admin accounts. Called Tier Zero in BloodHound.
+
+**Endpoint**
+A device people use directly, such as a laptop or phone. Usually where attackers get in first.
+
+**Phishing**
+Tricking someone into clicking a malicious link or giving away a password, usually by email.
+
+**Credential**
+Anything that proves who you are, such as a password or a token. Stolen credentials let attackers log in as real people.
+
+**Privilege / over-privileged**
+Privilege is the level of access an account has. An over-privileged account has more access than its owner needs.
+
+**Lateral movement**
+After getting into one machine, the attacker hops to other machines inside the network to get closer to the crown jewels.
+
+**Breakout time**
+How long an attacker takes to move from the first compromised machine to others. CrowdStrike measured an average of 29 minutes in 2025.
+
+**Attack path**
+A chain of steps an attacker could take from an entry point to a target. Example: hacked laptop, then a password saved on it, then a server, then the database.
+
+**Blast radius**
+Everything an attacker could reach from one compromised machine or account. We show it at 1, 2 and 3 hops (steps) away.
+
+**Choke point**
+A machine, account or permission that many attack paths pass through. Fixing it cuts many paths at once, like closing the one bridge into a town.
+
+**MITRE ATT&CK**
+A free public catalogue of how real attackers operate, maintained by the US non-profit MITRE. A **tactic** is the attacker's goal at a stage (for example Lateral Movement, ID TA0008). A **technique** is how they achieve it (for example Remote Services, ID T1021). Tagging alerts with these IDs makes an attack read like a recognised story.
+
+**Kill chain**
+The ordered stages of an attack, from getting in to reaching the goal.
+
+**Zero trust / least privilege**
+The idea that nobody is trusted by default and everyone gets only the access they actually need.
+
+**Granted vs used access**
+Granted (or entitled) access is what someone is allowed to reach. Used access is what logs show they actually reached. Access that is granted but never used is risk with no benefit.
+
+## Alert quality
+
+**False positive**
+An alert that fires when nothing bad is happening. Like a smoke alarm going off when someone makes toast.
+
+**True positive**
+An alert that fires and there really is an attack.
+
+**False negative**
+No alert, but there was an attack. The most dangerous case.
+
+**Alert fatigue**
+Analysts getting so many alerts, mostly false, that they start skimming or ignoring them.
+
+**Precision**
+Out of all alerts raised, the share that were real attacks. The honest measure when attacks are rare.
+
+**AUC**
+A common score for detectors. It can look excellent (0.99) even when almost every alert is false, so we never report it alone.
+
+## Graph terms
+
+**Graph**
+Data stored as things (nodes) and the connections between them (edges).
+
+**Node**
+A thing in the graph: a user, laptop, server, IP address or alert.
+
+**Edge**
+A connection between two nodes, such as "raja LOGGED_INTO server-7".
+
+**Hop**
+One step along an edge. "Two hops from laptop-42" means anything reachable in two steps.
+
+**Knowledge graph**
+A graph that combines data from many sources into one connected picture.
+
+**Neo4j**
+The graph database we use. Its query language is **Cypher**.
+
+**GDS (Graph Data Science)**
+Neo4j's library of graph algorithms.
+
+**APOC**
+A free add-on library of extra Neo4j procedures, such as path expansion.
+
+**Shortest path / Dijkstra**
+Finding the cheapest route between two nodes. Dijkstra's algorithm is the classic method.
+
+**Betweenness centrality**
+How often a node sits on the shortest paths between other nodes. A natural way to find choke points.
+
+**PageRank**
+A score that is high when many important nodes point to a node. Originally used by Google to rank web pages.
+
+**Max flow / min cut**
+Max flow measures how much can travel from sources to targets. The minimum cut is the smallest set of edges that, if removed, disconnects them. For us: the fewest permissions to remove to cut attackers off from the crown jewels.
+
+**Community detection (Louvain, Leiden)**
+Algorithms that split a graph into groups of tightly connected nodes, such as teams or server roles.
+
+**Connected components (WCC)**
+Groups of nodes that are connected to each other at all. We use it to group linked alerts into one incident.
+
+## AI terms
+
+**LLM (Large Language Model)**
+AI that reads and writes text, such as ChatGPT or Gemini.
+
+**Logistic regression / decision tree**
+Simple machine learning models that are fast and easy to explain.
+
+**GNN (Graph Neural Network)**
+A deep learning model for graphs. Powerful but heavy to train and hard to explain.
+
+**Text2Cypher**
+Turning a plain-English question into a Cypher query using an LLM.
