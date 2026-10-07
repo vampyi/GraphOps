@@ -4,6 +4,10 @@ Graph analytics for security operations centres (SOCs). GraphOps puts an organis
 
 Built by Team Pingu Haters for hackFront India 2026 (Cybersecurity theme).
 
+## Scope
+
+GraphOps focuses on on-premises and hybrid networks: a company's own machines and Active Directory, plus the cloud accounts and services connected to them. Cloud-only tools already rank threats and show blast radius using graph context in the cloud. The gap we target is the company network and the attack paths that cross from it into the cloud.
+
 ## Status
 
 Research and planning. No code yet. Features below describe what we are building, not what already works.

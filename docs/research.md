@@ -227,6 +227,8 @@ Across the products above, we found **no documented feature** that does any of t
 
 Our view: GraphOps is not a new algorithm. Its value is putting all of this on one graph so one query can cross it.
 
+Our view on scope: we focus on on-premises and hybrid networks. In the cloud, Wiz already ranks threats and shows blast radius using graph context. On company networks and the paths that cross from them into the cloud, none of the tools we checked does.
+
 ---
 
 ## 7. What research says about how to build it
