@@ -38,3 +38,6 @@ data/raw/
 
 # logs
 *.log
+
+# local planning notes
+docs/plan.md
