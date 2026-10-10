@@ -56,7 +56,7 @@ Source: John Lambert, [post on X](https://x.com/johnlatwc/status/549049397602828
 
 | Fact | Number | Source |
 |---|---|---|
-| Organisations naming false positives as their top detection challenge | **73%** in 2025, up from 64% in 2024 | SANS 2025 Detection and Response Survey |
+| Survey respondents citing false positives as a main detection challenge, the most cited one | **73%** in 2025, up from 64% in 2024 | SANS 2025 Detection and Response Survey |
 | Organisations seeing false positives frequently or very frequently | **more than 60%** | same survey |
 | Average time for an attacker to start spreading (eCrime breakout time) | **29 minutes** in 2025, down from 48 minutes in 2024 | CrowdStrike 2026 and 2025 Global Threat Reports |
 | Fastest breakout seen | **27 seconds** in 2025 | CrowdStrike 2026 Global Threat Report |

@@ -14,7 +14,7 @@ Research and planning. No code yet. Features below describe what we are building
 
 ## The problem
 
-- **Too much noise.** In the SANS 2025 Detection and Response Survey, 73% of organisations named false positives as their top detection challenge, up from 64% in 2024. SANS also notes that excessive noise gives attackers cover.
+- **Too much noise.** In the SANS 2025 Detection and Response Survey, 73% of respondents cited false positives as a main detection challenge, the most cited one, up from 64% in 2024. SANS also notes that excessive noise gives attackers cover.
 - **Attackers are fast.** CrowdStrike measured an average eCrime breakout time of 29 minutes in 2025, down from 48 minutes in 2024. Breakout time is how long an attacker takes to move from the first compromised machine to others.
 - **Breaches are expensive.** IBM puts the average cost of a data breach at USD 4.99 million globally and a record INR 25.5 crore in India (2026).
 - **Reporting deadlines are tight.** Under the CERT-In Directions of 28 April 2022, organisations in India must report cyber incidents to CERT-In within 6 hours of noticing them.
