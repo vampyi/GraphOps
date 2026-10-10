@@ -15,7 +15,8 @@ Each fact has a source at the bottom of its section. "Our view" marks our own re
 7. [What research says about how to build it](#7-what-research-says-about-how-to-build-it)
 8. [What Neo4j gives us for free](#8-what-neo4j-gives-us-for-free)
 9. [Data we can use](#9-data-we-can-use)
-10. [What we could not verify](#10-what-we-could-not-verify)
+10. [AI agents as identities](#10-ai-agents-as-identities)
+11. [What we could not verify](#11-what-we-could-not-verify)
 
 ---
 
@@ -317,7 +318,42 @@ Sources: [ADSynth](https://github.com/AUCyberLab/ADSynth), [LANL 2015 dataset](h
 
 ---
 
-## 10. What we could not verify
+## 10. AI agents as identities
+
+Part of GraphOps.
+
+**Why it matters.** Companies now run AI agents and automation accounts that hold real permissions, often more than they need.
+
+| Fact | Source |
+|---|---|
+| 13% of organisations reported breaches of AI models or applications, and 97% of those lacked proper AI access controls (2025) | IBM Cost of a Data Breach 2025 release |
+| One in four malicious breaches was AI-enabled (2026) | IBM Cost of a Data Breach 2026 release |
+| ADSynth already generates non-human identities, including service principals, managed identities, automation accounts and AI agent nodes | ADSynth repository |
+
+**Who already does part of it.**
+
+| Product | What it covers |
+|---|---|
+| BloodHound Enterprise | Attack paths through AI agents: Entra Agent ID, Copilot Studio, Power Automate and selected Azure AI Foundry relationships |
+| XM Cyber | Finds AI tools and MCP servers in use and maps attack paths through AI services |
+
+So attack paths through AI agents are not new.
+
+**What our version would add.** Treat every AI agent as an identity in the same graph, so the features we already plan apply to it:
+
+- **Granted vs used access:** "this agent holds 50 permissions and uses 3."
+- **Never-taken path:** "this agent just reached the finance database by a route it has never used."
+- **Alert ranking:** an alert on an AI agent ranks high when the agent sits close to critical assets.
+
+**How ADSynth represents AI agents** (checked in its source code). An AI agent is an `AZServicePrincipal` node with `isAIAgent = true`, an `agentType` such as Orchestrator and a `privilegeTier`. Three edges connect it: `DELEGATES_TO` (user to agent), `ORCHESTRATES` (agent to sub-agent) and `HAS_TOOL_ACCESS` (agent to key vaults, virtual machines and apps).
+
+Our view: this reuses features we already build. The new work is loading AI agent nodes from ADSynth and scripting their activity, because ADSynth gives permissions but not activity over time.
+
+Sources: [IBM 2025](https://newsroom.ibm.com/2025-07-30-ibm-report-13-of-organizations-reported-breaches-of-ai-models-or-applications,-97-of-which-reported-lacking-proper-ai-access-controls), [IBM 2026](https://newsroom.ibm.com/2026-07-29-ibm-study-one-in-four-malicious-breaches-are-ai-enabled,-costing-companies-6-million-on-average), [ADSynth](https://github.com/AUCyberLab/ADSynth), [SpecterOps AI agents blog](https://specterops.io/blog/2026/07/28/introducing-attack-path-management-for-entra-agents-in-bloodhound-enterprise/), [XM Cyber AI press release](https://xmcyber.com/press-release/xm-cyber-extends-its-continuous-exposure-management-platform-to-secure-ai-attack-surfaces/).
+
+---
+
+## 11. What we could not verify
 
 - The exact formula of the IEEE CSF 2025 choke point metric (paywall).
 - CrowdStrike's documentation behind its login.

@@ -31,6 +31,16 @@ Research and planning. No code yet. Features below describe what we are building
 | 6 | People hold more access than they use | Draws the blast radius twice: once over granted access and once over access actually used. The difference is the risk that least privilege removes. |
 | 7 | Rules check one step at a time | Flags a user reaching a system through a path they have never used before, even when each step looks normal. |
 
+### AI agents as identities
+
+Companies now run AI agents that hold real permissions. GraphOps treats every AI agent as an identity in the same graph as users, so the features above apply to it:
+
+- **Granted vs used access:** "this agent holds 50 permissions and uses 3."
+- **Never-taken path:** "this agent just reached the finance database by a route it has never used."
+- **Alert ranking:** an alert on an AI agent ranks high when the agent sits close to critical assets.
+
+IBM found that 13% of organisations reported breaches of AI models or applications and 97% of those lacked proper AI access controls (2025). BloodHound Enterprise and XM Cyber already map attack paths through AI agents. Our addition is applying granted vs used access, never-taken paths and alert ranking to them.
+
 ## How alerts are ranked
 
 Each alert is scored on six questions answered from the graph:

@@ -36,6 +36,8 @@ The shrinking circle feature only works if these stay separate.
 
 Cloud and hybrid nodes (cloud users, service principals, sync servers) keep the labels ADSynth gives them.
 
+**AI agents** are treated as identities. ADSynth stores them as `AZServicePrincipal` nodes with `isAIAgent = true`, `agentType` (for example Orchestrator) and `privilegeTier`. We keep those names.
+
 ### Properties written by the background graph analysis
 
 Stored on `User`, `Computer` and `Group` nodes. Refreshed every 5 minutes.
@@ -78,6 +80,16 @@ From ADSynth, using BloodHound's names.
 
 ADSynth generates more permission edges than these. We keep all of them and decide during week 2 which ones count for attack paths.
 
+### AI agent edges
+
+Granted edges from ADSynth. ADSynth names these in upper case, and we keep its names so its output loads as-is.
+
+| Edge | Meaning |
+|---|---|
+| `(User)-[:DELEGATES_TO]->(AI agent)` | The user lets the agent act on their behalf |
+| `(AI agent)-[:ORCHESTRATES]->(AI agent)` | One agent directs another |
+| `(AI agent)-[:HAS_TOOL_ACCESS]->(AZKeyVault\|AZVM\|AZApp)` | The agent can use this cloud resource |
+
 ### Observed edges
 
 From telemetry. Every observed edge has these properties:
@@ -96,6 +108,7 @@ From telemetry. Every observed edge has these properties:
 | `(Computer)-[:RemoteLogon]->(Computer)` | Someone used an account to log in from one computer to another. This is one hop of lateral movement. | `user`, `logon_type`, `auth_type` | LANL `auth` where source and destination computers differ |
 | `(Computer)-[:ConnectedTo]->(Computer)` | The two computers exchanged network traffic | `port`, `protocol`, `bytes` | LANL `flows`, network flow logs |
 | `(Computer)-[:Ran]->(Process)` | A program ran on the computer | `user` | LANL `proc`, EDR |
+| `(AI agent)-[:Accessed]->(resource)` | The agent actually used the resource | none | Scripted agent activity |
 
 ### Alert edges
 
@@ -117,6 +130,8 @@ From telemetry. Every observed edge has these properties:
 |---|---|
 | **Granted access** of a user | `MemberOf`, followed through nested groups, then `AdminTo`, `CanRDP` and `GenericAll` |
 | **Used access** of a user | `LoggedInto` and `RemoteLogon` edges with `last_seen` inside the chosen window, for example the last 30 days |
+| **Granted access** of an AI agent | `HAS_TOOL_ACCESS`, `ORCHESTRATES` and its permission edges |
+| **Used access** of an AI agent | `Accessed` edges with `last_seen` inside the chosen window |
 
 The shrinking circle runs the same blast radius query twice: once over granted edges and once over used edges.
 
