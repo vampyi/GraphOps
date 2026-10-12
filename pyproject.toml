@@ -8,6 +8,7 @@ dependencies = [
     "anthropic>=1.0",
     "python-dotenv>=1.0",
     "networkx>=3.4",
+    "certifi>=2024.0",
 ]
 
 [tool.vercel]

@@ -9,6 +9,14 @@ from neo4j import GraphDatabase
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")  # variables already set, for example on vercel, take priority
 
+# some python installs (the python.org macOS installer) ship without trusted certificate authorities,
+# which breaks encrypted connections to neo4j aura. certifi provides the standard list.
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+except ImportError:
+    pass
+
 
 def driver():
     return GraphDatabase.driver(
