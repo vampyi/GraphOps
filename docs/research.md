@@ -310,9 +310,9 @@ Sources: [Neo4j Graph Data Science docs](https://neo4j.com/docs/graph-data-scien
 |---|---|---|---|
 | **ADSynth** (DSN 2024, BSD-3 licence) | Generates realistic fake Active Directory networks and exports them to Neo4j or BloodHound format | Attack paths, choke points, granted access | No activity data: no logins over time and no alerts. Pins an old Neo4j driver (4.4.10). |
 | **LANL 2015** (Los Alamos National Laboratory, public domain) | 58 days of real logins, processes, network flows and DNS from a real network, with a file of red-team attack events | Testing never-taken-path detection with real attacks | Must request access with an email form. The login file is 7.2 GB compressed, so we use a slice. Names are anonymised. |
-| **Our own scripted alerts** | Alerts we write onto ADSynth machines that follow a known attack path | The end-to-end demo | Synthetic. We say so on screen. |
+| **Our own scripted alerts** | Alerts we write onto ADSynth machines that follow a known attack path | The end-to-end flow | Synthetic. We say so on screen. |
 
-Our view: use all three. ADSynth for the network, a slice of LANL for testing detection and scripted alerts for the demo.
+Our view: use all three. ADSynth for the network, a slice of LANL for testing detection and scripted alerts for the end-to-end flow.
 
 Sources: [ADSynth](https://github.com/AUCyberLab/ADSynth), [LANL 2015 dataset](https://csr.lanl.gov/data/cyber1/).
 

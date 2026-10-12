@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Landing from "./Landing.jsx";
 import Dashboard from "./Dashboard.jsx";
 
-// two screens: the landing page (#/) and the live demo (#/demo)
+// two screens: the landing page (#/) and the console (#/console)
 export default function App() {
   const [route, setRoute] = useState(window.location.hash || "#/");
   useEffect(() => {
@@ -10,5 +10,5 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  return route.startsWith("#/demo") ? <Dashboard /> : <Landing />;
+  return route.startsWith("#/console") ? <Dashboard /> : <Landing />;
 }

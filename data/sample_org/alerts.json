@@ -1,5 +1,5 @@
 {
-  "description": "Alerts and new activity for the demo day. 'scenario' marks the scripted attack and is used only by tests, never by the ranker.",
+  "description": "Alerts and new activity for one day at the sample organisation. 'scenario' marks the scripted attack and is used only by tests, never by the ranker.",
   "alerts": [
     {
       "id": "a-01",

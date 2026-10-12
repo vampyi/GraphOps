@@ -2,19 +2,19 @@
 from app.story import write_story
 
 
-def test_r1_loads_demo_with_one_command(demo):
-    assert demo == {"nodes": 37, "edges": 53, "alerts": 30}
+def test_r1_seeds_with_one_command(seeded):
+    assert seeded == {"nodes": 37, "edges": 53, "alerts": 30}
 
 
-def test_r2_inbox_shows_every_alert_highest_first(api, demo):
+def test_r2_inbox_shows_every_alert_highest_first(api, seeded):
     rows = api.get("/api/alerts").json()
-    assert len(rows) == demo["alerts"]
+    assert len(rows) == seeded["alerts"]
     scores = [r["score"] for r in rows]
     assert scores == sorted(scores, reverse=True)
     assert all(r["reasons"] is not None for r in rows)
 
 
-def test_r3_known_hops_to_critical(neo4j_driver, demo):
+def test_r3_known_hops_to_critical(neo4j_driver, seeded):
     with neo4j_driver.session() as s:
         hops = {r["id"]: r["h"] for r in s.run(
             "MATCH (n) WHERE n.id IN ['customer-db', 'server-7', 'laptop-42', 'printer-01'] "
@@ -32,7 +32,7 @@ def test_r4_blast_radius_rings(api):
     assert max(by_id.values()) <= 3
 
 
-def test_r5_attack_is_one_incident_in_attack_order(neo4j_driver, demo, attack_ids):
+def test_r5_attack_is_one_incident_in_attack_order(neo4j_driver, seeded, attack_ids):
     with neo4j_driver.session() as s:
         rows = [dict(r) for r in s.run(
             "MATCH (a:Alert) WHERE a.id IN $ids RETURN a.incident_id AS inc, a.tactic_id AS tac ORDER BY a.time",
@@ -43,7 +43,7 @@ def test_r5_attack_is_one_incident_in_attack_order(neo4j_driver, demo, attack_id
     assert positions == sorted(positions)
 
 
-def test_r6_story_drops_invented_citations(neo4j_driver, demo):
+def test_r6_story_drops_invented_citations(neo4j_driver, seeded):
     def fake_llm(facts):
         return [{"text": "A phishing link was clicked.", "cites": ["a-01"]},
                 {"text": "The attacker also hit the payroll server.", "cites": ["payroll-99"]}]
@@ -55,7 +55,7 @@ def test_r6_story_drops_invented_citations(neo4j_driver, demo):
     assert result["status"] == "needs analyst approval"
 
 
-def test_r6_story_falls_back_to_facts_without_llm(neo4j_driver, demo):
+def test_r6_story_falls_back_to_facts_without_llm(neo4j_driver, seeded):
     def broken_llm(facts):
         raise RuntimeError("no access")
     with neo4j_driver.session() as s:

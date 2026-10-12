@@ -34,7 +34,7 @@ export default function Landing() {
           <a href="#problem" onClick={(e) => { e.preventDefault(); document.getElementById("problem").scrollIntoView({ behavior: "smooth" }); }}>Problem</a>
           <a href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
           <ThemeToggle />
-          <a className="btn primary small" href="#/demo">Open the live demo</a>
+          <a className="btn primary small" href="#/console">Open the console</a>
         </div>
       </nav>
 
@@ -46,7 +46,7 @@ export default function Landing() {
           incident and shows what an attacker can reach next. One open graph, built on Neo4j.
         </p>
         <div className="cta">
-          <a className="btn primary" href="#/demo">Open the live demo</a>
+          <a className="btn primary" href="#/console">Open the console</a>
           <a className="btn ghost" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
         </div>
         <p className="made-for">Built by Team Pingu Haters for hackFront India 2026, Cybersecurity theme.</p>
@@ -71,7 +71,7 @@ export default function Landing() {
             <div key={p.title} className="pain">
               <div className="pain-head">
                 <h3>{p.title}</h3>
-                <span className={`badge ${p.status}`}>{p.status === "live" ? "In the demo" : "Planned"}</span>
+                <span className={`badge ${p.status}`}>{p.status === "live" ? "Available now" : "Planned"}</span>
               </div>
               <p className="pain-problem">{p.problem}</p>
               <p className="pain-fix">{p.fix}</p>
@@ -91,12 +91,12 @@ export default function Landing() {
             </div>
           ))}
         </div>
-        <div className="cta center"><a className="btn primary" href="#/demo">See it on a demo company</a></div>
+        <div className="cta center"><a className="btn primary" href="#/console">Explore the sample organisation</a></div>
       </section>
 
       <footer className="lfoot">
         Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mohamad and SK MD Mahasin.
-        <br />The demo uses a fictional company. All data is synthetic.
+        <br />The console runs on a fictional sample organisation. All data is synthetic.
       </footer>
     </div>
   );

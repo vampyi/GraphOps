@@ -220,7 +220,7 @@ A CSV file with one row per machine or application: `id, name, owner, critical, 
 
 ## Open questions for the team
 
-1. Which assets count as critical in our demo network?
+1. Which assets count as critical in our sample organisation?
 2. Which machines are low-trust?
 3. Which ADSynth permission edges beyond the ones above should count for attack paths?
 4. How long is the "used access" window: 7, 30 or 90 days?

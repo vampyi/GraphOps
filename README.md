@@ -10,7 +10,7 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 ## Status
 
-The first flow works on demo data: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). Kafka streaming, the LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
+The first flow works on a synthetic sample organisation: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). Kafka streaming, the LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
 
 ## The problem
 
@@ -194,9 +194,9 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 |---|---|---|
 | ADSynth | A realistic company network: users, groups, computers and permissions in Active Directory and the cloud | Synthetic |
 | LANL 2015 (Los Alamos National Laboratory) | 58 days of real logins and network flows, with labelled red-team attacks | Real, anonymised |
-| Scripted attack scenario | A known attack replayed as live events and alerts for the demo | Synthetic |
+| Scripted attack scenario | A known attack replayed as live events and alerts | Synthetic |
 
-The demo always states which data is synthetic.
+The console always states that its data is synthetic.
 
 ## How we test it
 
@@ -222,11 +222,11 @@ cp .env.example .env
 # 2. start Neo4j with Graph Data Science and APOC
 docker compose up -d
 
-# 3. backend: install, load the demo data, start the server on port 8000
+# 3. backend: install, seed the sample data, start the server on port 8000
 cd backend
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m app.load_demo
+.venv/bin/python -m app.seed
 .venv/bin/uvicorn app.main:app --port 8000
 
 # 4. dashboard, in a second terminal: open http://localhost:5173

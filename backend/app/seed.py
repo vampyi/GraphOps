@@ -1,16 +1,16 @@
-"""load the demo company network and alerts into an empty neo4j database (requirement R1)."""
+"""seed an empty neo4j database with the sample organisation's network and alerts (requirement R1)."""
 import json
 import sys
 
 from .db import ROOT, driver
 
-DEMO = ROOT / "data" / "demo"
+SAMPLE = ROOT / "data" / "sample_org"
 NODE_LABELS = {"User", "Group", "Computer"}
 EDGE_TYPES = {"MemberOf", "AdminTo", "CanRDP", "GenericAll", "HasSession",
               "LoggedInto", "RemoteLogon", "ConnectedTo"}
 
 
-def load(session, network_path=DEMO / "network.json", alerts_path=DEMO / "alerts.json"):
+def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "alerts.json"):
     network = json.loads(network_path.read_text())
     alerts = json.loads(alerts_path.read_text())
 
@@ -31,7 +31,7 @@ def load(session, network_path=DEMO / "network.json", alerts_path=DEMO / "alerts
     for edge in network["observed"]:
         _edge(session, edge, family="observed")
 
-    # new activity on the demo day: an edge seen for the first time keeps first_seen = time
+    # new activity on the sample day: an edge seen for the first time keeps first_seen = time
     for event in alerts["events"]:
         _check_type(event["type"])
         session.run(

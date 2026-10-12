@@ -3,7 +3,7 @@ import json
 import pytest
 from testcontainers.community.neo4j import Neo4jContainer
 
-from app import load_demo
+from app import seed
 from app.analysis import run_all
 from app.db import ROOT
 from app.scoring import score_all
@@ -25,10 +25,10 @@ def neo4j_driver():
 
 
 @pytest.fixture()
-def demo(neo4j_driver):
-    """fresh demo data for each test that needs it."""
+def seeded(neo4j_driver):
+    """freshly seeded sample data for each test that needs it."""
     with neo4j_driver.session() as s:
-        counts = load_demo.load(s)
+        counts = seed.load(s)
         run_all(s)
         score_all(s)
     return counts
@@ -36,12 +36,12 @@ def demo(neo4j_driver):
 
 @pytest.fixture(scope="session")
 def attack_ids():
-    alerts = json.loads((ROOT / "data" / "demo" / "alerts.json").read_text())["alerts"]
+    alerts = json.loads((ROOT / "data" / "sample_org" / "alerts.json").read_text())["alerts"]
     return {a["id"] for a in alerts if a["scenario"] == "attack"}
 
 
 @pytest.fixture()
-def api(neo4j_driver, demo):
+def api(neo4j_driver, seeded):
     from fastapi.testclient import TestClient
     from app import main
     main._driver = neo4j_driver

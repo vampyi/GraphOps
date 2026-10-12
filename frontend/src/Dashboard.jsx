@@ -78,7 +78,7 @@ export default function Dashboard() {
     <div className="dash">
       <nav className="dnav">
         <a className="brand" href="#/"><Logo />GraphOps</a>
-        <span className="tag">Demo company · all data synthetic</span>
+        <span className="tag">Sample organisation · synthetic data</span>
         <button className="tour-btn" onClick={() => setTouring(true)}>Take the tour</button>
         <ThemeToggle />
         <div className="sort" data-tour="sort">
