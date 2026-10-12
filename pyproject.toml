@@ -1,0 +1,17 @@
+[project]
+name = "graphops"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "neo4j>=5.28",
+    "fastapi>=0.143",
+    "anthropic>=1.0",
+    "python-dotenv>=1.0",
+    "networkx>=3.4",
+]
+
+[tool.vercel]
+entrypoint = "backend.app.main:app"
+
+[tool.vercel.scripts]
+build = "cd frontend && npm ci && npm run build"
