@@ -1,0 +1,438 @@
+{
+  "description": "Alerts and new activity for the demo day. 'scenario' marks the scripted attack and is used only by tests, never by the ranker.",
+  "alerts": [
+    {
+      "id": "a-01",
+      "time": "2026-10-20T10:00:00",
+      "name": "Phishing link clicked",
+      "severity": "medium",
+      "tactic_id": "TA0001",
+      "technique_id": "T1566",
+      "source_tool": "Email gateway",
+      "involves": [
+        "laptop-42",
+        "intern_a"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "a-02",
+      "time": "2026-10-20T10:12:00",
+      "name": "Credential dumping tool accessed LSASS memory",
+      "severity": "medium",
+      "tactic_id": "TA0006",
+      "technique_id": "T1003",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-42",
+        "intern_a"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "a-03",
+      "time": "2026-10-20T10:20:00",
+      "name": "Remote logon from an unusual host",
+      "severity": "low",
+      "tactic_id": "TA0008",
+      "technique_id": "T1021",
+      "source_tool": "SIEM",
+      "involves": [
+        "server-7",
+        "it_admin"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "a-04",
+      "time": "2026-10-20T10:31:00",
+      "name": "Pass-the-hash authentication",
+      "severity": "medium",
+      "tactic_id": "TA0008",
+      "technique_id": "T1550.002",
+      "source_tool": "SIEM",
+      "involves": [
+        "customer-db",
+        "svc_db"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "n-01",
+      "time": "2026-10-20T08:05:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-02",
+      "time": "2026-10-20T08:20:00",
+      "name": "Adware bundle detected",
+      "severity": "high",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-03",
+      "time": "2026-10-20T08:22:00",
+      "name": "Adware tried to reach an ad server",
+      "severity": "medium",
+      "tactic_id": "TA0011",
+      "technique_id": "T1105",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-04",
+      "time": "2026-10-20T08:40:00",
+      "name": "Brute force on VPN account",
+      "severity": "high",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-05",
+      "time": "2026-10-20T08:45:00",
+      "name": "Several failed logins",
+      "severity": "low",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-hr1",
+        "hr_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-06",
+      "time": "2026-10-20T09:02:00",
+      "name": "Drive-by download blocked",
+      "severity": "critical",
+      "tactic_id": "TA0001",
+      "technique_id": "T1189",
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-07",
+      "time": "2026-10-20T09:10:00",
+      "name": "Scheduled task created",
+      "severity": "low",
+      "tactic_id": "TA0002",
+      "technique_id": "T1053",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d1",
+        "dev_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-08",
+      "time": "2026-10-20T09:15:00",
+      "name": "PowerShell script ran",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1059",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d2",
+        "dev_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-09",
+      "time": "2026-10-20T09:18:00",
+      "name": "Large file upload to cloud storage",
+      "severity": "medium",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-f1",
+        "fin_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-10",
+      "time": "2026-10-20T09:25:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-11",
+      "time": "2026-10-20T09:30:00",
+      "name": "Unsigned driver loaded",
+      "severity": "medium",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-it1",
+        "it_admin"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-12",
+      "time": "2026-10-20T09:40:00",
+      "name": "Login outside working hours",
+      "severity": "low",
+      "tactic_id": "TA0001",
+      "technique_id": "T1078",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-13",
+      "time": "2026-10-20T09:44:00",
+      "name": "Macro-enabled document opened",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-hr1",
+        "hr_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-14",
+      "time": "2026-10-20T09:50:00",
+      "name": "USB storage device connected",
+      "severity": "low",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-15",
+      "time": "2026-10-20T10:05:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-16",
+      "time": "2026-10-20T10:08:00",
+      "name": "Browser extension installed",
+      "severity": "low",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-17",
+      "time": "2026-10-20T10:15:00",
+      "name": "Several failed logins",
+      "severity": "low",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-f1",
+        "fin_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-18",
+      "time": "2026-10-20T10:25:00",
+      "name": "PowerShell script ran",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1059",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d1",
+        "dev_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-19",
+      "time": "2026-10-20T10:40:00",
+      "name": "Known bad IP contacted, connection blocked",
+      "severity": "high",
+      "tactic_id": "TA0011",
+      "technique_id": "T1105",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-20",
+      "time": "2026-10-20T10:52:00",
+      "name": "Scheduled task created",
+      "severity": "low",
+      "tactic_id": "TA0002",
+      "technique_id": "T1053",
+      "source_tool": "EDR",
+      "involves": [
+        "server-backup",
+        "svc_backup"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-21",
+      "time": "2026-10-20T11:05:00",
+      "name": "Brute force on VPN account",
+      "severity": "high",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-22",
+      "time": "2026-10-20T11:10:00",
+      "name": "Antivirus definitions out of date",
+      "severity": "low",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-23",
+      "time": "2026-10-20T11:20:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-24",
+      "time": "2026-10-20T11:35:00",
+      "name": "Login outside working hours",
+      "severity": "low",
+      "tactic_id": "TA0001",
+      "technique_id": "T1078",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-hr1",
+        "hr_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-25",
+      "time": "2026-10-20T11:42:00",
+      "name": "Adware bundle detected",
+      "severity": "high",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "n-26",
+      "time": "2026-10-20T11:55:00",
+      "name": "Large file upload to cloud storage",
+      "severity": "medium",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    }
+  ],
+  "events": [
+    {
+      "src": "laptop-42",
+      "type": "RemoteLogon",
+      "dst": "server-7",
+      "user": "it_admin",
+      "time": "2026-10-20T10:20:00",
+      "scenario": "attack"
+    },
+    {
+      "src": "server-7",
+      "type": "RemoteLogon",
+      "dst": "customer-db",
+      "user": "svc_db",
+      "time": "2026-10-20T10:31:00",
+      "scenario": "attack"
+    }
+  ]
+}
