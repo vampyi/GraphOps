@@ -1,0 +1,128 @@
+import { useMemo, useState } from "react";
+
+const W = 780;
+const H = 660;
+const CX = W / 2;
+const CY = H / 2;
+const RADII = [0, 130, 220, 305];
+const KIND_SHAPE = { User: "circle", Group: "square", Computer: "diamond" };
+
+// place nodes on rings by hop. each ring is ordered by the angle of the node that leads to it,
+// so lines stay short and do not cross the whole picture.
+function layout(nodes, edges) {
+  const byHop = [0, 1, 2, 3].map((h) => nodes.filter((n) => n.hop === h));
+  const pos = {};
+  const centre = byHop[0];
+  centre.forEach((n, i) => {
+    const a = (2 * Math.PI * i) / Math.max(centre.length, 1) - Math.PI / 2;
+    const r = centre.length > 1 ? 34 : 0;
+    pos[n.id] = { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a), a };
+  });
+  const neighbours = {};
+  edges.forEach((e) => {
+    (neighbours[e.src] ||= []).push(e.dst);
+    (neighbours[e.dst] ||= []).push(e.src);
+  });
+  for (let h = 1; h <= 3; h++) {
+    const ring = byHop[h];
+    if (!ring.length) continue;
+    const wanted = ring.map((n) => {
+      const parents = (neighbours[n.id] || []).filter((id) => pos[id] && nodes.find((x) => x.id === id)?.hop === h - 1);
+      const angles = parents.map((id) => pos[id].a);
+      const a = angles.length
+        ? Math.atan2(angles.reduce((s, x) => s + Math.sin(x), 0), angles.reduce((s, x) => s + Math.cos(x), 0))
+        : 0;
+      return { n, a };
+    });
+    wanted.sort((p, q) => p.a - q.a);
+    const offset = wanted[0].a;
+    wanted.forEach(({ n }, i) => {
+      const a = offset + (2 * Math.PI * i) / ring.length;
+      pos[n.id] = { x: CX + RADII[h] * Math.cos(a), y: CY + RADII[h] * Math.sin(a), a };
+    });
+  }
+  return pos;
+}
+
+function Shape({ kind, x, y, r, className }) {
+  const shape = KIND_SHAPE[kind] || "circle";
+  if (shape === "square") return <rect className={className} x={x - r} y={y - r} width={2 * r} height={2 * r} rx={r * 0.35} />;
+  if (shape === "diamond") return <rect className={className} x={x - r * 0.85} y={y - r * 0.85} width={1.7 * r} height={1.7 * r} rx={r * 0.25} transform={`rotate(45 ${x} ${y})`} />;
+  return <circle className={className} cx={x} cy={y} r={r} />;
+}
+
+export default function RingGraph({ data: full, onSelectNode, selectedNode, maxHop = 3 }) {
+  const [hover, setHover] = useState(null);
+  // positions come from the full graph so nodes do not jump when the hop filter changes
+  const pos = useMemo(() => (full ? layout(full.nodes, full.edges) : {}), [full]);
+  const data = useMemo(() => {
+    if (!full) return null;
+    const keep = new Set(full.nodes.filter((n) => n.hop <= maxHop).map((n) => n.id));
+    return { ...full, nodes: full.nodes.filter((n) => keep.has(n.id)), edges: full.edges.filter((e) => keep.has(e.src) && keep.has(e.dst)) };
+  }, [full, maxHop]);
+  if (!data) return null;
+
+  const pathIds = data.attack_path?.nodes || [];
+  const pathEdge = new Set(pathIds.slice(1).map((id, i) => `${pathIds[i]}>${id}`));
+  const focus = hover || selectedNode;
+  const linked = new Set();
+  if (focus) data.edges.forEach((e) => { if (e.src === focus || e.dst === focus) { linked.add(e.src); linked.add(e.dst); } });
+
+  return (
+    <svg className="ring-graph" viewBox={`0 0 ${W} ${H}`} key={data.alert_id}>
+      <defs>
+        <radialGradient id="halo-red"><stop offset="0" style={{ stopColor: "var(--red)", stopOpacity: 0.28 }} /><stop offset="1" style={{ stopColor: "var(--red)", stopOpacity: 0 }} /></radialGradient>
+        <radialGradient id="halo-amber"><stop offset="0" style={{ stopColor: "var(--amber)", stopOpacity: 0.22 }} /><stop offset="1" style={{ stopColor: "var(--amber)", stopOpacity: 0 }} /></radialGradient>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style={{ fill: "var(--line-hover)" }} /></marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style={{ fill: "var(--red)" }} /></marker>
+      </defs>
+
+      {RADII.slice(1, maxHop + 1).map((r, i) => (
+        <g key={r} className="ring" style={{ animationDelay: `${i * 0.18}s` }}>
+          <circle cx={CX} cy={CY} r={r} />
+          <text x={CX + r * Math.cos(-0.6) + 6} y={CY + r * Math.sin(-0.6) - 4}>{i + 1} hop{i ? "s" : ""}</text>
+        </g>
+      ))}
+
+      {data.edges.map((e, i) => {
+        const a = pos[e.src], b = pos[e.dst];
+        if (!a || !b) return null;
+        const onPath = pathEdge.has(`${e.src}>${e.dst}`);
+        const dim = focus && !(e.src === focus || e.dst === focus);
+        const lit = focus && !dim;
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+        const trim = 13;
+        const x2 = b.x - (dx / len) * trim, y2 = b.y - (dy / len) * trim;
+        return (
+          <g key={i} className={`edge ${onPath ? "path" : ""} ${dim ? "dim" : ""} ${lit ? "lit" : ""}`}>
+            <line x1={a.x} y1={a.y} x2={x2} y2={y2} markerEnd={onPath ? "url(#arrow-red)" : "url(#arrow)"} />
+            {(lit || onPath) && <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 4}>{e.type}</text>}
+          </g>
+        );
+      })}
+
+      {data.nodes.map((n) => {
+        const p = pos[n.id];
+        if (!p) return null;
+        const onPath = pathIds.includes(n.id);
+        const dim = focus && !linked.has(n.id) && n.id !== focus;
+        const cls = n.hop === 0 ? "alerted" : n.critical ? "critical" : onPath ? "onpath" : `hop${n.hop}`;
+        const r = n.critical ? 11 : n.hop === 0 ? 11 : 8;
+        return (
+          <g
+            key={n.id}
+            className={`node ${cls} ${dim ? "dim" : ""} ${selectedNode === n.id ? "selected" : ""}`}
+            style={{ animationDelay: `${0.15 + n.hop * 0.18}s` }}
+            onMouseEnter={() => setHover(n.id)}
+            onMouseLeave={() => setHover(null)}
+            onClick={() => onSelectNode(n.id === selectedNode ? null : n.id)}
+          >
+            {(n.critical || n.hop === 0) && <circle cx={p.x} cy={p.y} r={r * 2.6} fill={n.critical ? "url(#halo-red)" : "url(#halo-amber)"} />}
+            <Shape kind={n.kind} x={p.x} y={p.y} r={r} className="shape" />
+            <text x={p.x} y={p.y + r + 13}>{n.id}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
