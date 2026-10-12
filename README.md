@@ -10,7 +10,7 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 ## Status
 
-Research and planning. No code yet. Features below describe what we are building, not what already works.
+The first flow works on demo data: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). Kafka streaming, the LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
 
 ## The problem
 
@@ -158,7 +158,7 @@ A FastAPI web server that sits between the dashboard and the data.
 
 ### 6. Dashboard
 
-The React web app the analyst uses, with graphs drawn by NVL, Neo4j's visualisation library.
+The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 
 - **Alert inbox:** every alert, highest score first, with the reasons for its rank.
 - **Graph view:** machines, accounts and attack paths as dots and lines.
@@ -174,7 +174,7 @@ The React web app the analyst uses, with graphs drawn by NVL, Neo4j's visualisat
 | Ingest and scoring | Python with `confluent-kafka` and the official Neo4j driver | We score each alert the moment it arrives. A plain connector only copies data and cannot do that. |
 | Graph database | Neo4j Community with Graph Data Science and APOC | Free. Shortest paths, betweenness, max flow, Louvain and connected components are all included. |
 | API | FastAPI | Same language as the rest of the backend. Supports WebSocket for live updates. |
-| Dashboard | React with the Neo4j Visualization Library (NVL) | NVL is the rendering engine behind Neo4j Bloom, packaged for React. |
+| Dashboard | React, with the blast radius drawn as our own SVG ring graph | Full control over the ring layout with no extra library. We first chose Neo4j's NVL, but its licence only allows use with Neo4j Aura or Neo4j's commercial products, not Neo4j Community. |
 | Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst feedback. |
 | Incident story and plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Connects an LLM to Neo4j. Its `Text2CypherRetriever` turns questions into Cypher queries. LLM provider still to be chosen. |
 | Deployment | Docker Compose | The whole system starts with one command. |
@@ -210,6 +210,39 @@ The demo always states which data is synthetic.
 | AI checks | Incident stories that cite a node outside the incident are rejected. Generated queries that try to write are refused. The ranking model is compared against hand-set weights on held-out alerts. |
 | People test | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
 | Continuous checks | Unit and integration tests run on every push through GitHub Actions. |
+
+## Run it
+
+You need Docker Desktop, Python 3.12 or newer and Node.js 20 or newer.
+
+```bash
+# 1. settings: copy the example and choose a local password
+cp .env.example .env
+
+# 2. start Neo4j with Graph Data Science and APOC
+docker compose up -d
+
+# 3. backend: install, load the demo data, start the server on port 8000
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m app.load_demo
+.venv/bin/uvicorn app.main:app --port 8000
+
+# 4. dashboard, in a second terminal: open http://localhost:5173
+cd frontend
+npm install
+npm run dev
+```
+
+**AI incident stories** use Claude through the Anthropic SDK. Log in once with `ant auth login` (Anthropic's command-line tool). No API key is stored in the project. The account needs API credit. Without access, the dashboard shows the incident's facts instead of a story.
+
+**Tests** start their own Neo4j in Docker, so they never touch your data:
+
+```bash
+cd backend
+.venv/bin/python -m pytest
+```
 
 ## Team
 
