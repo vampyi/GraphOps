@@ -61,17 +61,15 @@ Each alert is scored on six questions answered from the graph:
 5. Do the linked alerts follow attack stages in order?
 6. Does it sit on a choke point?
 
-The weight of each question is our design choice. It will be tuned on test data and can learn from analyst feedback.
+The weight of each question is our design choice, set by hand in `backend/app/scoring.py`. We plan to tune them on test data and later learn them from analyst verdicts.
 
 ## Where AI is used
 
-| Part | What it does | Tools | How we keep it honest |
-|---|---|---|---|
-| 1. Ranking model | Learns how much each of the six ranking questions should count, from analysts marking alerts as real or false | scikit-learn (logistic regression or a decision tree) | Small and explainable. Every score shows which questions pushed it up. |
-| 2. Incident story | Drafts a plain-English story of an incident, step by step, from its subgraph | An LLM called through `neo4j-graphrag`, fed only the incident's nodes and edges pulled by a Cypher query | Every sentence must cite graph node IDs. A checker confirms each cited ID exists in the incident. An analyst approves the draft. |
-| 3. Plain-English questions | Turns questions such as "what can this laptop reach?" into graph queries | `Text2CypherRetriever` from `neo4j-graphrag` | The generated query is shown to the analyst and runs in a read-only transaction, so it cannot change the graph. |
-
-The LLM provider is still to be chosen.
+| Part | What it does | Tools | How we keep it honest | Status |
+|---|---|---|---|---|
+| 1. Ranking model | Learns how much each ranking question should count, from analysts marking alerts as real or false | scikit-learn (logistic regression or a decision tree) | Small and explainable. Every score shows which questions pushed it up. | Planned. Verdicts are already saved; scores use hand-set weights. |
+| 2. Incident story | Drafts a plain-English story of an incident, step by step, from the incident's alerts and the users and machines they involve | Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK | Every sentence must cite IDs from the incident. A checker drops any sentence that cites an ID outside it, and the story is marked as needing analyst approval. Without access to Claude the dashboard shows the incident's facts instead. | Built. Tested with a fake model answer. The real Claude call has not run yet because our account has no API credit, so users see the facts list. |
+| 3. Plain-English questions | Turns questions such as "what can this laptop reach?" into graph queries | `Text2CypherRetriever` from `neo4j-graphrag` | The generated query is shown to the analyst and runs in a read-only transaction, so it cannot change the graph. | Planned. |
 
 ## How GraphOps differs from existing tools
 
@@ -81,7 +79,7 @@ GraphOps is not a new algorithm. It brings these capabilities into one open, sel
 
 ## How it works
 
-GraphOps is six programs arranged in layers. Steps 1 to 3 handle data and graph maths. AI is used in steps 4 and 5.
+GraphOps is six programs arranged in layers. Steps 1 to 3 handle data and graph maths. AI is used in steps 4 and 5. This section describes the full design. Parts not built yet are marked *(planned)*; the [Status](#status) table has the summary.
 
 ```mermaid
 flowchart LR
@@ -125,7 +123,7 @@ In a real company, the security tools themselves would send events to Kafka and 
 
 This Python program listens to the five Kafka topics and turns each event into dots and lines in Neo4j.
 
-- "raja logged into server-7" becomes a user node `raja`, a machine node `server-7` and a `LOGGED_INTO` edge between them.
+- "raja logged into server-7" becomes a `LoggedInto` edge from the user `raja` to the machine `server-7`.
 - If the edge already exists, it updates "last seen". If it is new, it records "first seen". This is how GraphOps later knows a path has never been used before.
 - Every event has an ID and is written with `MERGE` on that ID, so a message read twice changes nothing.
 - It saves how far it has read in each topic in Neo4j, in the same transaction as the events, so a crash never loses or repeats an event.
@@ -134,27 +132,27 @@ This Python program listens to the five Kafka topics and turns each event into d
 
 ### 3. Background graph analysis
 
-This Python script runs every 5 minutes and does the slow calculations ahead of time, so nothing slow happens while an analyst waits.
+This Python code does the slow calculations ahead of time, so nothing slow happens while an analyst waits. It runs when the data is loaded and again whenever the network itself changes, such as a new login route or a new critical asset. It does not rerun for every alert.
 
 - It counts how many steps each machine and account is from the nearest critical asset, such as the customer database, and saves that number on the node.
 - It finds choke points and saves a choke point score on each node.
-- It groups machines that normally work together into communities and saves the group number on each node.
+- *(planned)* It groups machines that normally work together into communities and saves the group number on each node.
 
-### 4. Alert ranker (uses AI 1)
+### 4. Alert ranker (uses AI 1, planned)
 
 This Python program scores each new alert the moment it arrives.
 
 1. It answers the six ranking questions. Most answers are already saved on the nodes by step 3, so this takes milliseconds. For example: "server-7 is 2 steps from the customer database" and "server-7 is a choke point".
-2. It combines the six answers into one score with the ranking model, a small scikit-learn model that learns from analysts marking alerts as real or false.
-3. It looks for other alerts involving the same user or machine in the last few hours and links them into one incident.
+2. It combines the answers into one score. Today the weights are set by hand. *(planned)* A small scikit-learn model will learn them from analysts marking alerts as real or false.
+3. It links alerts that share a user or machine within 2 hours, or that are joined by a login from one alert's machine to the next within 45 minutes, into one incident.
 4. It saves the score, the reasons and the incident in Neo4j and passes the ranked alert on to the backend server.
 
-### 5. Backend server (hosts AI 2 and AI 3)
+### 5. Backend server (hosts AI 2, and AI 3 when built)
 
 A FastAPI web server that sits between the dashboard and the data.
 
 - It answers the dashboard's questions, such as "what is the blast radius of laptop-42?" or "show the attack paths to the customer database", by running Cypher queries on Neo4j.
-- The dashboard asks it for new alerts every 2 seconds, so new alerts appear without a page refresh. This also works on Vercel, where long-lived connections are limited.
+- It serves new and changed alerts at `/api/live`. *(planned)* The dashboard will ask it every 2 seconds, so new alerts appear without a page refresh. This also works on Vercel, where long-lived connections are limited.
 - It hosts the two LLM features:
 
 **Incident story writer.** When the analyst asks for an incident's story:
@@ -163,7 +161,7 @@ A FastAPI web server that sits between the dashboard and the data.
 3. A checker drops any sentence that cites an ID not in the incident, so the LLM cannot invent facts.
 4. The analyst sees the draft marked "needs analyst approval".
 
-**Plain-English question box.** When the analyst types "what can laptop-42 reach?":
+**Plain-English question box** *(planned)*. When the analyst types "what can laptop-42 reach?":
 1. `Text2CypherRetriever` turns the question into a Cypher query.
 2. The query is shown on screen so the analyst can see exactly what is being asked.
 3. It runs in a read-only transaction, so it cannot change or delete anything.
@@ -174,10 +172,9 @@ A FastAPI web server that sits between the dashboard and the data.
 The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 
 - **Alert inbox:** every alert, highest score first, with the reasons for its rank.
-- **Graph view:** machines, accounts and attack paths as dots and lines.
-- **Blast radius rings:** click an alert to see everything 1, 2 and 3 steps away.
+- **Blast radius rings:** click an alert to see everything 1, 2 and 3 steps away, with the shortest attack path to a critical asset.
 - **Incident view:** linked alerts in attack-stage order with the drafted story.
-- **Access comparison:** the blast radius over granted access next to the blast radius over used access.
+- *(planned)* **Access comparison:** the blast radius over granted access next to the blast radius over used access.
 
 ## Tech stack
 
