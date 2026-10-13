@@ -29,7 +29,7 @@ Each requirement can be tested.
 
 These are left out on purpose. They are not bugs.
 
-- No Kafka streaming. Data is loaded in one batch.
+- No Kafka streaming. Data is loaded in one batch. Streaming is the next flow, designed in [docs/streaming.md](docs/streaming.md).
 - No LANL data. Only the sample organisation and scripted alerts.
 - No training of the ranking model. Verdicts are saved for later training. Scores use hand-set weights.
 - No plain-English question box.
@@ -37,7 +37,7 @@ These are left out on purpose. They are not bugs.
 - No choke point comparison screen.
 - No AI agents in the sample organisation.
 - No logins, user accounts or roles.
-- No cloud hosting. It runs on a laptop.
+- No cloud hosting in this spec. It runs on a laptop. After the flow worked we also put a copy on Vercel with Neo4j AuraDB Free.
 - No real company data.
 
 ## 5. What data it uses

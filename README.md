@@ -10,7 +10,7 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 ## Status
 
-The first flow works on a synthetic sample organisation: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). Kafka streaming, the LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
+The first flow works on a synthetic sample organisation: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). It runs live at [graph-ops.vercel.app](https://graph-ops.vercel.app) on Vercel with Neo4j AuraDB Free. Live streaming through Kafka works on a laptop: the simulator plays the day into Kafka, the backend reads it, scores each alert as it lands and serves the changes at `/api/live`. It is tested against a real Kafka. The hosted site does not use Kafka yet and the dashboard does not yet show alerts arriving live. Details are in [docs/streaming.md](docs/streaming.md). The LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
 
 ## The problem
 
@@ -105,10 +105,12 @@ Blue: data and streaming. Green: graph and ranking. Purple: AI. Pink: server and
 We have no real company sending us live security data, so this Python script plays back saved data as if it were happening now.
 
 - It reads saved events in time order, for example "10:42:03, raja logged into server-7".
-- It waits the real gap between events, or a shorter gap to run at 10x or 100x speed.
+- It waits the real gap between events, or a shorter gap: at the default 60x the sample day of about 4 hours plays in about 4 minutes.
+- It mixes random everyday activity, such as normal logins, programs starting and file share traffic, in with the day's saved noise alerts, so the stream looks like a real network.
+- It injects the scripted attack only when asked, so we can show the inbox before and after the attack.
 - It sends each event to Kafka, into a topic for its source: logins and permissions to `identity`, programs started to `edr`, network connections to `flows`, security alerts to `alerts` and machine inventory to `cmdb`.
 
-In a real company, the security tools themselves would send events to Kafka and this script would not be needed.
+In a real company, the security tools themselves would send events to Kafka and this script would not be needed. The message formats for each topic are in [docs/streaming.md](docs/streaming.md).
 
 ### 2. Graph loader
 
@@ -116,7 +118,9 @@ This Python program listens to the five Kafka topics and turns each event into d
 
 - "raja logged into server-7" becomes a user node `raja`, a machine node `server-7` and a `LOGGED_INTO` edge between them.
 - If the edge already exists, it updates "last seen". If it is new, it records "first seen". This is how GraphOps later knows a path has never been used before.
-- It writes events in batches of a few hundred, which is much faster than one at a time.
+- Every event has an ID and is written with `MERGE` on that ID, so a message read twice changes nothing.
+- It saves how far it has read in each topic in Neo4j, in the same transaction as the events, so a crash never loses or repeats an event.
+- On a laptop it runs all the time. On the hosted site, where functions stop after a few minutes, the same code runs each time the dashboard asks for new alerts.
 - When the event is an alert, it saves the alert as a node linked to the user and machine involved, then tells the alert ranker a new alert has arrived.
 
 ### 3. Background graph analysis
@@ -141,7 +145,7 @@ This Python program scores each new alert the moment it arrives.
 A FastAPI web server that sits between the dashboard and the data.
 
 - It answers the dashboard's questions, such as "what is the blast radius of laptop-42?" or "show the attack paths to the customer database", by running Cypher queries on Neo4j.
-- It pushes each newly ranked alert to every open dashboard instantly over WebSocket, so the analyst never refreshes the page.
+- The dashboard asks it for new alerts every 2 seconds, so new alerts appear without a page refresh. This also works on Vercel, where long-lived connections are limited.
 - It hosts the two LLM features:
 
 **Incident story writer.** When the analyst asks for an incident's story:
@@ -170,14 +174,15 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 
 | Layer | Tool | Why we chose it |
 |---|---|---|
-| Streaming | Apache Kafka (official `apache/kafka` image, no ZooKeeper) | One topic per data source, so a new source plugs in without changing anything else. Replaying a topic lets us feed recorded data as if it were live and test at 10x or 100x speed. |
+| Streaming | Apache Kafka (official `apache/kafka` image, no ZooKeeper) locally, Aiven for Apache Kafka free plan when hosted | One topic per data source, so a new source plugs in without changing anything else. Replaying a topic lets us feed recorded data as if it were live. Aiven's free plan is real Kafka with no card needed and allows exactly the 5 topics we use. |
 | Ingest and scoring | Python with `confluent-kafka` and the official Neo4j driver | We score each alert the moment it arrives. A plain connector only copies data and cannot do that. |
 | Graph database | Neo4j Community with Graph Data Science and APOC | Free. Shortest paths, betweenness, max flow, Louvain and connected components are all included. |
-| API | FastAPI | Same language as the rest of the backend. Supports WebSocket for live updates. |
+| API | FastAPI | Same language as the rest of the backend. Runs on Vercel as a single function with no changes. |
 | Dashboard | React, with the blast radius drawn as our own SVG ring graph | Full control over the ring layout with no extra library. We first chose Neo4j's NVL, but its licence only allows use with Neo4j Aura or Neo4j's commercial products, not Neo4j Community. |
 | Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst feedback. |
-| Incident story and plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Connects an LLM to Neo4j. Its `Text2CypherRetriever` turns questions into Cypher queries. LLM provider still to be chosen. |
-| Deployment | Docker Compose | The whole system starts with one command. |
+| Incident story | Claude through the official `anthropic` Python SDK | Returns sentences in a fixed JSON format with the IDs each one cites, so our checker can drop any sentence that cites something outside the incident. Without an API key the dashboard shows the incident's facts instead. |
+| Plain-English questions (planned) | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
+| Deployment | Docker Compose locally, Vercel with Neo4j AuraDB Free when hosted | Locally the whole system starts with one command. Hosted, every push to `main` redeploys and the database needs no server of ours. |
 | Testing | pytest, Testcontainers and GitHub Actions | Tests run against a real Neo4j started inside the test, on every push. |
 
 ### Tools we considered and left out
@@ -219,7 +224,7 @@ You need Docker Desktop, Python 3.12 or newer and Node.js 20 or newer.
 # 1. settings: copy the example and choose a local password
 cp .env.example .env
 
-# 2. start Neo4j with Graph Data Science and APOC
+# 2. start Neo4j with Graph Data Science and APOC, and Kafka
 docker compose up -d
 
 # 3. backend: install, seed the sample data, start the server on port 8000
@@ -237,7 +242,18 @@ npm run dev
 
 **AI incident stories** use Claude through the Anthropic SDK. Log in once with `ant auth login` (Anthropic's command-line tool). No API key is stored in the project. The account needs API credit. Without access, the dashboard shows the incident's facts instead of a story.
 
-**Tests** start their own Neo4j in Docker, so they never touch your data:
+**Live replay** plays the sample day through Kafka instead of loading it in one batch. With the backend running and `KAFKA_BOOTSTRAP=localhost:9092` in `.env`:
+
+```bash
+curl -X POST localhost:8000/api/replay/reset        # network only, no alerts yet
+curl -X POST localhost:8000/api/replay/start \
+     -H 'content-type: application/json' -d '{"attack": true, "speed": 60}'
+curl 'localhost:8000/api/live?since=0'              # call again to see new alerts as they are scored
+```
+
+The same day can be sent from a terminal with `.venv/bin/python -m app.simulate --attack`, and `.venv/bin/python -m app.stream` reads Kafka continuously without the server. Without `KAFKA_BOOTSTRAP`, the replay writes straight into Neo4j. To go back to the batch data, run `.venv/bin/python -m app.seed` again.
+
+**Tests** start their own Neo4j and Kafka in Docker, so they never touch your data:
 
 ```bash
 cd backend

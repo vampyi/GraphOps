@@ -1,4 +1,8 @@
 """backend server: the api the dashboard calls."""
+import logging
+import os
+import threading
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,6 +10,7 @@ from pydantic import BaseModel
 from .db import ROOT, driver
 from .scoring import WEIGHTS
 from .story import write_story
+from . import simulate, stream
 
 app = FastAPI(title="GraphOps")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -17,19 +22,23 @@ ATTACK_EDGES = "MemberOf|AdminTo|CanRDP|GenericAll|HasSession|RemoteLogon"
 @app.get("/api/alerts")
 def alerts():
     with _driver.session() as s:
-        return _with_breakdown([dict(r) for r in s.run(
-            """
-            MATCH (a:Alert)
-            OPTIONAL MATCH (a)-[:Involves]->(e)
-            WITH a, collect(e.id) AS involves
-            RETURN a.id AS id, a.time AS time, a.name AS name, a.severity AS severity,
-                   a.score AS score, a.reasons AS reasons, a.incident_id AS incident_id,
-                   a.tactic_id AS tactic_id, a.technique_id AS technique_id, a.status AS status,
-                   a.source_tool AS source_tool, involves,
-                   {hops: a.f_hops, blast: a.f_blast, linked: a.f_linked, never_taken: a.f_never_taken,
-                    stages: a.f_stages, choke: a.f_choke, severity: a.f_severity} AS features
-            ORDER BY a.score DESC, a.time
-            """)])
+        return _alert_rows(s)
+
+
+def _alert_rows(s, since=None):
+    return _with_breakdown([dict(r) for r in s.run(
+        """
+        MATCH (a:Alert) WHERE $since IS NULL OR coalesce(a.changed_seq, 0) > $since
+        OPTIONAL MATCH (a)-[:Involves]->(e)
+        WITH a, collect(e.id) AS involves
+        RETURN a.id AS id, a.time AS time, a.name AS name, a.severity AS severity,
+               a.score AS score, a.reasons AS reasons, a.incident_id AS incident_id,
+               a.tactic_id AS tactic_id, a.technique_id AS technique_id, a.status AS status,
+               a.source_tool AS source_tool, involves,
+               {hops: a.f_hops, blast: a.f_blast, linked: a.f_linked, never_taken: a.f_never_taken,
+                stages: a.f_stages, choke: a.f_choke, severity: a.f_severity} AS features
+        ORDER BY a.score DESC, a.time
+        """, since=since)])
 
 
 def _with_breakdown(rows):
@@ -125,6 +134,97 @@ def verdict(alert_id: str, body: Verdict):
         if not r:
             raise HTTPException(404, "alert not found")
         return {"id": alert_id, "status": r["status"]}
+
+
+# live replay. with KAFKA_BOOTSTRAP set, the simulator sends to kafka and /api/live reads it back.
+# without it, the simulator writes straight into neo4j, so the live view still works with no broker.
+_KAFKA = stream.kafka_config()
+_consumer = None
+_consumer_lock = threading.Lock()
+_replay = {"thread": None, "stop": threading.Event()}
+log = logging.getLogger("graphops.api")
+
+
+def _get_consumer():
+    global _consumer
+    if _consumer is None:
+        _consumer = stream.consumer(_KAFKA)
+    return _consumer
+
+
+class Replay(BaseModel):
+    attack: bool = False
+    speed: float = 60
+
+
+@app.post("/api/replay/reset")
+def replay_reset():
+    """stop any replay and start a fresh day: the network only, no alerts yet."""
+    _stop_replay()
+    with _driver.session() as s:
+        if _KAFKA:
+            with _consumer_lock:
+                stream.reset(s, _get_consumer())
+        else:
+            stream.reset(s)
+    return {"status": "reset", "mode": "kafka" if _KAFKA else "direct"}
+
+
+@app.post("/api/replay/start")
+def replay_start(body: Replay):
+    if not 0 <= body.speed <= 10_000:
+        raise HTTPException(422, "speed must be between 0 and 10000")
+    if _replay["thread"] and _replay["thread"].is_alive():
+        raise HTTPException(409, "a replay is already running")
+    day = simulate.build(attack=body.attack)
+    _replay["stop"] = stop = threading.Event()
+
+    def run():
+        try:
+            if _KAFKA:
+                prod = stream.producer(_KAFKA)
+                stream.create_topics(_KAFKA)
+                simulate.play(day, simulate.kafka_sender(prod), speed=body.speed, stop=stop)
+                prod.flush(30)
+            else:
+                with _driver.session() as s:
+                    simulate.play(day, lambda topic, key, msg: stream.write_direct(s, topic, msg), speed=body.speed, stop=stop)
+        except Exception:
+            log.exception("replay failed")
+
+    # vercel freezes a function once it has answered, so there the replay runs inside the request
+    if os.environ.get("VERCEL"):
+        run()
+        return {"status": "finished", "messages": len(day)}
+    _replay["thread"] = threading.Thread(target=run, daemon=True)
+    _replay["thread"].start()
+    return {"status": "started", "messages": len(day), "mode": "kafka" if _KAFKA else "direct"}
+
+
+def _stop_replay():
+    _replay["stop"].set()
+    if _replay["thread"]:
+        _replay["thread"].join(timeout=5)
+
+
+@app.get("/api/live")
+def live(since: int = 0):
+    """read whatever is new, update the graph and return alerts that are new or changed since `since`."""
+    with _driver.session() as s:
+        ingested = 0
+        if _KAFKA and _consumer_lock.acquire(blocking=False):
+            # only one reader at a time per server. a call that finds it busy just returns what is saved.
+            try:
+                ingested = stream.ingest_once(s, _get_consumer())["events"]
+            finally:
+                _consumer_lock.release()
+        else:
+            stream.rescore(s)
+        state = s.run("MATCH (st:StreamState {id: 'live'}) RETURN st.seq AS seq").single()
+        seq = state["seq"] if state else 0
+        running = bool(_replay["thread"] and _replay["thread"].is_alive())
+        return {"seq": seq, "ingested": ingested, "replaying": running,
+                "alerts": _alert_rows(s, since) if seq > since else []}
 
 
 # serve the built dashboard from the same server when it exists (used on vercel and in production)

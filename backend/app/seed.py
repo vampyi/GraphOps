@@ -11,26 +11,8 @@ EDGE_TYPES = {"MemberOf", "AdminTo", "CanRDP", "GenericAll", "HasSession",
 
 
 def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "alerts.json"):
-    network = json.loads(network_path.read_text())
+    load_network(session, network_path)
     alerts = json.loads(alerts_path.read_text())
-
-    session.run("MATCH (n) DETACH DELETE n")
-    for label in NODE_LABELS:
-        session.run(f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.id IS UNIQUE")
-    session.run("CREATE CONSTRAINT alert_id IF NOT EXISTS FOR (a:Alert) REQUIRE a.id IS UNIQUE")
-
-    for node in network["nodes"]:
-        label = node["label"]
-        if label not in NODE_LABELS:
-            raise ValueError(f"unknown label {label}")
-        props = {k: v for k, v in node.items() if k != "label"}
-        session.run(f"CREATE (n:{label}) SET n = $props", props=props)
-
-    for edge in network["granted"]:
-        _edge(session, edge, family="granted")
-    for edge in network["observed"]:
-        _edge(session, edge, family="observed")
-
     # new activity on the sample day: an edge seen for the first time keeps first_seen = time
     for event in alerts["events"]:
         _check_type(event["type"])
@@ -52,9 +34,36 @@ def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "al
                 "MATCH (a:Alert {id: $a}), (e {id: $e}) WHERE NOT e:Alert CREATE (a)-[:Involves]->(e)",
                 a=alert["id"], e=entity,
             )
+    return counts(session)
+
+
+def load_network(session, network_path=SAMPLE / "network.json"):
+    """wipe the database and load the network only: users, machines, groups, permissions and past activity.
+    this is the starting point of the live replay, before any of the day's events arrive."""
+    network = json.loads(network_path.read_text())
+    session.run("MATCH (n) DETACH DELETE n")
+    for label in NODE_LABELS:
+        session.run(f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.id IS UNIQUE")
+    session.run("CREATE CONSTRAINT alert_id IF NOT EXISTS FOR (a:Alert) REQUIRE a.id IS UNIQUE")
+    session.run("CREATE CONSTRAINT event_id IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE")
+
+    for node in network["nodes"]:
+        label = node["label"]
+        if label not in NODE_LABELS:
+            raise ValueError(f"unknown label {label}")
+        props = {k: v for k, v in node.items() if k != "label"}
+        session.run(f"CREATE (n:{label}) SET n = $props", props=props)
+
+    for edge in network["granted"]:
+        _edge(session, edge, family="granted")
+    for edge in network["observed"]:
+        _edge(session, edge, family="observed")
+
+
+def counts(session):
     return {
-        "nodes": session.run("MATCH (n) WHERE NOT n:Alert RETURN count(n) AS c").single()["c"],
-        "edges": session.run("MATCH ()-[r]->() WHERE NOT type(r) = 'Involves' RETURN count(r) AS c").single()["c"],
+        "nodes": session.run("MATCH (n) WHERE n:User OR n:Group OR n:Computer RETURN count(n) AS c").single()["c"],
+        "edges": session.run("MATCH ()-[r]->() WHERE type(r) IN $types RETURN count(r) AS c", types=list(EDGE_TYPES)).single()["c"],
         "alerts": session.run("MATCH (a:Alert) RETURN count(a) AS c").single()["c"],
     }
 
