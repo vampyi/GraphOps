@@ -37,7 +37,7 @@ These are left out on purpose. They are not bugs.
 - No choke point comparison screen.
 - No AI agents in the sample organisation.
 - No logins, user accounts or roles.
-- No cloud hosting in this spec. It runs on a laptop. After the flow worked we also put a copy on Vercel with Neo4j AuraDB Free.
+- No cloud hosting in this spec. It runs on a laptop. After the flow worked we also put a copy on Vercel with Neo4j AuraDB Free and Aiven Kafka, described in [docs/hosting.md](docs/hosting.md).
 - No real company data.
 
 ## 5. What data it uses

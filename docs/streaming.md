@@ -2,8 +2,9 @@
 
 Status, 13 October 2026:
 
-- **Built and tested on a laptop:** the simulator, Kafka in Docker, the ingest with saved read positions, re-scoring as alerts land and the `/api/replay/*` and `/api/live` endpoints. All five tests in the table at the end pass against a real Kafka (`backend/tests/test_streaming.py`).
-- **Not built yet:** the dashboard asking `/api/live` every 2 seconds and the replay buttons, and the hosted site connected to Aiven. Until Aiven is connected, the hosted site's replay writes straight into Neo4j.
+- **Built and working on a laptop and on the hosted site:** the simulator, Kafka (Docker on a laptop, Aiven when hosted), the ingest with saved read positions, re-scoring as alerts land and the `/api/replay/*` and `/api/live` endpoints. All the tests in the table at the end pass against a real Kafka (`backend/tests/test_streaming.py`).
+- **Measured on the hosted site:** replaying the sample day at 5,000x, all 30 alerts were read from Kafka, saved and ranked 2.4 seconds after they were sent. How the hosted site is set up, and how we got from 145 seconds to 2.4, is in [hosting.md](hosting.md).
+- **Not built yet:** the dashboard asking `/api/live` every 2 seconds, and the replay buttons.
 
 The first flow still loads one saved day in a single batch (`python -m app.seed`).
 
@@ -42,7 +43,7 @@ Vercel runs our backend as short-lived functions. On the Hobby plan a function c
 
 | Option | What we found | Decision |
 |---|---|---|
-| Aiven for Apache Kafka, free plan | Real Apache Kafka. "No credit card needed." Up to 5 topics with 2 partitions each, up to 250 kb/s in and out, data kept up to 3 days. Powers off when nothing is produced or consumed; topic data is lost on shutdown, configuration is kept. Kafka Connect is not included. | **Use it.** Same Kafka as the laptop version, and exactly 5 topics is what we need. Losing topic data on shutdown does not matter because every event ends up in Neo4j. |
+| Aiven for Apache Kafka, free plan | Real Apache Kafka. "No credit card needed." Up to 5 topics with 2 partitions each, up to 250 kb/s in and out, data kept up to 3 days. Powers off when nothing is produced or consumed; topic data is lost on shutdown, configuration is kept. Kafka Connect is not included. | **Use it.** Same Kafka as the laptop version, and exactly 5 topics is what we need. Losing topic data on shutdown does not matter because every event ends up in Neo4j. Now in use. |
 | Vercel Queues | Public beta, "available on all plans", Python SDK, push or poll consumers. | Not chosen. It only exists on Vercel, so the laptop version would need different code, and it is not Kafka. |
 | Upstash Redis | Free tier: 250 MB and 500K commands a month. | Fallback only. It is a key-value store with streams, not a message broker. |
 | No broker at all | The replay endpoint writes straight into Neo4j. | Kept as the emergency fallback. Simplest, but it hides the pipeline judges asked about. |
@@ -53,9 +54,9 @@ What we checked on 13 October 2026:
 
 | Question | Answer | Evidence |
 |---|---|---|
-| How long Aiven waits before powering off an idle free service | Not published. The docs say only that it powers off when nothing is produced or consumed, sends a notice first, and that a new service with no use "can power off within the first few hours". We should expect to power it on from the Aiven Console before a demo. | [Aiven free tier docs](https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier) |
-| How clients sign in | Paid Aiven Kafka uses client certificates, and a username and password (SASL, PLAIN or SCRAM) can be switched on in the service settings. The free tier page says standard clients connect "the same way" as on paid plans, but does not say SASL can be switched on there. Our code supports username and password with Aiven's certificate authority. To confirm when we create the service. | [Aiven SASL docs](https://aiven.io/docs/products/kafka/howto/kafka-sasl-auth) |
-| Whether the Kafka client installs on Vercel | Likely yes: `confluent-kafka` 2.16 ships a ready-built Linux wheel with its C library inside, so nothing has to compile. Not yet tried on Vercel itself. | The wheel `confluent_kafka-2.16.0-cp312-cp312-manylinux_2_28_x86_64.whl` downloaded from PyPI |
+| How long Aiven waits before powering off an idle free service | Not published. The docs say only that it powers off when nothing is produced or consumed, sends a notice first, and that a new service with no use "can power off within the first few hours". Check it is running before a demo. | [Aiven free tier docs](https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier) |
+| How clients sign in | Username and password (SASL, SCRAM-SHA-256) over TLS with Aiven's CA certificate. Works on the free plan. | Tested: we connected, created the five topics, and sent and read back a message |
+| Whether the Kafka client installs on Vercel | Yes. `confluent-kafka` 2.16 ships a ready-built Linux package and installs with Python 3.12 on Vercel. | Tested: the hosted replay ran through Aiven |
 
 ## Reading Kafka from short-lived functions
 

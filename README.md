@@ -10,7 +10,16 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 ## Status
 
-The first flow works on a synthetic sample organisation: ranked alert inbox, blast radius, linked incident, incident story and analyst verdict. Its scope and requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md). It runs live at [graph-ops.vercel.app](https://graph-ops.vercel.app) on Vercel with Neo4j AuraDB Free. Live streaming through Kafka works on a laptop: the simulator plays the day into Kafka, the backend reads it, scores each alert as it lands and serves the changes at `/api/live`. It is tested against a real Kafka. The hosted site does not use Kafka yet and the dashboard does not yet show alerts arriving live. Details are in [docs/streaming.md](docs/streaming.md). The LANL evaluation, the access comparison view and the plain-English question box are planned and not built yet.
+**Live at [graph-ops.vercel.app](https://graph-ops.vercel.app)** (synthetic data only).
+
+| Part | Status |
+|---|---|
+| First flow: ranked alert inbox, blast radius, linked incident, incident story, analyst verdict | Works, on a synthetic sample organisation. Scope and requirements in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
+| Live streaming through Kafka: simulator, Kafka, ingest, scoring as each alert lands | Works on a laptop and on the hosted site. Measured on the hosted site: all 30 alerts of the sample day read from Kafka, saved and ranked 2.4 seconds after they were sent. Details in [docs/streaming.md](docs/streaming.md). |
+| Hosting: Vercel, Neo4j AuraDB Free, Aiven for Apache Kafka | Works. How it is set up in [docs/hosting.md](docs/hosting.md). |
+| Dashboard showing alerts arriving live, and a replay button | Not built yet. The live data is available at `/api/live`, but the dashboard still loads the inbox once. |
+| Ranking model that learns from analyst verdicts | Not built yet. Verdicts are saved; scores use hand-set weights. |
+| LANL evaluation, access comparison view, plain-English question box | Planned, not built. |
 
 ## The problem
 
@@ -172,18 +181,28 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 
 ## Tech stack
 
+### What we use today
+
 | Layer | Tool | Why we chose it |
 |---|---|---|
-| Streaming | Apache Kafka (official `apache/kafka` image, no ZooKeeper) locally, Aiven for Apache Kafka free plan when hosted | One topic per data source, so a new source plugs in without changing anything else. Replaying a topic lets us feed recorded data as if it were live. Aiven's free plan is real Kafka with no card needed and allows exactly the 5 topics we use. |
-| Ingest and scoring | Python with `confluent-kafka` and the official Neo4j driver | We score each alert the moment it arrives. A plain connector only copies data and cannot do that. |
-| Graph database | Neo4j Community with Graph Data Science and APOC | Free. Shortest paths, betweenness, max flow, Louvain and connected components are all included. |
+| Streaming | Apache Kafka 4.3: the official `apache/kafka` image in KRaft mode (no ZooKeeper) on a laptop, Aiven for Apache Kafka free plan when hosted | One topic per data source, so a new source plugs in without changing anything else. Replaying a topic lets us feed recorded data as if it were live. Aiven's free plan is real Kafka with no card needed and allows exactly the 5 topics we use. |
+| Data simulator | Python, our own script (`app/simulate.py`) | Plays one day at the sample organisation into Kafka at any speed, with a fixed random seed so every run is the same. |
+| Ingest and scoring | Python 3.12 with `confluent-kafka` 2.16 and the official Neo4j driver | We score each alert the moment it arrives. A plain connector only copies data and cannot do that. `confluent-kafka` ships a ready-built Linux package, so it installs on Vercel with nothing to compile. |
+| Graph database | Neo4j 2026.09: Community with Graph Data Science and APOC on a laptop, AuraDB Free when hosted | Free. Shortest paths and betweenness come built in. AuraDB Free has no Graph Data Science, so there the choke point scores are worked out in Python with `networkx` instead. |
 | API | FastAPI | Same language as the rest of the backend. Runs on Vercel as a single function with no changes. |
-| Dashboard | React, with the blast radius drawn as our own SVG ring graph | Full control over the ring layout with no extra library. We first chose Neo4j's NVL, but its licence only allows use with Neo4j Aura or Neo4j's commercial products, not Neo4j Community. |
-| Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst feedback. |
-| Incident story | Claude through the official `anthropic` Python SDK | Returns sentences in a fixed JSON format with the IDs each one cites, so our checker can drop any sentence that cites something outside the incident. Without an API key the dashboard shows the incident's facts instead. |
-| Plain-English questions (planned) | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
-| Deployment | Docker Compose locally, Vercel with Neo4j AuraDB Free when hosted | Locally the whole system starts with one command. Hosted, every push to `main` redeploys and the database needs no server of ours. |
-| Testing | pytest, Testcontainers and GitHub Actions | Tests run against a real Neo4j started inside the test, on every push. |
+| Dashboard | React 19 built with Vite, with the blast radius drawn as our own SVG ring graph | Full control over the ring layout with no extra library. We first chose Neo4j's NVL, but its licence only allows use with Neo4j Aura or Neo4j's commercial products, not Neo4j Community. |
+| Incident story | Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK | Returns sentences in a fixed JSON format with the IDs each one cites, so our checker can drop any sentence that cites something outside the incident. Without access to Claude the dashboard shows the incident's facts instead. |
+| Hosting | Vercel Hobby plan, functions in Singapore (`sin1`) | Every push to `main` redeploys. Singapore puts the backend next to the database, which made each database query 50 to 100 times faster than Vercel's default, Washington DC. |
+| Running it locally | Docker Desktop with Docker Compose | Neo4j and Kafka start with one command. |
+| Testing | pytest with Testcontainers | Tests start a real Neo4j and a real Kafka in Docker for each run, so they never touch real data. |
+
+### Planned, not built yet
+
+| Layer | Tool | Why we chose it |
+|---|---|---|
+| Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst verdicts. |
+| Plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
+| Continuous checks | GitHub Actions | Run the tests on every push. Today we run them by hand. |
 
 ### Tools we considered and left out
 
@@ -214,7 +233,7 @@ The console always states that its data is synthetic.
 | Break tests | Empty events, very large events and malformed events are rejected without crashing the pipeline. |
 | AI checks | Incident stories that cite a node outside the incident are rejected. Generated queries that try to write are refused. The ranking model is compared against hand-set weights on held-out alerts. |
 | People test | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
-| Continuous checks | Unit and integration tests run on every push through GitHub Actions. |
+| Continuous checks | Planned: unit and integration tests run on every push through GitHub Actions. Today we run them by hand. |
 
 ## Run it
 
@@ -266,7 +285,13 @@ Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mo
 
 ## Disclosure
 
-As the hackFront India rules require, we will list every AI tool, open source framework, API and dataset used in this project here before submission.
+As the hackFront India rules require, we list every AI tool, service, framework and dataset used in this project. This list is updated as we go and will be checked again before submission.
+
+- **AI tools used to build it:** Claude Code (Anthropic) wrote and reviewed code, documents and research with us. Every claim we use was checked at its original source.
+- **AI inside the product:** Claude (`claude-opus-5-5`) through the Anthropic API drafts incident stories.
+- **Hosted services (free plans):** Vercel (hosting), Neo4j AuraDB Free (database), Aiven for Apache Kafka (streaming).
+- **Open source:** Neo4j Community, Graph Data Science, APOC, Apache Kafka, Python, FastAPI, Uvicorn, `confluent-kafka`, the Neo4j Python driver, `networkx`, `python-dotenv`, `certifi`, React, Vite, pytest, Testcontainers, Docker.
+- **Data:** all data in the repository and on the hosted site is synthetic, made up by us. Datasets planned for evaluation (ADSynth, LANL) are listed under [Data](#data).
 
 ## Sources
 
