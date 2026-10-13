@@ -63,46 +63,104 @@ def parse(raw, topic):
 
 def apply(tx, event):
     """write one event inside a transaction. returns what changed: 'skipped', 'alert', 'network' or 'activity'."""
-    first = tx.run(
-        """
-        MERGE (e:Event {id: $id})
-        ON CREATE SET e.time = $time, e.kind = $kind, e.source_tool = $tool, e.new = true
-        ON MATCH SET e.new = false
-        RETURN e.new AS new
-        """,
-        id=event["event_id"], time=event["time"], kind=event["kind"], tool=event["source_tool"],
-    ).single()["new"]
-    if not first:
+    r = apply_batch(tx, [event])
+    if r["skipped"]:
         return "skipped"
-    return _HANDLERS[event["kind"]](tx, event)
+    return "alert" if r["alerts"] else "network" if r["network"] else "activity"
 
 
-def _observed_edge(tx, edge_type, src, dst, time, user=None):
-    """create or update an observed edge. returns True when the edge is new."""
-    row = tx.run(
-        f"""
-        MATCH (s {{id: $src}}), (d {{id: $dst}}) WHERE NOT s:Alert AND NOT d:Alert
-        MERGE (s)-[r:{edge_type}]->(d)
-        ON CREATE SET r.first_seen = $time, r.last_seen = $time, r.count = 0, r.family = 'observed',
-                      r.user = $user, r.created = true
-        ON MATCH SET r.created = false
-        SET r.count = r.count + 1,
-            r.last_seen = CASE WHEN $time > r.last_seen THEN $time ELSE r.last_seen END
-        WITH r, r.created AS created
-        REMOVE r.created
-        RETURN created
+def apply_batch(tx, events):
+    """write many events inside one transaction with a few queries per kind of event, not one per event.
+    this matters on the hosted site, where every query is a round trip over the internet to neo4j aura.
+    returns counts: new events, duplicates skipped, alerts written and whether the network changed."""
+    seen = {r["id"] for r in tx.run("UNWIND $ids AS id MATCH (e:Event {id: id}) RETURN e.id AS id",
+                                    ids=[e["event_id"] for e in events])}
+    fresh = []
+    for e in events:
+        if e["event_id"] not in seen:
+            seen.add(e["event_id"])
+            fresh.append(e)
+    result = {"events": len(fresh), "skipped": len(events) - len(fresh), "alerts": 0, "network": False}
+    if not fresh:
+        return result
+    tx.run(
+        """
+        UNWIND $rows AS row
+        CREATE (e:Event {id: row.event_id})
+        SET e.time = row.time, e.kind = row.kind, e.source_tool = row.source_tool,
+            e.host = row.host, e.user = row.user, e.process = row.process, e.parent = row.parent
         """,
-        src=src, dst=dst, time=time, user=user,
-    ).single()
-    if row is None:
-        log.warning("%s %s -> %s: unknown entity, skipped", edge_type, src, dst)
-        return False
-    return row["created"]
+        rows=fresh)
+    by_kind = {}
+    for e in fresh:
+        by_kind.setdefault(e["kind"], []).append(e)
+
+    # inventory first, so later events in the batch can refer to a machine it adds
+    for label in NODE_LABELS:
+        rows = [e for e in by_kind.get("Asset", []) if e["label"] == label]
+        if rows:
+            changed = tx.run(
+                f"""
+                UNWIND $rows AS row
+                OPTIONAL MATCH (old:{label} {{id: row.id}})
+                WITH row, old.critical AS was
+                MERGE (n:{label} {{id: row.id}})
+                SET n += row.props
+                RETURN sum(CASE WHEN coalesce(was, false) <> coalesce(n.critical, false) THEN 1 ELSE 0 END) AS c
+                """,
+                rows=[{"id": e["id"], "props": {k: e[k] for k in ASSET_FIELDS if k in e}} for e in rows]).single()["c"]
+            result["network"] |= changed > 0
+
+    for e in by_kind.get("MemberOf", []):
+        _member_of(tx, e)
+        result["network"] = True
+
+    edges = {"LoggedInto": by_kind.get("LoggedInto", []), "RemoteLogon": by_kind.get("RemoteLogon", []),
+             "ConnectedTo": by_kind.get("Connection", [])}
+    for edge_type, rows in edges.items():
+        if rows:
+            created = _observed_edges(tx, edge_type, rows)
+            result["network"] |= created > 0 and edge_type in ATTACK_EDGES
+
+    alerts = by_kind.get("Alert", [])
+    if alerts:
+        tx.run(
+            """
+            UNWIND $rows AS row
+            MERGE (a:Alert {id: row.id}) ON CREATE SET a += row.props, a.status = 'new'
+            WITH a, row
+            UNWIND row.involves AS x
+            MATCH (e {id: x}) WHERE NOT e:Alert AND NOT e:Event
+            MERGE (a)-[:Involves]->(e)
+            """,
+            rows=[{"id": e["id"], "involves": e["involves"],
+                   "props": {k: e.get(k) for k in ("id", "time", "name", "severity", "tactic_id", "technique_id", "source_tool")}}
+                  for e in alerts])
+        result["alerts"] = len(alerts)
+    return result
 
 
-def _logon(tx, e):
-    created = _observed_edge(tx, e["kind"], e["src"], e["dst"], e["time"], e.get("user"))
-    return "network" if created and e["kind"] in ATTACK_EDGES else "activity"
+def _observed_edges(tx, edge_type, events):
+    """create or update observed edges for many events. returns how many edges are new."""
+    rows = [{"src": e["src"], "dst": e["dst"], "time": e["time"], "user": e.get("user")} for e in events]
+    r = tx.run(
+        f"""
+        UNWIND $rows AS row
+        MATCH (s {{id: row.src}}), (d {{id: row.dst}})
+        WHERE NOT s:Alert AND NOT s:Event AND NOT d:Alert AND NOT d:Event
+        OPTIONAL MATCH (s)-[old:{edge_type}]->(d)
+        WITH row, s, d, old IS NULL AS is_new
+        MERGE (s)-[r:{edge_type}]->(d)
+        ON CREATE SET r.first_seen = row.time, r.last_seen = row.time, r.count = 0, r.family = 'observed', r.user = row.user
+        SET r.count = r.count + 1,
+            r.first_seen = CASE WHEN row.time < r.first_seen THEN row.time ELSE r.first_seen END,
+            r.last_seen = CASE WHEN row.time > r.last_seen THEN row.time ELSE r.last_seen END
+        RETURN count(*) AS written, count(DISTINCT CASE WHEN is_new THEN r END) AS created
+        """,
+        rows=rows).single()
+    if r["written"] < len(rows):
+        log.warning("%s: %d events name an unknown user or machine and were skipped", edge_type, len(rows) - r["written"])
+    return r["created"]
 
 
 def _member_of(tx, e):
@@ -115,46 +173,3 @@ def _member_of(tx, e):
             src=e["src"], dst=e["dst"], time=e["time"])
     else:
         tx.run("MATCH ({id: $src})-[r:MemberOf]->(:Group {id: $dst}) DELETE r", src=e["src"], dst=e["dst"])
-    return "network"
-
-
-def _process(tx, e):
-    tx.run(
-        "MATCH (ev:Event {id: $id}) SET ev.host = $host, ev.user = $user, ev.process = $process, ev.parent = $parent",
-        id=e["event_id"], host=e["host"], user=e.get("user"), process=e["process"], parent=e.get("parent"))
-    return "activity"
-
-
-def _connection(tx, e):
-    _observed_edge(tx, "ConnectedTo", e["src"], e["dst"], e["time"])
-    return "activity"
-
-
-def _alert(tx, e):
-    props = {k: e.get(k) for k in ("id", "time", "name", "severity", "tactic_id", "technique_id", "source_tool")}
-    tx.run("MERGE (a:Alert {id: $id}) ON CREATE SET a += $props, a.status = 'new'", id=e["id"], props=props)
-    for entity in e["involves"]:
-        tx.run(
-            "MATCH (a:Alert {id: $a}), (x {id: $x}) WHERE NOT x:Alert AND NOT x:Event MERGE (a)-[:Involves]->(x)",
-            a=e["id"], x=entity)
-    return "alert"
-
-
-def _asset(tx, e):
-    props = {k: e[k] for k in ASSET_FIELDS if k in e}
-    row = tx.run(
-        f"""
-        OPTIONAL MATCH (old:{e['label']} {{id: $id}})
-        WITH old.critical AS was
-        MERGE (n:{e['label']} {{id: $id}})
-        SET n += $props
-        RETURN was, n.critical AS now
-        """,
-        id=e["id"], props=props).single()
-    return "network" if bool(row["was"]) != bool(row["now"]) else "activity"
-
-
-_HANDLERS = {
-    "LoggedInto": _logon, "RemoteLogon": _logon, "MemberOf": _member_of, "ProcessStart": _process,
-    "Connection": _connection, "Alert": _alert, "Asset": _asset,
-}

@@ -142,27 +142,27 @@ def score_all(session):
     alerts = fetch_alerts(session)
     links = observed_links(session)
     groups = link_alerts(alerts, links)
-    session.run("MATCH (i:Incident) DETACH DELETE i")
+    incidents, rows = [], []
     for n, group in enumerate(sorted(groups, key=lambda g: min(a["time"] for a in g)), 1):
         incident_id = f"inc-{n:02d}"
-        session.run("CREATE (:Incident {id: $id, size: $size})", id=incident_id, size=len(group))
-        for a in group:
-            score, reasons, features = score_alert(a, group, new_edges_near(a, links))
-            session.run(
-                """
-                MATCH (a:Alert {id: $id}), (i:Incident {id: $inc})
-                SET a.score = $score, a.reasons = $reasons, a.incident_id = $inc,
-                    a.f_hops = $f.hops, a.f_blast = $f.blast, a.f_linked = $f.linked,
-                    a.f_never_taken = $f.never_taken, a.f_stages = $f.stages,
-                    a.f_choke = $f.choke, a.f_severity = $f.severity
-                MERGE (a)-[:PartOf]->(i)
-                """,
-                id=a["id"], inc=incident_id, score=score, reasons=reasons, f=features,
-            )
+        scored = [(a, *score_alert(a, group, new_edges_near(a, links))) for a in group]
+        incidents.append({"id": incident_id, "size": len(group), "score": max(sc for _, sc, _, _ in scored)})
+        rows += [{"id": a["id"], "inc": incident_id, "score": sc, "reasons": reasons, "f": f} for a, sc, reasons, f in scored]
+    # one write for everything: on the hosted site each query is a round trip to neo4j aura
     session.run(
         """
-        MATCH (i:Incident)<-[:PartOf]-(a:Alert)
-        WITH i, max(a.score) AS top
-        SET i.score = top
-        """
+        MATCH (old:Incident) DETACH DELETE old
+        WITH count(*) AS _
+        UNWIND $incidents AS i
+        CREATE (:Incident {id: i.id, size: i.size, score: i.score})
+        WITH count(*) AS _
+        UNWIND $rows AS row
+        MATCH (a:Alert {id: row.id}), (i:Incident {id: row.inc})
+        SET a.score = row.score, a.reasons = row.reasons, a.incident_id = row.inc,
+            a.f_hops = row.f.hops, a.f_blast = row.f.blast, a.f_linked = row.f.linked,
+            a.f_never_taken = row.f.never_taken, a.f_stages = row.f.stages,
+            a.f_choke = row.f.choke, a.f_severity = row.f.severity
+        MERGE (a)-[:PartOf]->(i)
+        """,
+        incidents=incidents, rows=rows,
     )

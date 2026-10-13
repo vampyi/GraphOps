@@ -47,17 +47,16 @@ def load_network(session, network_path=SAMPLE / "network.json"):
     session.run("CREATE CONSTRAINT alert_id IF NOT EXISTS FOR (a:Alert) REQUIRE a.id IS UNIQUE")
     session.run("CREATE CONSTRAINT event_id IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE")
 
+    by_label = {}
     for node in network["nodes"]:
-        label = node["label"]
-        if label not in NODE_LABELS:
-            raise ValueError(f"unknown label {label}")
-        props = {k: v for k, v in node.items() if k != "label"}
-        session.run(f"CREATE (n:{label}) SET n = $props", props=props)
+        if node["label"] not in NODE_LABELS:
+            raise ValueError(f"unknown label {node['label']}")
+        by_label.setdefault(node["label"], []).append({k: v for k, v in node.items() if k != "label"})
+    for label, rows in by_label.items():
+        session.run(f"UNWIND $rows AS props CREATE (n:{label}) SET n = props", rows=rows)
 
-    for edge in network["granted"]:
-        _edge(session, edge, family="granted")
-    for edge in network["observed"]:
-        _edge(session, edge, family="observed")
+    _edges(session, network["granted"], family="granted")
+    _edges(session, network["observed"], family="observed")
 
 
 def counts(session):
@@ -73,14 +72,18 @@ def _check_type(edge_type):
         raise ValueError(f"unknown edge type {edge_type}")
 
 
-def _edge(session, edge, family):
-    _check_type(edge["type"])
-    props = {k: v for k, v in edge.items() if k not in ("src", "dst", "type")}
-    props["family"] = family
-    session.run(
-        f"MATCH (s {{id: $src}}), (d {{id: $dst}}) CREATE (s)-[r:{edge['type']}]->(d) SET r = $props",
-        src=edge["src"], dst=edge["dst"], props=props,
-    )
+def _edges(session, edges, family):
+    """create edges with one query per edge type rather than one per edge."""
+    by_type = {}
+    for edge in edges:
+        _check_type(edge["type"])
+        props = {k: v for k, v in edge.items() if k not in ("src", "dst", "type")}
+        props["family"] = family
+        by_type.setdefault(edge["type"], []).append({"src": edge["src"], "dst": edge["dst"], "props": props})
+    for edge_type, rows in by_type.items():
+        session.run(
+            f"UNWIND $rows AS row MATCH (s {{id: row.src}}), (d {{id: row.dst}}) CREATE (s)-[r:{edge_type}]->(d) SET r = row.props",
+            rows=rows)
 
 
 if __name__ == "__main__":

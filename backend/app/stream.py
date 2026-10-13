@@ -10,7 +10,7 @@ import sys
 import time
 
 from .analysis import run_all
-from .events import TOPICS, BadEvent, apply, parse
+from .events import TOPICS, BadEvent, apply_batch, parse
 from .scoring import score_all
 
 log = logging.getLogger("graphops.stream")
@@ -66,24 +66,17 @@ def saved_offsets(session):
 
 def read_new(cons, offsets, limit=BATCH, timeout=5.0):
     """read up to `limit` messages that arrived after the saved offsets. returns the messages and the
-    offsets to save once they are written."""
+    offsets to save once they are written. we read until kafka says each partition has no more
+    (end of partition), which saves asking for every partition's end position first."""
     from confluent_kafka import OFFSET_BEGINNING, KafkaError, TopicPartition
     meta = cons.list_topics(timeout=timeout).topics
-    parts, ends = [], {}
-    for topic in TOPICS:
-        if topic not in meta:
-            continue
-        for p in meta[topic].partitions:
-            start = offsets.get((topic, p), OFFSET_BEGINNING)
-            low, high = cons.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
-            if high > max(start, low):
-                parts.append(TopicPartition(topic, p, start))
-                ends[(topic, p)] = high
+    parts = [TopicPartition(t, p, offsets.get((t, p), OFFSET_BEGINNING))
+             for t in TOPICS if t in meta for p in meta[t].partitions]
     if not parts:
         return [], {}
     cons.assign(parts)
     msgs, done, deadline = [], set(), time.monotonic() + timeout
-    while len(done) < len(ends) and len(msgs) < limit and time.monotonic() < deadline:
+    while len(done) < len(parts) and len(msgs) < limit and time.monotonic() < deadline:
         m = cons.poll(0.2)
         if m is None:
             continue
@@ -94,11 +87,7 @@ def read_new(cons, offsets, limit=BATCH, timeout=5.0):
             else:
                 log.warning("kafka error on %s: %s", key, m.error())
             continue
-        if key in done:
-            continue
         msgs.append(m)
-        if m.offset() + 1 >= ends[key]:
-            done.add(key)
     cons.unassign()
     new_offsets = {}
     for m in msgs:
@@ -109,28 +98,23 @@ def read_new(cons, offsets, limit=BATCH, timeout=5.0):
 def write_batch(session, msgs, new_offsets):
     """write the events and the new offsets in one transaction. returns counts of what changed."""
     def work(tx):
-        result = {"events": 0, "skipped": 0, "bad": 0, "alerts": 0, "network": False}
+        events, bad = [], 0
         for m in msgs:
             try:
-                event = parse(m.value(), m.topic())
+                events.append(parse(m.value(), m.topic()))
             except BadEvent as exc:
                 log.warning("bad message %s/%s@%s: %s", m.topic(), m.partition(), m.offset(), exc)
-                result["bad"] += 1
-                continue
-            what = apply(tx, event)
-            if what == "skipped":
-                result["skipped"] += 1
-                continue
-            result["events"] += 1
-            result["alerts"] += what == "alert"
-            result["network"] |= what == "network"
-        for (topic, partition), offset in new_offsets.items():
+                bad += 1
+        result = apply_batch(tx, events) if events else {"events": 0, "skipped": 0, "alerts": 0, "network": False}
+        result["bad"] = bad
+        if new_offsets:
             tx.run(
                 """
-                MERGE (o:StreamOffset {topic: $t, partition: $p})
-                SET o.offset = CASE WHEN o.offset IS NULL OR $o > o.offset THEN $o ELSE o.offset END
+                UNWIND $rows AS row
+                MERGE (o:StreamOffset {topic: row.t, partition: row.p})
+                SET o.offset = CASE WHEN o.offset IS NULL OR row.o > o.offset THEN row.o ELSE o.offset END
                 """,
-                t=topic, p=partition, o=offset)
+                rows=[{"t": t, "p": p, "o": o} for (t, p), o in new_offsets.items()])
         if result["alerts"] or result["network"]:
             # scoring runs after this transaction. mark it pending so a crash in between is caught up next time
             tx.run("MERGE (s:StreamState {id: 'live'}) SET s.rescore = true, s.network = coalesce(s.network, false) OR $n",
@@ -190,11 +174,13 @@ def skip_to_end(session, cons, timeout=5.0):
     """save the current end of every topic as our read position, so old messages are not replayed."""
     from confluent_kafka import TopicPartition
     meta = cons.list_topics(timeout=timeout).topics
-    session.run("MATCH (o:StreamOffset) DELETE o")
+    rows = []
     for topic in TOPICS:
-        for p in meta.get(topic).partitions if topic in meta else []:
+        for p in meta[topic].partitions if topic in meta else []:
             _, high = cons.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
-            session.run("CREATE (:StreamOffset {topic: $t, partition: $p, offset: $o})", t=topic, p=p, o=high)
+            rows.append({"t": topic, "p": p, "o": high})
+    session.run("MATCH (o:StreamOffset) DELETE o")
+    session.run("UNWIND $rows AS row CREATE (:StreamOffset {topic: row.t, partition: row.p, offset: row.o})", rows=rows)
 
 
 def reset(session, cons=None):

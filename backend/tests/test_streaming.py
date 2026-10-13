@@ -123,20 +123,18 @@ def test_duplicates_change_nothing(neo4j_driver, kafka_conf, live, batch_result)
 
 def test_crash_halfway_loses_and_repeats_nothing(neo4j_driver, kafka_conf, live, batch_result, monkeypatch):
     send_all(kafka_conf, simulate.build(attack=True))
-    real_apply, calls = events.apply, {"n": 0}
+    real_apply = events.apply_batch
 
-    def crashing_apply(tx, event):
-        calls["n"] += 1
-        if calls["n"] == 120:
-            raise RuntimeError("power cut")
-        return real_apply(tx, event)
+    def crashing_apply(tx, batch):
+        real_apply(tx, batch)  # every event is written, then the power goes before the transaction commits
+        raise RuntimeError("power cut")
 
-    monkeypatch.setattr(stream, "apply", crashing_apply)
+    monkeypatch.setattr(stream, "apply_batch", crashing_apply)
     with neo4j_driver.session() as s:
         with pytest.raises(RuntimeError):
             drain(s, live)
         assert s.run("MATCH (e:Event) RETURN count(e) AS c").single()["c"] == 0
-        monkeypatch.setattr(stream, "apply", real_apply)
+        monkeypatch.setattr(stream, "apply_batch", real_apply)
         drain(s, live)
         assert results(s) == batch_result
         assert s.run("MATCH (e:Event) RETURN count(e) AS c").single()["c"] == len(simulate.build(attack=True))
