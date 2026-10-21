@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getBlastRadius, getIncident, getReport, patchAsset, patchIncident, setVerdict, writeStory } from "./api.js";
+import { getBlastRadius, getEvaluation, getIncident, getReport, patchAsset, patchIncident, setVerdict, writeStory } from "./api.js";
 import { SEVERITY_RANK } from "./tactics.js";
 import RingGraph from "./RingGraph.jsx";
 import { AlertStrip, MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
@@ -22,6 +22,14 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
   const [node, setNode] = useState(null);
   const [maxHop, setMaxHop] = useState(3);
   const [busy, setBusy] = useState(false);
+  const [evalData, setEvalData] = useState(null);
+
+  // ranking quality for the loaded day; refreshed when the day settles (not during a live replay)
+  const alertCount = alerts.length;
+  useEffect(() => {
+    if (live.on) return;
+    getEvaluation().then(setEvalData).catch(() => setEvalData(null));
+  }, [alertCount, live.on]); // eslint-disable-line
 
   // keep the selected alert pointing at the freshest copy as live updates arrive
   useEffect(() => {
@@ -119,6 +127,7 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
 
   return (
     <>
+      {evalData && !live.on && <EvalPanel data={evalData} />}
       <section className="kpis" data-tour="kpis">
         <div className="kpi"><div className="kpi-k"><i />Alerts</div><div className="kpi-v">{kpis.alerts}</div><div className="kpi-l">{live.on ? "arriving live, none hidden" : "today, none hidden"}</div></div>
         <div className="kpi"><div className="kpi-k"><i />Incidents</div><div className="kpi-v">{kpis.incidents}</div><div className="kpi-l">groups of linked alerts</div></div>
@@ -277,4 +286,36 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
       {report && <ReportModal report={report} onClose={() => setReport(null)} />}
     </>
   );
+}
+
+// ranking quality for the loaded day: GraphOps order vs sorting by the tools' own severity, against labels the
+// ranker never sees. the win is "all the real attacks near the top, with nothing false read first".
+function EvalPanel({ data }) {
+  const go = data.graphops, sv = data.severity;
+  return (
+    <section className="eval">
+      <div className="eval-title">
+        Ranking quality
+        <small>{data.total} alerts, {data.attack} real · scored against labels the ranker never sees</small>
+      </div>
+      <div className="eval-grid">
+        <div className="eval-col win">
+          <div className="eval-col-h">GraphOps<span className="eval-badge">graph-ranked</span></div>
+          <EvalMetric v={go.last_attack_rank ? `top ${go.last_attack_rank}` : "—"} l="every real attack ranks within" />
+          <EvalMetric v={go.false_before_first} l="false alarms read before the first real one" />
+          <EvalMetric v={go.average_precision} l="average precision" />
+        </div>
+        <div className="eval-col">
+          <div className="eval-col-h">Severity only<span className="eval-badge dim">what most tools do</span></div>
+          <EvalMetric v={sv.last_attack_rank ? `top ${sv.last_attack_rank}` : "—"} l="every real attack ranks within" />
+          <EvalMetric v={sv.false_before_first} l="false alarms read before the first real one" />
+          <EvalMetric v={sv.average_precision} l="average precision" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EvalMetric({ v, l }) {
+  return <div className="eval-metric"><span className="eval-v">{v}</span><span className="eval-l">{l}</span></div>;
 }

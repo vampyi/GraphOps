@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, exposure, graphinfo, ingest, simulate, stream
+from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
 from .attack import GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -275,6 +275,35 @@ def graph_algorithms():
     this is the 'why a graph, why Neo4j' roster the dashboard shows."""
     with _driver.session() as s:
         return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s)}
+
+
+@app.get("/api/evaluation")
+def evaluation():
+    """does GraphOps rank the attack above the noise, and better than severity-only? measured on the loaded day
+    against its (hidden-from-the-ranker) attack labels."""
+    with _driver.session() as s:
+        act = scenarios.active(s)
+        result = evaluate.evaluate(s, act["attack_ids"])
+        result["scenario"] = act["id"]
+        return result
+
+
+@app.get("/api/scenarios")
+def list_scenarios():
+    """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
+    with _driver.session() as s:
+        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog()}
+
+
+@app.post("/api/scenarios/{scenario_id}/load")
+def load_scenario(scenario_id: str):
+    """swap the whole console to a different labelled day, score it, and record its attack labels. this is how
+    we show the ranking holds on a day it was never tuned on."""
+    with _driver.session() as s:
+        result = scenarios.load_scenario(s, scenario_id)
+        if result is None:
+            raise HTTPException(404, "unknown scenario")
+        return result
 
 
 @app.get("/api/graph/reachability-proof")

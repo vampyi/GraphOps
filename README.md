@@ -26,6 +26,10 @@ are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-read
 | Community detection (Louvain) and cross-community (lateral) incident flagging | Built. Runs on Neo4j GDS, falls back to networkx on AuraDB Free. |
 | Ingest beyond Kafka: HTTP webhook, Microsoft Sentinel / Splunk ES / Elastic / Wazuh alert maps, BloodHound import | Built. See [docs/ingest.md](docs/ingest.md). |
 | Analyst workflow: stable incident IDs across re-scoring, incident status and notes, benign verdicts, one-click incident report, mark-asset-critical | Built. |
+| Graph view: the Neo4j engine made explicit — a live algorithm roster (Dijkstra, betweenness, PageRank, Louvain, WCC, min-cut), the one Cypher query behind each panel, and a graph-vs-SQL reachability proof timed live | Built. `GET /api/graph/algorithms`, `/api/graph/reachability-proof`. |
+| Beat-the-clock guided demo: one-click attack replay against a 29-minute breakout countdown, the kill chain lighting up step by step, ending with the time-to-connected-picture | Built. |
+| Cinematic remediation: applying an Exposure fix collapses the cut attack paths and counts the risk number down to the recomputed value | Built. |
+| Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
 | Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
 | Ranking model that learns from analyst verdicts | Not built. Verdicts are saved with who and when, ready to train on; scores use hand-set weights. |
 | LANL evaluation and the plain-English question box | Planned, not built. |

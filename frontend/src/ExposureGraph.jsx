@@ -7,7 +7,7 @@ const ROW = 46;
 
 // a left-to-right attack graph: sources in the first column, critical assets in the last, every node placed in
 // the column of its fewest steps from a source. this is the kill chain the paths share, read left to right.
-export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdges, onPickEdge, pickedEdge }) {
+export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdges, remaining, onPickEdge, pickedEdge }) {
   const { nodes, edges } = data;
   const layout = useMemo(() => {
     const maxLayer = Math.max(0, ...nodes.map((n) => n.layer));
@@ -40,11 +40,13 @@ export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdg
         if (!a || !b) return null;
         const key = `${e.src}>${e.dst}`;
         const cut = removedEdgeSet.has(key) || removedNodeSet.has(e.src) || removedNodeSet.has(e.dst);
+        const kept = remaining && !cut && remaining.edges.has(key);
+        const faded = remaining && !cut && !kept;
         const picked = pickedEdge === key;
         const midx = (a.x + b.x) / 2, midy = (a.y + b.y) / 2;
         const label = e.technique || e.type;
         return (
-          <g key={i} className={`exp-edge ${cut ? "cut" : ""} ${picked ? "picked" : ""}`} onClick={() => onPickEdge?.(e)}>
+          <g key={i} className={`exp-edge ${cut ? "cut" : ""} ${kept ? "kept" : ""} ${faded ? "faded" : ""} ${picked ? "picked" : ""}`} onClick={() => onPickEdge?.(e)}>
             <path d={`M${a.x + 10} ${a.y} C ${midx} ${a.y}, ${midx} ${b.y}, ${b.x - 14} ${b.y}`} markerEnd="url(#exp-arrow)" />
             <text x={midx} y={midy - 5}>{label}</text>
           </g>
@@ -54,9 +56,10 @@ export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdg
         const p = layout.pos[n.id];
         if (!p) return null;
         const cut = removedNodeSet.has(n.id);
+        const faded = remaining && !cut && !remaining.nodes.has(n.id) && !n.critical && !n.source;
         const cls = n.critical ? "target" : n.source ? "source" : choke.has(n.id) ? "choke" : "mid";
         return (
-          <g key={n.id} className={`exp-node ${cls} ${cut ? "cut" : ""}`}>
+          <g key={n.id} className={`exp-node ${cls} ${cut ? "cut" : ""} ${faded ? "faded" : ""}`}>
             <Shape kind={n.kind} x={p.x} y={p.y} r={n.critical || n.source ? 10 : 8} />
             {choke.has(n.id) && !n.critical && !n.source && <circle className="choke-ring" cx={p.x} cy={p.y} r={16} />}
             <text x={p.x} y={p.y - 15}>{n.id}</text>

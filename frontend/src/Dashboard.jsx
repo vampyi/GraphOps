@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getAlerts, getLive, replayReset, replayStart } from "./api.js";
+import { getAlerts, getLive, getScenarios, loadScenario, replayReset, replayStart } from "./api.js";
 import Logo from "./Logo.jsx";
 import ThemeToggle from "./Theme.jsx";
 import Tour, { tourSeen } from "./Tour.jsx";
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [live, setLive] = useState({ on: false, seq: 0, replaying: false, ingested: 0, attack: true });
   const [guided, setGuided] = useState(null); // { startedAt, remaining, done, elapsedSec, incidentId }
   const [touring, setTouring] = useState(false);
+  const [scenarios, setScenarios] = useState(null);
   const [error, setError] = useState(null);
   const timer = useRef(null);
   const guidedTimer = useRef(null);
@@ -52,6 +53,18 @@ export default function Dashboard() {
   const load = () =>
     getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
   useEffect(() => { load(); }, []);
+  useEffect(() => { getScenarios().then(setScenarios).catch(() => {}); }, []);
+
+  const switchScenario = async (id) => {
+    setError(null);
+    try {
+      await loadScenario(id);
+      setScenarios((s) => (s ? { ...s, active: id } : s));
+      setGuided(null); setLive((l) => ({ ...l, on: false }));
+      goView("triage");
+      load();
+    } catch (e) { setError(`Could not load that day. ${e.message}`); }
+  };
   useEffect(() => { if (!tourSeen()) setTouring(true); }, []);
 
   // live replay: poll /api/live, merge new or changed alerts, flag what moved
@@ -143,7 +156,14 @@ export default function Dashboard() {
         </div>
       </nav>
       <div className="subnav">
-        <span className="tag">Sample organisation · synthetic data</span>
+        <span className="tag">Synthetic data</span>
+        {scenarios && scenarios.scenarios.length > 1 && (
+          <label className="scenario-pick">Day
+            <select value={scenarios.active} onChange={(e) => switchScenario(e.target.value)}>
+              {scenarios.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+            </select>
+          </label>
+        )}
         <span className="subnav-hint">{VIEWS.find((v) => v.id === view).hint}</span>
       </div>
       {error && <div className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></div>}

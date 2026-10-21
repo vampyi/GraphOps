@@ -239,6 +239,35 @@ def test_pagerank_danger_is_stored_on_nodes(neo4j_driver, seeded):
     assert top["id"] in ("customer-db", "server-7")  # the crown jewels / their gateway are most central
 
 
+# --- evaluation and held-out scenario (credibility) ---
+
+def test_evaluation_graphops_beats_severity_only(api):
+    ev = api.get("/api/evaluation").json()
+    assert ev["scenario"] == "sample" and ev["attack"] == 4
+    assert ev["graphops"]["last_attack_rank"] <= 5          # every attack alert ranks in the top 5
+    assert ev["graphops"]["false_before_first"] == 0        # no false alarm read before the first real one
+    assert ev["graphops"]["average_precision"] > ev["severity"]["average_precision"]
+    assert ev["graphops"]["last_attack_rank"] < ev["severity"]["last_attack_rank"]
+
+
+def test_scenarios_list_includes_the_held_out_day(api):
+    body = api.get("/api/scenarios").json()
+    ids = {s["id"] for s in body["scenarios"]}
+    assert {"sample", "finance_breach"} <= ids and body["active"] == "sample"
+
+
+def test_held_out_scenario_is_not_overfit(api):
+    r = api.post("/api/scenarios/finance_breach/load").json()
+    assert r["id"] == "finance_breach" and len(r["attack_ids"]) == 5
+    ev = api.get("/api/evaluation").json()
+    assert ev["scenario"] == "finance_breach"
+    # on a day the weights were never tuned on, every attack alert still ranks in the top 5
+    assert ev["graphops"]["last_attack_rank"] <= 5
+    assert ev["graphops"]["average_precision"] == 1.0
+    assert ev["graphops"]["last_attack_rank"] < ev["severity"]["last_attack_rank"]
+    assert api.post("/api/scenarios/not-a-scenario/load").status_code == 404
+
+
 def test_r20_report_names_every_attack_alert_and_the_crown_jewel(api, neo4j_driver):
     with neo4j_driver.session() as s:
         inc = s.run("MATCH (a:Alert {id: 'a-01'}) RETURN a.incident_id AS i").single()["i"]

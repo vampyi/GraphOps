@@ -1,6 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getExposure, simulateExposure } from "./api.js";
 import ExposureGraph from "./ExposureGraph.jsx";
+
+// the edges and nodes still on a path after a simulated fix, so the graph can fade out everything cut
+function remainingFromPaths(paths) {
+  const edges = new Set(), nodes = new Set();
+  (paths || []).forEach((p) => {
+    p.nodes.forEach((n) => nodes.add(n));
+    p.nodes.slice(1).forEach((n, i) => edges.add(`${p.nodes[i]}>${n}`));
+  });
+  return { edges, nodes };
+}
+
+// a number that tweens to its target, for the risk count dropping when a fix is applied
+function AnimatedNumber({ value }) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = performance.now(), a = from.current, b = value, dur = 600;
+    let raf;
+    const tick = (t) => {
+      const k = Math.min(1, (t - start) / dur);
+      setShown(Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick); else from.current = b;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{shown}</>;
+}
 
 const SCOPES = [
   { id: "low_trust", label: "From low-trust machines", hint: "Guest, intern and internet-facing machines" },
@@ -34,7 +62,9 @@ export default function Exposure({ onError }) {
   const chokeIds = data.chokepoints.map((c) => c.id);
   const removedNodes = sim?.rec.kind === "node" ? [sim.rec.id] : [];
   const removedEdges = sim?.rec.kind === "cut" ? sim.rec.edges : [];
+  const remaining = sim ? remainingFromPaths(sim.result.paths_after) : null;
   const reach = data.pairs;
+  const current = sim ? sim.result.pairs_after : reach.reachable;
 
   return (
     <div className="exposure">
@@ -46,9 +76,13 @@ export default function Exposure({ onError }) {
         </div>
 
         <div className="exp-summary">
-          <div className="big-stat">
-            <div className="big-stat-v">{reach.reachable}</div>
-            <div className="big-stat-l">source → critical pairs an attacker could reach, of {reach.possible} possible</div>
+          <div className={`big-stat ${sim ? (current === 0 ? "cleared" : "reduced") : ""}`}>
+            <div className="big-stat-v"><AnimatedNumber value={current} /></div>
+            <div className="big-stat-l">
+              {sim
+                ? <>paths left after this fix{" "}<span className="cut-pill">−{sim.result.pairs_cut} of {reach.reachable} cut</span></>
+                : <>source → critical pairs an attacker could reach, of {reach.possible} possible</>}
+            </div>
           </div>
         </div>
 
@@ -96,7 +130,7 @@ export default function Exposure({ onError }) {
         {data.nodes.length === 0
           ? <div className="view-loading">No path from this starting point to a critical asset. That is the goal.</div>
           : <div className="exp-graph-wrap">
-              <ExposureGraph data={data} chokeIds={chokeIds} removedNodes={removedNodes} removedEdges={removedEdges} />
+              <ExposureGraph data={data} chokeIds={chokeIds} removedNodes={removedNodes} removedEdges={removedEdges} remaining={remaining} />
             </div>}
         <div className="legend">
           <span><i className="lg source" />start</span>
