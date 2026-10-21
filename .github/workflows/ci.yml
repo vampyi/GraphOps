@@ -19,6 +19,9 @@ jobs:
         run: pip install -r backend/requirements.txt
       - name: Run tests (Neo4j and Kafka start in Docker via Testcontainers)
         working-directory: backend
+        env:
+          # the app builds a Neo4j driver at import; tests override it with a container driver, so any value works
+          NEO4J_PASSWORD: test-only
         run: python -m pytest -q
 
   frontend:

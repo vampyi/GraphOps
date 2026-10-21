@@ -13,9 +13,22 @@ const VIEWS = [
   { id: "access", label: "Access", hint: "Granted vs used access, the least-privilege gap" },
 ];
 const POLL_MS = 2000;
+const VIEW_IDS = VIEWS.map((v) => v.id);
+
+// the view lives in the url hash (#/console/exposure), so a tab click is shareable and a refresh keeps the view
+function viewFromHash() {
+  const seg = (window.location.hash || "").split("/")[2];
+  return VIEW_IDS.includes(seg) ? seg : "triage";
+}
 
 export default function Dashboard() {
-  const [view, setView] = useState("triage");
+  const [view, setView] = useState(viewFromHash);
+  const goView = (id) => { window.location.hash = id === "triage" ? "#/console" : `#/console/${id}`; setView(id); };
+  useEffect(() => {
+    const sync = () => setView(viewFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
   const [alerts, setAlerts] = useState([]);
   const [changed, setChanged] = useState(new Set());
   const [live, setLive] = useState({ on: false, seq: 0, replaying: false, ingested: 0, attack: true });
@@ -70,7 +83,7 @@ export default function Dashboard() {
         <div className="views" role="tablist" data-tour="views">
           {VIEWS.map((v) => (
             <button key={v.id} role="tab" aria-selected={view === v.id} title={v.hint}
-              className={view === v.id ? "on" : ""} onClick={() => setView(v.id)}>{v.label}</button>
+              className={view === v.id ? "on" : ""} onClick={() => goView(v.id)}>{v.label}</button>
           ))}
         </div>
         <div className="dnav-right">

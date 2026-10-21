@@ -55,10 +55,14 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
 
   async function open(alert, mode = blastMode) {
     setSelected(alert); setStory(null); setNode(null);
-    try {
-      const [b, i] = await Promise.all([getBlastRadius(alert.id, mode), getIncident(alert.incident_id)]);
-      setBlast(b); setIncident(i);
-    } catch (e) { onError(e.message); }
+    // fetch independently so a failure in one does not blank the other
+    try { setBlast(await getBlastRadius(alert.id, mode)); } catch (e) { onError(`Could not load the blast radius: ${e.message}`); }
+    if (alert.incident_id) {
+      try { setIncident(await getIncident(alert.incident_id)); }
+      catch (e) { setIncident(null); onError(`Could not load the incident: ${e.message}`); }
+    } else {
+      setIncident(null);
+    }
   }
 
   async function changeMode(mode) {
