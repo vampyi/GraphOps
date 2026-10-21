@@ -25,6 +25,8 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/entities/{entity_id}/access"),
     ("GET", "/api/access/overview"),
     ("GET", "/api/communities"),
+    ("GET", "/api/graph/algorithms"),
+    ("GET", "/api/graph/reachability-proof"),
     ("GET", "/api/live"),
     ("POST", "/api/replay/reset"),
     ("POST", "/api/replay/start"),

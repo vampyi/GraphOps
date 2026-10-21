@@ -6,11 +6,13 @@ import Tour, { tourSeen } from "./Tour.jsx";
 import Triage from "./Triage.jsx";
 import Exposure from "./Exposure.jsx";
 import Access from "./Access.jsx";
+import GraphEngine from "./GraphEngine.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Rank and investigate today's alerts" },
   { id: "exposure", label: "Exposure", hint: "Attack paths and choke points before an attack" },
   { id: "access", label: "Access", hint: "Granted vs used access, the least-privilege gap" },
+  { id: "graph", label: "Graph", hint: "The Neo4j engine: one query per SOC question" },
 ];
 const POLL_MS = 2000;
 const VIEW_IDS = VIEWS.map((v) => v.id);
@@ -20,6 +22,15 @@ function viewFromHash() {
   const seg = (window.location.hash || "").split("/")[2];
   return VIEW_IDS.includes(seg) ? seg : "triage";
 }
+
+// CrowdStrike's 2025 median eCrime breakout time, used as the attacker's head-start budget in the guided demo
+const BREAKOUT_BUDGET = 29 * 60;
+const ATTACK_STEPS = [
+  { tech: "T1566", label: "Phishing" },
+  { tech: "T1003", label: "Credential theft" },
+  { tech: "T1021", label: "Lateral movement" },
+  { tech: "T1550.002", label: "Crown jewel reached" },
+];
 
 export default function Dashboard() {
   const [view, setView] = useState(viewFromHash);
@@ -32,9 +43,11 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [changed, setChanged] = useState(new Set());
   const [live, setLive] = useState({ on: false, seq: 0, replaying: false, ingested: 0, attack: true });
+  const [guided, setGuided] = useState(null); // { startedAt, remaining, done, elapsedSec, incidentId }
   const [touring, setTouring] = useState(false);
   const [error, setError] = useState(null);
   const timer = useRef(null);
+  const guidedTimer = useRef(null);
 
   const load = () =>
     getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
@@ -76,6 +89,42 @@ export default function Dashboard() {
   };
   const stopLive = () => { setLive((l) => ({ ...l, on: false })); load(); };
 
+  // guided "beat the clock" demo: start the attack live, run a breakout countdown, auto-follow the attack,
+  // and freeze when the attacker reaches the crown jewel (the pass-the-hash step, T1550.002).
+  const startGuided = async () => {
+    setError(null);
+    try {
+      setAlerts([]); setChanged(new Set());
+      await replayReset();
+      await replayStart(true, 600);
+      goView("triage");
+      setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack: true });
+      setGuided({ startedAt: Date.now(), remaining: BREAKOUT_BUDGET, done: false, elapsedSec: 0, incidentId: null });
+    } catch (e) { setError(`Could not start the guided demo. ${e.message}`); }
+  };
+  const endGuided = () => { setGuided(null); stopLive(); };
+
+  useEffect(() => {
+    if (!guided || guided.done) return;
+    guidedTimer.current = setInterval(() => {
+      setGuided((g) => (g && !g.done
+        ? { ...g, remaining: Math.max(0, BREAKOUT_BUDGET - Math.floor((Date.now() - g.startedAt) / 1000)) } : g));
+    }, 1000);
+    return () => clearInterval(guidedTimer.current);
+  }, [guided?.done, guided?.startedAt]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!guided || guided.done) return;
+    const crown = alerts.find((a) => a.technique_id === "T1550.002");
+    if (crown) {
+      const elapsedSec = Math.max(1, Math.floor((Date.now() - guided.startedAt) / 1000));
+      setGuided((g) => (g ? { ...g, done: true, elapsedSec, incidentId: crown.incident_id } : g));
+    }
+  }, [alerts]); // eslint-disable-line
+
+  // in guided mode, keep the highest-scoring alert (the attack as it climbs) open in Triage
+  const focusAlertId = guided && alerts.length ? alerts[0].id : null;
+
   return (
     <div className="dash">
       <nav className="dnav">
@@ -87,7 +136,8 @@ export default function Dashboard() {
           ))}
         </div>
         <div className="dnav-right">
-          <LiveControls live={live} onStart={startReplay} onStop={stopLive} />
+          {!guided && <button className="guided-btn" onClick={startGuided} title="Replay the attack against a 29-minute breakout clock">Beat the clock</button>}
+          {!guided && <LiveControls live={live} onStart={startReplay} onStop={stopLive} />}
           <button className="tour-btn" onClick={() => setTouring(true)}>Tour</button>
           <ThemeToggle />
         </div>
@@ -99,9 +149,12 @@ export default function Dashboard() {
       {error && <div className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></div>}
       {touring && <Tour onClose={() => setTouring(false)} />}
 
-      {view === "triage" && <Triage alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
+      {view === "triage" && <Triage alerts={alerts} changed={changed} live={live} focusAlertId={focusAlertId} onReload={load} onError={setError} />}
       {view === "exposure" && <Exposure onError={setError} />}
       {view === "access" && <Access onError={setError} />}
+      {view === "graph" && <GraphEngine onError={setError} />}
+
+      {guided && <GuidedBanner guided={guided} alerts={alerts} onClose={endGuided} />}
     </div>
   );
 }
@@ -122,6 +175,42 @@ function LiveControls({ live, onStart, onStop }) {
     <div className="live-controls" data-tour="live">
       <button className="primary" onClick={() => onStart(true)} title="Stream the day with the attack mixed in">Replay attack live</button>
       <button onClick={() => onStart(false)} title="Stream a normal day, no attack">Normal day</button>
+    </div>
+  );
+}
+
+function fmt(s) {
+  const m = Math.floor(s / 60), ss = s % 60;
+  return `${m}:${String(ss).padStart(2, "0")}`;
+}
+
+// the "beat the clock" overlay: a breakout countdown, the kill chain lighting up as each step lands, and a
+// result card the moment the attacker reaches the crown jewel.
+function GuidedBanner({ guided, alerts, onClose }) {
+  const seen = new Set(alerts.map((a) => a.technique_id));
+  const reached = ATTACK_STEPS.findIndex((s) => !seen.has(s.tech));
+  const doneSteps = reached === -1 ? ATTACK_STEPS.length : reached;
+  const spare = BREAKOUT_BUDGET - guided.elapsedSec;
+
+  return (
+    <div className={`guided ${guided.done ? "done" : ""}`} role="status">
+      <div className="guided-clock">
+        <div className="guided-clock-v">{fmt(guided.done ? spare : guided.remaining)}</div>
+        <div className="guided-clock-l">{guided.done ? "left of the 29:00 budget" : "attacker breakout budget"}</div>
+      </div>
+      <div className="guided-mid">
+        <div className="guided-chain">
+          {ATTACK_STEPS.map((s, i) => (
+            <span key={s.tech} className={`gchain ${i < doneSteps ? "hit" : ""} ${i === doneSteps && !guided.done ? "next" : ""}`}>
+              <i />{s.label}
+            </span>
+          ))}
+        </div>
+        {guided.done
+          ? <div className="guided-result">GraphOps connected the full attack chain in <b>{guided.elapsedSec}s</b>. The attacker's 29-minute head start is still on the clock, so you have the whole budget to contain it. Reading these as separate alerts, an analyst reconstructs this by hand.</div>
+          : <div className="guided-status">Watching the attack unfold live. GraphOps links each step into one incident as it lands.</div>}
+      </div>
+      <button className="guided-close" onClick={onClose}>{guided.done ? "Done" : "Stop"}</button>
     </div>
   );
 }

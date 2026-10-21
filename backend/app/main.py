@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, exposure, ingest, simulate, stream
+from . import access, exposure, graphinfo, ingest, simulate, stream
 from .attack import GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -267,6 +267,30 @@ def communities():
     """the activity communities and their members, for labelling the graph and spotting cross-group movement."""
     with _driver.session() as s:
         return {"communities": community_summary(s)}
+
+
+@app.get("/api/graph/algorithms")
+def graph_algorithms():
+    """the Neo4j / GDS algorithms GraphOps runs, each mapped to the SOC question it answers, with a live number.
+    this is the 'why a graph, why Neo4j' roster the dashboard shows."""
+    with _driver.session() as s:
+        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s)}
+
+
+@app.get("/api/graph/reachability-proof")
+def reachability_proof(src: str, dst: str = None):
+    """answer 'can src reach dst?' as one timed Cypher traversal and show the same question written in SQL, to
+    make concrete why this is a graph problem. dst defaults to the nearest critical asset."""
+    with _driver.session() as s:
+        if dst is None:
+            row = s.run("MATCH (c) WHERE c.critical = true RETURN c.id AS id ORDER BY c.id LIMIT 1").single()
+            dst = row["id"] if row else None
+        if dst is None:
+            raise HTTPException(404, "no critical asset to reach")
+        result = graphinfo.reachability_proof(s, src, dst)
+        if "error" in result:
+            raise HTTPException(404, result["error"])
+        return result
 
 
 class AssetPatch(BaseModel):

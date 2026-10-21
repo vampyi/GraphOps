@@ -82,9 +82,46 @@ def _choke_scores_python(session):
     )
 
 
+def danger_scores(session):
+    """PageRank on the attack graph, scaled to 0..1 and saved as `danger`. the challenge names PageRank as a way
+    to find the nodes that would cause the most disruption if compromised. uses neo4j graph data science when the
+    database has it, and networkx when it does not."""
+    try:
+        _pagerank_gds(session)
+    except Exception as exc:  # graph data science not installed on this database
+        if "gds" not in str(exc).lower() and "procedure" not in str(exc).lower():
+            raise
+        _pagerank_python(session)
+    top = session.run("MATCH (n) WHERE n.pagerank IS NOT NULL RETURN max(n.pagerank) AS m").single()["m"] or 1.0
+    session.run("MATCH (n) WHERE n.pagerank IS NOT NULL SET n.danger = n.pagerank / $top",
+                top=top if top > 0 else 1.0)
+
+
+def _pagerank_gds(session):
+    session.run("CALL gds.graph.drop('pr', false) YIELD graphName RETURN graphName").consume()
+    session.run("CALL gds.graph.project('pr', $labels, $rels) YIELD graphName RETURN graphName",
+                labels=ENTITY_LABELS, rels=attack_edge_types(session)).consume()
+    session.run("CALL gds.pageRank.write('pr', {writeProperty: 'pagerank'}) YIELD nodePropertiesWritten RETURN nodePropertiesWritten").consume()
+    session.run("CALL gds.graph.drop('pr') YIELD graphName RETURN graphName").consume()
+
+
+def _pagerank_python(session):
+    import networkx as nx
+    rel = "|".join(attack_edge_types(session))
+    g = nx.DiGraph()
+    for r in session.run("MATCH (n) WHERE n:User OR n:Group OR n:Computer RETURN n.id AS id"):
+        g.add_node(r["id"])
+    for r in session.run(f"MATCH (s)-[:{rel}]->(d) RETURN s.id AS s, d.id AS d"):
+        g.add_edge(r["s"], r["d"])
+    scores = nx.pagerank(g) if g.number_of_edges() else {n: 0.0 for n in g}
+    session.run("UNWIND $rows AS row MATCH (n {id: row.id}) SET n.pagerank = row.b",
+                rows=[{"id": k, "b": float(v)} for k, v in scores.items()])
+
+
 def run_all(session):
     hops_to_critical(session)
     critical_within_3(session)
     choke_scores(session)
+    danger_scores(session)
     from .communities import run as detect_communities
     detect_communities(session)

@@ -11,7 +11,7 @@ const BLAST_MODES = [
 ];
 const INCIDENT_STATUS = ["open", "investigating", "contained", "closed"];
 
-export default function Triage({ alerts, changed, live, onReload, onError }) {
+export default function Triage({ alerts, changed, live, focusAlertId, onReload, onError }) {
   const [sortBy, setSortBy] = useState("score");
   const [selected, setSelected] = useState(null);
   const [blast, setBlast] = useState(null);
@@ -29,6 +29,13 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
     const fresh = alerts.find((a) => a.id === selected.id);
     if (fresh && fresh !== selected) setSelected(fresh);
   }, [alerts]); // eslint-disable-line
+
+  // the guided demo drives which alert is open (the attack as it climbs the inbox)
+  useEffect(() => {
+    if (!focusAlertId || focusAlertId === selected?.id) return;
+    const a = alerts.find((x) => x.id === focusAlertId);
+    if (a) open(a);
+  }, [focusAlertId]); // eslint-disable-line
 
   const shown = useMemo(() => {
     const list = [...alerts];

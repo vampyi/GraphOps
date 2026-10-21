@@ -212,6 +212,33 @@ def test_r18_unknown_format_is_rejected(api):
 
 # --- R20 report ------------------------------------------------------------
 
+# --- graph engine (the Neo4j showcase) ---
+
+def test_graph_algorithm_roster_has_live_numbers(api):
+    body = api.get("/api/graph/algorithms").json()
+    assert body["summary"]["entities"] == 37
+    names = {a["algorithm"] for a in body["algorithms"]}
+    assert {"PageRank", "Betweenness centrality", "Louvain community detection", "Shortest path (Dijkstra)"} <= names
+    assert all(a["result"] for a in body["algorithms"])
+
+
+def test_graph_vs_sql_reachability_proof(api):
+    pr = api.get("/api/graph/reachability-proof?src=laptop-42&dst=customer-db").json()
+    assert pr["reachable"] is True and pr["hops"] == 2
+    assert pr["path"]["ids"] == ["laptop-42", "server-7", "customer-db"]
+    assert "shortestPath" in pr["cypher"] and "JOIN" in pr["sql"] and pr["cypher_ms"] >= 0
+    # an unreachable pair is reported honestly, not as an error
+    none = api.get("/api/graph/reachability-proof?src=printer-01&dst=customer-db").json()
+    assert none["reachable"] is False and none["hops"] == 0
+    assert api.get("/api/graph/reachability-proof?src=ghost&dst=customer-db").status_code == 404
+
+
+def test_pagerank_danger_is_stored_on_nodes(neo4j_driver, seeded):
+    with neo4j_driver.session() as s:
+        top = s.run("MATCH (n) WHERE n.danger IS NOT NULL RETURN n.id AS id ORDER BY n.danger DESC LIMIT 1").single()
+    assert top["id"] in ("customer-db", "server-7")  # the crown jewels / their gateway are most central
+
+
 def test_r20_report_names_every_attack_alert_and_the_crown_jewel(api, neo4j_driver):
     with neo4j_driver.session() as s:
         inc = s.run("MATCH (a:Alert {id: 'a-01'}) RETURN a.incident_id AS i").single()["i"]

@@ -28,6 +28,11 @@ export const getAccess = (id, days = 30) => call(`/entities/${encodeURIComponent
 export const getAccessOverview = (days = 30) => call(`/access/overview?days=${days}`);
 export const getCommunities = () => call("/communities");
 
+// graph engine (the Neo4j showcase)
+export const getGraphAlgorithms = () => call("/graph/algorithms");
+export const getReachabilityProof = (src, dst) =>
+  call(`/graph/reachability-proof?src=${encodeURIComponent(src)}${dst ? `&dst=${encodeURIComponent(dst)}` : ""}`);
+
 // live replay
 export const getLive = (since = 0) => call(`/live?since=${since}`);
 export const replayReset = () => post("/replay/reset");
