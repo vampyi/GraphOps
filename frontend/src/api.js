@@ -4,13 +4,31 @@ async function call(path, options) {
   return res.json();
 }
 
+const post = (path, body) =>
+  call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+const patch = (path, body) =>
+  call(path, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+
+// triage
 export const getAlerts = () => call("/alerts");
-export const getBlastRadius = (id) => call(`/alerts/${id}/blast-radius`);
+export const getBlastRadius = (id, mode = "all", days = 30) => call(`/alerts/${id}/blast-radius?mode=${mode}&days=${days}`);
 export const getIncident = (id) => call(`/incidents/${id}`);
-export const writeStory = (id) => call(`/incidents/${id}/story`, { method: "POST" });
-export const setVerdict = (id, status) =>
-  call(`/alerts/${id}/verdict`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
+export const getReport = (id) => call(`/incidents/${id}/report`);
+export const patchIncident = (id, body) => patch(`/incidents/${id}`, body);
+export const writeStory = (id) => post(`/incidents/${id}/story`);
+export const setVerdict = (id, status, by) => post(`/alerts/${id}/verdict`, { status, by });
+export const patchAsset = (id, body) => patch(`/assets/${id}`, body);
+
+// exposure
+export const getExposure = (scope = "low_trust", maxHops = 6) => call(`/exposure?scope=${scope}&max_hops=${maxHops}`);
+export const simulateExposure = (body) => post("/exposure/simulate", body);
+
+// access and communities
+export const getAccess = (id, days = 30) => call(`/entities/${encodeURIComponent(id)}/access?days=${days}`);
+export const getAccessOverview = (days = 30) => call(`/access/overview?days=${days}`);
+export const getCommunities = () => call("/communities");
+
+// live replay
+export const getLive = (since = 0) => call(`/live?since=${since}`);
+export const replayReset = () => post("/replay/reset");
+export const replayStart = (attack, speed) => post("/replay/start", { attack, speed });

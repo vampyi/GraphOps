@@ -108,3 +108,72 @@ export function StageTimeline({ alerts, selectedId }) {
     </ol>
   );
 }
+
+// a small markdown renderer for incident reports. the markdown is produced by our own backend, so we only
+// handle the blocks it emits: headings, GFM tables, bullet lists, a rule and paragraphs, with inline bold,
+// italic and code.
+function inline(text, key) {
+  const parts = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+  let last = 0, m, i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const t = m[0];
+    if (t.startsWith("**")) parts.push(<strong key={`${key}-${i}`}>{t.slice(2, -2)}</strong>);
+    else if (t.startsWith("`")) parts.push(<code key={`${key}-${i}`}>{t.slice(1, -1)}</code>);
+    else parts.push(<em key={`${key}-${i}`}>{t.slice(1, -1)}</em>);
+    last = m.index + t.length; i++;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderMarkdown(md) {
+  const lines = md.split("\n");
+  const out = [];
+  let i = 0, k = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith("## ")) { out.push(<h4 key={k++}>{inline(line.slice(3), k)}</h4>); i++; }
+    else if (line.startsWith("# ")) { out.push(<h3 key={k++}>{inline(line.slice(2), k)}</h3>); i++; }
+    else if (line.startsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].startsWith("|")) { rows.push(lines[i]); i++; }
+      const cells = (r) => r.split("|").slice(1, -1).map((c) => c.trim());
+      const header = cells(rows[0]);
+      const body = rows.slice(2).map(cells);
+      out.push(
+        <table key={k++} className="md-table">
+          <thead><tr>{header.map((h, j) => <th key={j}>{inline(h, `${k}h${j}`)}</th>)}</tr></thead>
+          <tbody>{body.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci}>{inline(c, `${k}r${ri}c${ci}`)}</td>)}</tr>)}</tbody>
+        </table>);
+    }
+    else if (line.startsWith("- ")) {
+      const items = [];
+      while (i < lines.length && lines[i].startsWith("- ")) { items.push(lines[i].slice(2)); i++; }
+      out.push(<ul key={k++}>{items.map((it, j) => <li key={j}>{inline(it, `${k}i${j}`)}</li>)}</ul>);
+    }
+    else if (line.trim() === "---") { out.push(<hr key={k++} />); i++; }
+    else if (line.trim() === "") { i++; }
+    else { out.push(<p key={k++}>{inline(line, k)}</p>); i++; }
+  }
+  return out;
+}
+
+export function ReportModal({ report, onClose }) {
+  const copy = () => { try { navigator.clipboard.writeText(report.markdown); } catch { /* clipboard blocked */ } };
+  return (
+    <div className="modal" role="dialog" aria-label="Incident report" onClick={onClose}>
+      <div className="modal-card report-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <span>Incident report</span>
+          <div>
+            <button className="btn small" onClick={copy}>Copy Markdown</button>
+            <button className="btn small" onClick={onClose}>Close</button>
+          </div>
+        </div>
+        <div className="report-body">{renderMarkdown(report.markdown)}</div>
+      </div>
+    </div>
+  );
+}

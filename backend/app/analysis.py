@@ -86,3 +86,5 @@ def run_all(session):
     hops_to_critical(session)
     critical_within_3(session)
     choke_scores(session)
+    from .communities import run as detect_communities
+    detect_communities(session)

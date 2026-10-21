@@ -12,14 +12,23 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 **Live at [graph-ops.vercel.app](https://graph-ops.vercel.app)** (synthetic data only).
 
+The console now has three views for an analyst on shift: **Triage** (rank and investigate today's alerts),
+**Exposure** (attack paths and choke points before an attack) and **Access** (granted vs used access). The
+[analyst guide](docs/analyst-guide.md) walks through them. The second build's scope and its tests (R9 to R21)
+are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-ready-october-2026).
+
 | Part | Status |
 |---|---|
-| First flow: ranked alert inbox, blast radius, linked incident, incident story, analyst verdict | Works, on a synthetic sample organisation. Scope and requirements in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
-| Live streaming through Kafka: simulator, Kafka, ingest, scoring as each alert lands | Works on a laptop and on the hosted site. Measured on the hosted site: all 30 alerts of the sample day read from Kafka, saved and ranked 2.4 seconds after they were sent. Details in [docs/streaming.md](docs/streaming.md). |
-| Hosting: Vercel, Neo4j AuraDB Free, Aiven for Apache Kafka | Works. How it is set up in [docs/hosting.md](docs/hosting.md). |
-| Dashboard showing alerts arriving live, and a replay button | Not built yet. The live data is available at `/api/live`, but the dashboard still loads the inbox once. |
-| Ranking model that learns from analyst verdicts | Not built yet. Verdicts are saved; scores use hand-set weights. |
-| LANL evaluation, access comparison view, plain-English question box | Planned, not built. |
+| Triage: ranked alert inbox, blast radius, linked incident, incident story, verdict | Built. First-flow requirements R1 to R8 in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
+| Live dashboard: alerts arrive as the day streams through Kafka, replay and reset from the top bar | Built. Polls `/api/live`; new alerts slide into the inbox and rank changes are flagged. |
+| Exposure: attack paths from low-trust zones to critical assets, MITRE-tagged, with choke points and a minimum-cut remediation whose effect is recomputed exactly | Built. `GET /api/exposure`, `POST /api/exposure/simulate`. |
+| Access: granted vs used access per identity, the unused-access ranking, and blast radius over granted vs used routes | Built. `GET /api/entities/{id}/access`, `/api/access/overview`, blast-radius `mode=granted\|used`. |
+| Community detection (Louvain) and cross-community (lateral) incident flagging | Built. Runs on Neo4j GDS, falls back to networkx on AuraDB Free. |
+| Ingest beyond Kafka: HTTP webhook, Microsoft Sentinel / Splunk ES / Elastic / Wazuh alert maps, BloodHound import | Built. See [docs/ingest.md](docs/ingest.md). |
+| Analyst workflow: stable incident IDs across re-scoring, incident status and notes, benign verdicts, one-click incident report, mark-asset-critical | Built. |
+| Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
+| Ranking model that learns from analyst verdicts | Not built. Verdicts are saved with who and when, ready to train on; scores use hand-set weights. |
+| LANL evaluation and the plain-English question box | Planned, not built. |
 
 ## The problem
 
@@ -233,6 +242,22 @@ The console always states that its data is synthetic.
 | Continuous checks | Planned: unit and integration tests run on every push through GitHub Actions. Today we run them by hand. |
 
 ## Run it
+
+### Everything in one command
+
+With Docker Desktop running:
+
+```bash
+cp .env.example .env                          # choose a local password
+docker compose --profile app up --build       # Neo4j + Kafka + the app, seeded
+# open http://localhost:8000
+```
+
+This builds the dashboard, seeds the sample organisation and serves the console and API on port 8000. The
+`app` profile is opt-in, so the plain `docker compose up -d` below still starts only the infrastructure when
+you want to run the backend and dashboard yourself.
+
+### For development
 
 You need Docker Desktop, Python 3.12 or newer and Node.js 20 or newer.
 

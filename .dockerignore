@@ -1,0 +1,10 @@
+**/node_modules
+**/.venv
+**/__pycache__
+**/dist
+**/.pytest_cache
+.git
+docs
+*.md
+neo4j/data
+neo4j/logs

@@ -54,9 +54,14 @@ def new_edges_near(alert, links):
     return out
 
 
-def link_alerts(alerts, links):
+def link_alerts(alerts, links, hub_ids=frozenset()):
     """link two alerts when they share a user or machine within WINDOW, or when a login went from the
-    earlier alert's machine to the later alert's machine between the two alerts, within PATH_WINDOW."""
+    earlier alert's machine to the later alert's machine between the two alerts, within PATH_WINDOW.
+
+    `hub_ids` are identities that appear across unrelated activity by their nature: service accounts and
+    members of Tier Zero groups such as Domain Admins. two alerts that share only a hub identity are not
+    linked by that alone, because an admin or service account touching both is not evidence they are one
+    attack. the path link still joins alerts along a real logon, so a genuine chain survives."""
     parent = {a["id"]: a["id"] for a in alerts}
 
     def find(x):
@@ -74,7 +79,7 @@ def link_alerts(alerts, links):
         ids_a, t_a = {e["id"] for e in a["entities"]}, _t(a["time"])
         for b in ordered[i + 1:]:
             ids_b, t_b = {e["id"] for e in b["entities"]}, _t(b["time"])
-            if t_b - t_a <= WINDOW and ids_a & ids_b:
+            if t_b - t_a <= WINDOW and (ids_a & ids_b) - hub_ids:
                 union(a["id"], b["id"])
                 continue
             if t_b - t_a <= PATH_WINDOW:
@@ -138,23 +143,78 @@ def score_alert(alert, group, new_edges):
     return score, reasons, f
 
 
+def incident_key(group):
+    """a stable id derived only from the incident's contents: inc- plus the id of its earliest alert (ties
+    broken by id). because it depends on the final grouping and nothing else, a fresh batch load and a live
+    replay that end with the same alerts get the same id, and an incident keeps its id as later alerts join."""
+    seed = min(group, key=lambda a: (a["time"], a["id"]))
+    return f"inc-{seed['id']}"
+
+
+def carry_over(group_ids, previous):
+    """the previous incident that shared the most alerts with this group, so an analyst's status and notes
+    follow the incident even if its id shifts because an earlier alert joined."""
+    best, best_overlap = None, 0
+    for inc in previous:
+        overlap = len(group_ids & inc["members"])
+        if overlap > best_overlap:
+            best, best_overlap = inc, overlap
+    return best
+
+
+def incident_communities(group, comm):
+    """the activity communities the incident's entities span. more than one means the alerts cross the normal
+    working groups of the network, which is what lateral movement looks like."""
+    return sorted({comm[e["id"]] for a in group for e in a["entities"] if comm.get(e["id"]) is not None})
+
+
+def hub_identities(session):
+    """accounts that appear across unrelated activity by their nature: service accounts and members of a
+    critical (Tier Zero) group. shared-entity linking ignores these so an admin or service account touching
+    two alerts does not, on its own, merge them into one incident."""
+    return {r["id"] for r in session.run(
+        """
+        MATCH (u:User)
+        WHERE coalesce(u.is_service_account, false)
+           OR EXISTS { MATCH (u)-[:MemberOf*1..6]->(g:Group) WHERE coalesce(g.critical, false) }
+        RETURN u.id AS id
+        """)}
+
+
 def score_all(session):
     alerts = fetch_alerts(session)
     links = observed_links(session)
-    groups = link_alerts(alerts, links)
+    groups = link_alerts(alerts, links, hub_identities(session))
+    comm = {r["id"]: r["c"] for r in session.run(
+        "MATCH (n) WHERE n.community IS NOT NULL RETURN n.id AS id, n.community AS c")}
+    previous = [{"id": r["id"], "members": set(r["members"]), "status": r["status"],
+                 "notes": r["notes"], "opened_at": r["opened_at"]}
+                for r in session.run(
+                    "MATCH (i:Incident) OPTIONAL MATCH (i)<-[:PartOf]-(a:Alert) "
+                    "RETURN i.id AS id, collect(a.id) AS members, i.status AS status, i.notes AS notes, i.opened_at AS opened_at")]
     incidents, rows = [], []
-    for n, group in enumerate(sorted(groups, key=lambda g: min(a["time"] for a in g)), 1):
-        incident_id = f"inc-{n:02d}"
+    for group in sorted(groups, key=lambda g: min(a["time"] for a in g)):
+        gid = incident_key(group)
+        group_ids = {a["id"] for a in group}
+        carried = carry_over(group_ids, previous) or {}
+        communities = incident_communities(group, comm)
         scored = [(a, *score_alert(a, group, new_edges_near(a, links))) for a in group]
-        incidents.append({"id": incident_id, "size": len(group), "score": max(sc for _, sc, _, _ in scored)})
-        rows += [{"id": a["id"], "inc": incident_id, "score": sc, "reasons": reasons, "f": f} for a, sc, reasons, f in scored]
+        incidents.append({
+            "id": gid, "size": len(group), "score": max(sc for _, sc, _, _ in scored),
+            "opened_at": carried.get("opened_at") or min(a["time"] for a in group),
+            "status": carried.get("status") or "open", "notes": carried.get("notes"),
+            "communities": communities, "lateral": len(communities) > 1, "stages": stages_in_order(group),
+        })
+        rows += [{"id": a["id"], "inc": gid, "score": sc, "reasons": reasons, "f": f} for a, sc, reasons, f in scored]
     # one write for everything: on the hosted site each query is a round trip to neo4j aura
     session.run(
         """
         MATCH (old:Incident) DETACH DELETE old
         WITH count(*) AS _
         UNWIND $incidents AS i
-        CREATE (:Incident {id: i.id, size: i.size, score: i.score})
+        CREATE (:Incident {id: i.id, size: i.size, score: i.score, opened_at: i.opened_at,
+                           status: i.status, notes: i.notes, communities: i.communities,
+                           lateral: i.lateral, stages: i.stages})
         WITH count(*) AS _
         UNWIND $rows AS row
         MATCH (a:Alert {id: row.id}), (i:Incident {id: row.inc})

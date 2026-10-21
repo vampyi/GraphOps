@@ -13,8 +13,8 @@ const PAINS = [
   { title: "Alerts don't connect", status: "live", problem: "One attack shows up as many separate alerts.", fix: "Links alerts along the path the attacker took and orders them by attack stage." },
   { title: "Attackers are faster", status: "live", problem: "Attackers spread in minutes while analysts take hours.", fix: "Works out each machine's distance to critical assets ahead of time, so scoring is instant." },
   { title: "How bad is this?", status: "live", problem: "Nobody can quickly see what a hacked machine can reach.", fix: "Draws the 1, 2 and 3 hop blast radius around any alert." },
-  { title: "Hidden danger", status: "planned", problem: "Risky access paths exist long before anyone uses them.", fix: "Maps attack paths and choke points before any attack." },
-  { title: "Too much access", status: "planned", problem: "People hold far more access than they use.", fix: "Compares the blast radius over granted access with access actually used." },
+  { title: "Hidden danger", status: "live", problem: "Risky access paths exist long before anyone uses them.", fix: "Maps attack paths and choke points before any attack, and shows which few fixes cut the most paths." },
+  { title: "Too much access", status: "live", problem: "People hold far more access than they use.", fix: "Compares the access each identity is granted with the access it actually uses." },
   { title: "One step at a time", status: "live", problem: "Each step can look normal while the whole route is strange.", fix: "Flags a user reaching a system through a route they have never used." },
 ];
 
