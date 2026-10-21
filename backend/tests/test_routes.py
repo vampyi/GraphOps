@@ -63,3 +63,8 @@ def test_spa_fallback_serves_index_not_404():
         assert r.status_code == 200 and "<!doctype html" in r.text.lower(), f"{path} did not serve the app"
     # an unknown api path still 404s (so a genuinely missing endpoint is not masked)
     assert client.get("/api/not-a-real-endpoint").status_code == 404
+
+
+def test_health_endpoint_registered():
+    """ops and load balancers probe /api/health; it must exist and not be masked by the SPA fallback."""
+    assert ("GET", "/api/health") in _registered()

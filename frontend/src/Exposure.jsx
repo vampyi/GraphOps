@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { getExposure, simulateExposure } from "./api.js";
 import ExposureGraph from "./ExposureGraph.jsx";
 
+// "1 path" / "2 paths": pick singular or plural wording for a count
+const plural = (n, one, many = one + "s") => (n === 1 ? one : many);
+
 // the edges and nodes still on a path after a simulated fix, so the graph can fade out everything cut
 function remainingFromPaths(paths) {
   const edges = new Set(), nodes = new Set();
@@ -80,14 +83,14 @@ export default function Exposure({ onError }) {
             <div className="big-stat-v"><AnimatedNumber value={current} /></div>
             <div className="big-stat-l">
               {sim
-                ? <>paths left after this fix{" "}<span className="cut-pill">−{sim.result.pairs_cut} of {reach.reachable} cut</span></>
-                : <>source → critical pairs an attacker could reach, of {reach.possible} possible</>}
+                ? <>{plural(current, "path")} left after this fix{" "}<span className="cut-pill">−{sim.result.pairs_cut} of {reach.reachable} cut</span></>
+                : <>source → critical {plural(current, "pair")} an attacker could reach, of {reach.possible} possible</>}
             </div>
           </div>
         </div>
 
         <h3>Fix the choke points</h3>
-        <p className="muted-p">Each fix is measured on the graph: how many of the {reach.reachable} paths it actually cuts. Click one to see it on the map.</p>
+        <p className="muted-p">Each fix is measured on the graph: how many of the {reach.reachable} {plural(reach.reachable, "path")} it actually cuts. Click one to see it on the map.</p>
         <ul className="recs">
           {data.recommendations.map((r, i) => {
             const active = sim?.rec === r;
@@ -99,13 +102,13 @@ export default function Exposure({ onError }) {
                   <span className="rec-cut">{Math.round((result?.share_cut ?? r.share_cut) * 100)}%</span>
                 </div>
                 <div className="rec-sub">
-                  cuts {result?.pairs_cut ?? r.pairs_cut} of {result?.pairs_before ?? reach.reachable} paths
-                  {r.kind === "node" ? ` · ${r.pairs_through} paths pass through ${r.id}` : ""}
+                  cuts {result?.pairs_cut ?? r.pairs_cut} of {result?.pairs_before ?? reach.reachable} {plural(result?.pairs_before ?? reach.reachable, "path")}
+                  {r.kind === "node" ? ` · ${r.pairs_through} ${plural(r.pairs_through, "path passes", "paths pass")} through ${r.id}` : ""}
                 </div>
                 {r.kind === "cut" && (
                   <ul className="rec-edges">{r.edges.map((e, j) => <li key={j}>{e.action}</li>)}</ul>
                 )}
-                {active && <div className="rec-after">{result.pairs_after === 0 ? "No path from the low-trust zone to a critical asset remains." : `${result.pairs_after} path(s) would remain.`}</div>}
+                {active && <div className="rec-after">{result.pairs_after === 0 ? "No path from the low-trust zone to a critical asset remains." : `${result.pairs_after} ${plural(result.pairs_after, "path")} would remain.`}</div>}
               </li>
             );
           })}

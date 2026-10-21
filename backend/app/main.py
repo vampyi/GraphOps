@@ -482,6 +482,18 @@ def live(since: int = 0):
                 "alerts": _alert_rows(s, since) if seq > since else []}
 
 
+@app.get("/api/health")
+def health():
+    """liveness and readiness for load balancers and ops probes: 200 with live Neo4j connectivity status."""
+    neo4j_ok = True
+    try:
+        _driver.verify_connectivity()
+    except Exception:
+        neo4j_ok = False
+    return {"status": "ok" if neo4j_ok else "degraded", "neo4j": neo4j_ok,
+            "time": dt.datetime.now(dt.timezone.utc).isoformat()}
+
+
 # serve the built dashboard from the same server when it exists (used on vercel and in production)
 _DIST = ROOT / "frontend" / "dist"
 if _DIST.is_dir():

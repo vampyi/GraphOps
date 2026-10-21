@@ -31,8 +31,23 @@ are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-read
 | Cinematic remediation: applying an Exposure fix collapses the cut attack paths and counts the risk number down to the recomputed value | Built. |
 | Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
 | Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
+| Continuous integration: the backend tests and the dashboard build run on every push and pull request | Built. [.github/workflows/ci.yml](.github/workflows/ci.yml). |
 | Ranking model that learns from analyst verdicts | Not built. Verdicts are saved with who and when, ready to train on; scores use hand-set weights. |
 | LANL evaluation and the plain-English question box | Planned, not built. |
+
+## Current state vs. roadmap to production
+
+GraphOps is a **working prototype, not a production deployment**. Everything in the Status table above runs today on synthetic data, and the evaluation numbers are measured, not estimated. Before a real SOC runs it on live incidents, five things stand between the prototype and production. We list them plainly, because the gap is part of an honest pitch.
+
+| Dimension | Where it is today | What a production deployment needs |
+|---|---|---|
+| **Access control** | No login: anyone who can reach the port has full analyst control. | Authentication, per-analyst roles, and an audit trail of who triaged and remediated what. |
+| **Real feeds** | Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, built and unit-tested against sample exports. | A pilot against live SIEM and EDR feeds, where real data is messier and higher-volume than the fixtures. |
+| **Scale** | Validated on the synthetic sample organisation; precompute and query times measured there. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
+| **Hardening** | Dev defaults: no rate limiting, no ingest size caps, a single app and database instance, CORS set to the dev origin. | Rate-limited and size-capped ingest behind the access control above, and a backup and high-availability story for Neo4j. |
+| **Field validation** | Measured against labelled synthetic days, including a held-out day it was never tuned on. | A supervised pilot on real incidents to confirm the ranking holds on live attacks. |
+
+None of these are defects; they are the normal distance between a tested prototype and a deployed product. The build is complete and honest for what a hackathon judges: a live, measured demonstration that the graph beats sorting by severity. The list above is what turns it into a tool a SOC runs on shift.
 
 ## The problem
 
@@ -212,7 +227,6 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 |---|---|---|
 | Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst verdicts. |
 | Plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
-| Continuous checks | GitHub Actions | Run the tests on every push. Today we run them by hand. |
 
 ### Tools we considered and left out
 
@@ -243,7 +257,7 @@ The console always states that its data is synthetic.
 | Break tests | Empty events, very large events and malformed events are rejected without crashing the pipeline. |
 | AI checks | Incident stories that cite a node outside the incident are rejected. Generated queries that try to write are refused. The ranking model is compared against hand-set weights on held-out alerts. |
 | People test | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
-| Continuous checks | Planned: unit and integration tests run on every push through GitHub Actions. Today we run them by hand. |
+| Continuous checks | GitHub Actions runs the backend tests (real Neo4j and Kafka in Docker via Testcontainers) and the dashboard build on every push and pull request. See [.github/workflows/ci.yml](.github/workflows/ci.yml). |
 
 ## Run it
 
