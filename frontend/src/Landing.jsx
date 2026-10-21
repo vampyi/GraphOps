@@ -25,6 +25,13 @@ const STEPS = [
   { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack in stage order and an AI-drafted story that cites its facts." },
 ];
 
+const WINS = [
+  { title: "One query per question", text: "Every answer is a single graph traversal. Shortest path, betweenness, PageRank, Louvain and the minimum cut all come from Neo4j and its Graph Data Science library, each doing a real SOC job." },
+  { title: "Beat the 29-minute clock", text: "Replay an attack live against the breakout budget and watch the kill chain connect itself into one incident in seconds, not the hours of manual stitching it replaces." },
+  { title: "The shrinking circle", text: "Draw an identity's blast radius over the access it holds, then over the access it actually uses. The gap is the risk least privilege removes." },
+  { title: "Measured, not guessed", text: "GraphOps ranks every attack alert to the top, even on a day it was never tuned on, with no false alarms read first. We show the numbers against sorting by severity." },
+];
+
 export default function Landing() {
   return (
     <div className="landing">
@@ -49,6 +56,7 @@ export default function Landing() {
           <a className="btn primary" href="#/console">Open the console</a>
           <a className="btn ghost" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
         </div>
+        <p className="neo4j-line">Built on <b>Neo4j</b> and its <b>Graph Data Science</b> library. The graph is not a store behind the product; it is the product.</p>
         <p className="made-for">Built by Team Pingu Haters for hackFront India 2026, Cybersecurity theme.</p>
         <div className="hero-word">GRAPHOPS</div>
       </header>
@@ -92,6 +100,19 @@ export default function Landing() {
           ))}
         </div>
         <div className="cta center"><a className="btn primary" href="#/console">Explore the sample organisation</a></div>
+      </section>
+
+      <section id="wins" className="section">
+        <p className="kicker">Why it wins</p>
+        <h2>The graph is the product</h2>
+        <div className="wins">
+          {WINS.map((w) => (
+            <div key={w.title} className="win-card">
+              <h3>{w.title}</h3>
+              <p>{w.text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <footer className="lfoot">

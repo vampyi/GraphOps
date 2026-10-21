@@ -568,3 +568,12 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .eval-l { font-size: 10.5px; color: var(--muted); max-width: 150px; line-height: 1.35; margin-top: 1px; }
 
 @media (max-width: 1100px) { .eval-grid { grid-template-columns: 1fr; } }
+
+/* ===== landing: neo4j line + why-it-wins ===== */
+.neo4j-line { font-size: 15px; color: var(--text-2); margin: 18px 0 0; max-width: 620px; position: relative; z-index: 1; }
+.neo4j-line b { color: var(--teal); font-weight: 600; }
+.wins { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 56px; }
+.win-card { border-top: 1px solid var(--border); padding: 20px 0 4px; }
+.win-card h3 { font-size: 18px; color: var(--text); margin: 0 0 8px; }
+.win-card p { font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0; }
+@media (max-width: 760px) { .wins { grid-template-columns: 1fr; } }
