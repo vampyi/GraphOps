@@ -8,12 +8,14 @@ import Exposure from "./Exposure.jsx";
 import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
 import Evaluation from "./Evaluation.jsx";
+import Ask from "./Ask.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Rank and investigate today's alerts" },
   { id: "exposure", label: "Exposure", hint: "Attack paths and choke points before an attack" },
   { id: "access", label: "Access", hint: "Granted vs used access, the least-privilege gap" },
   { id: "graph", label: "Graph", hint: "The Neo4j engine: one query per SOC question" },
+  { id: "ask", label: "Ask", hint: "Ask about today's alerts in plain words, in English or an Indian language" },
   { id: "evaluation", label: "Evaluation", hint: "Does GraphOps find the attack sooner than sorting by severity?" },
 ];
 const POLL_MS = 2000;
@@ -175,6 +177,7 @@ export default function Dashboard() {
       {view === "exposure" && <Exposure onError={setError} />}
       {view === "access" && <Access onError={setError} />}
       {view === "graph" && <GraphEngine onError={setError} />}
+      {view === "ask" && <Ask />}
       {view === "evaluation" && <Evaluation onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
 
       {guided && <GuidedBanner guided={guided} alerts={alerts} onClose={endGuided} />}

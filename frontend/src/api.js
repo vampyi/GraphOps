@@ -17,6 +17,7 @@ export const getReport = (id) => call(`/incidents/${id}/report`);
 export const patchIncident = (id, body) => patch(`/incidents/${id}`, body);
 export const writeStory = (id, lang = "en-IN") => post(`/incidents/${id}/story?lang=${encodeURIComponent(lang)}`);
 export const getLanguages = () => call("/languages");
+export const askQuestion = (question, history, lang) => post("/ask", { question, history, lang });
 export const setVerdict = (id, status, by) => post(`/alerts/${id}/verdict`, { status, by });
 export const patchAsset = (id, body) => patch(`/assets/${id}`, body);
 

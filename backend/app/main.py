@@ -23,6 +23,7 @@ _driver = driver()
 
 # the edges an attacker follows, as one pipe-separated string for cypher. one source: app/attack.py.
 ATTACK_EDGES = "MemberOf|AdminTo|CanRDP|GenericAll|HasSession|RemoteLogon"
+SEVERITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 BLAST_EDGES = {"all": ATTACK_EDGES, "granted": "|".join(GRANTED_EDGES), "used": "|".join(USED_EDGES)}
 
 
@@ -483,6 +484,120 @@ def live(since: int = 0):
         running = bool(_replay["thread"] and _replay["thread"].is_alive())
         return {"seq": seq, "ingested": ingested, "replaying": running,
                 "alerts": _alert_rows(s, since) if seq > since else []}
+
+
+class Question(BaseModel):
+    question: str
+    history: list[dict] = []
+    lang: str = "en-IN"
+
+
+@app.post("/api/ask")
+def ask_question(body: Question):
+    """the ask tab: a plain-language question answered by the llm from graphops' read-only lookups only."""
+    from . import ask, llm
+    if body.lang not in LANGUAGES:
+        raise HTTPException(422, f"lang must be one of {', '.join(LANGUAGES)}")
+    if not llm.available():
+        raise HTTPException(503, "The Ask tab needs a Sarvam AI key (SARVAM_API_KEY) on the server.")
+    try:
+        return ask.answer(body.question, _ask_tools(), body.history, body.lang)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    except llm.LLMError as exc:
+        raise HTTPException(502, f"The AI service failed: {exc}")
+
+
+def _ask_tools():
+    """the read-only lookups the ask tab may use, trimmed so the llm sees the facts, not the drawing data."""
+    def top_alerts(limit=8, severity=None):
+        rows = [r for r in alerts() if not severity or r["severity"] == severity]
+        keep = ("id", "name", "score", "severity", "time", "involves", "reasons", "incident_id", "status")
+        return [{k: r[k] for k in keep} for r in rows[: max(1, min(int(limit), 15))]]
+
+    def alert_details(alert_id):
+        rows = alerts()
+        by_sev = sorted(rows, key=lambda r: (-SEVERITY_ORDER.get(r["severity"], 0), r["time"]))
+        for i, r in enumerate(rows):
+            if r["id"] == alert_id:
+                return {**r, "rank_graphops": i + 1, "rank_by_severity": [x["id"] for x in by_sev].index(alert_id) + 1,
+                        "points_by_question": r.pop("breakdown")}
+        raise ValueError(f"no alert {alert_id}")
+
+    def blast(alert_id=None, entity_id=None):
+        if alert_id:
+            b = blast_radius(alert_id)
+        elif entity_id:
+            b = _entity_reach(entity_id)
+        else:
+            raise ValueError("give alert_id or entity_id")
+        by_hop = {}
+        for n in b["nodes"]:
+            by_hop.setdefault(n["hop"], []).append({"id": n["id"], "kind": n["kind"], "critical": n["critical"]})
+        return {"start": by_hop.pop(0, []), "reachable_by_hop": by_hop,
+                "critical_reachable": [n["id"] for n in b["nodes"] if n["critical"] and n["hop"] > 0],
+                "shortest_path_to_critical": b.get("attack_path")}
+
+    def attack_paths():
+        with _driver.session() as s:
+            x = exposure.analyse(s)
+        return {"pairs": x["pairs"],
+                "paths": [{k: p.get(k) for k in ("source", "target", "nodes", "types", "hops")} for p in x["paths"][:6]],
+                "choke_points": x["chokepoints"][:5],
+                "fixes": [{k: f.get(k) for k in ("title", "edges", "nodes", "pairs_cut", "share_cut") if f.get(k) is not None}
+                          for f in x["recommendations"][:3]]}
+
+    def access_gap(entity_id=None):
+        with _driver.session() as s:
+            if entity_id:
+                c = access.compare(s, entity_id)
+                if c is None:
+                    raise ValueError(f"no identity {entity_id}")
+                return {"identity": entity_id, "summary": c["summary"], "unused": [u["id"] for u in c["unused"]],
+                        "used": [u["id"] for u in c["used"]]}
+            o = access.overview(s)
+        return {"totals": o["totals"], "accounts": [{"id": i["id"], "summary": i["summary"], "unused": i["unused"]}
+                                                    for i in o["identities"][:8]]}
+
+    def find_entities(text):
+        with _driver.session() as s:
+            return [dict(r) for r in s.run(
+                """
+                MATCH (n) WHERE (n:User OR n:Group OR n:Computer)
+                  AND (toLower(n.id) CONTAINS toLower($t) OR toLower(coalesce(n.name, '')) CONTAINS toLower($t)
+                       OR toLower(coalesce(n.owner, '')) CONTAINS toLower($t))
+                RETURN n.id AS id, labels(n)[0] AS kind, n.name AS name, n.owner AS owner, coalesce(n.critical, false) AS critical
+                LIMIT 10
+                """, t=str(text)[:60])]
+
+    return {"top_alerts": top_alerts, "alert_details": alert_details, "blast_radius": blast,
+            "incident": incident, "attack_paths": attack_paths, "access_gap": access_gap,
+            "ranking_quality": evaluation, "find_entities": find_entities}
+
+
+def _entity_reach(entity_id):
+    """blast radius from one user, group or machine (the alert version starts from an alert's entities)."""
+    with _driver.session() as s:
+        start = s.run("MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer "
+                      "RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical", id=entity_id).single()
+        if not start:
+            raise ValueError(f"no user, group or machine {entity_id}")
+        rings = [dict(r) for r in s.run(
+            f"""
+            MATCH p = (start {{id: $id}})-[:{ATTACK_EDGES}*1..3]->(n)
+            WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
+            WITH n, min(length(p)) AS hop
+            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, hop
+            """, id=entity_id)]
+        path = s.run(
+            f"""
+            MATCH (start {{id: $id}}), (c) WHERE c.critical = true AND c <> start
+            MATCH p = shortestPath((start)-[:{ATTACK_EDGES}*..6]->(c))
+            RETURN [x IN nodes(p) | x.id] AS ids, [r IN relationships(p) | type(r)] AS types
+            ORDER BY length(p) LIMIT 1
+            """, id=entity_id).single()
+    return {"nodes": [{**dict(start), "hop": 0}] + [r for r in rings if r["id"] != entity_id],
+            "attack_path": {"nodes": path["ids"], "types": path["types"]} if path else None}
 
 
 @app.get("/api/languages")
