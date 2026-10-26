@@ -41,9 +41,9 @@ How much each question counts is our design choice. We tune it on test data.
 
 | Where | What it does | Why it is safe |
 |---|---|---|
-| Ranking weights | A small model (logistic regression or decision trees) learns from analysts marking alerts as real or false | Simple and explainable. Big graph neural networks collapsed when re-tested fairly in 2025 and 2026 studies. |
-| Incident story | An LLM drafts what happened, step by step | Every sentence cites real graph nodes and an analyst approves it. A Google study found unchecked summaries often missed details or added errors. |
-| Plain-English questions | "What can this laptop reach?" becomes a graph query through Neo4j's `Text2CypherRetriever` | The query is shown to the analyst and runs read-only. |
+| Ranking weights (built, off by default) | A small logistic regression learns from analysts marking alerts real, benign or false, and shows its weights next to the hand-set ones | Simple and explainable. Big graph neural networks collapsed when re-tested fairly in 2025 and 2026 studies. On our six synthetic days it did no better than the hand-set weights, so it stays off until real verdicts exist ([evaluation.md](evaluation.md)). |
+| Incident story (built, Sarvam AI) | Sarvam's `sarvam-105b` drafts what happened, step by step, in English or translated into 10 Indian languages | Every sentence cites the alerts, users or machines it is based on; a checker removes any sentence citing something outside the incident, and the story is marked as needing analyst approval. A Google study found unchecked summaries often missed details or added errors. |
+| Ask tab (built, Sarvam AI) | "What can the intern's laptop reach?" is answered in plain words, in English or an Indian language | The model can only call eight fixed, read-only GraphOps lookups; it cannot write or run free-form queries. Every sentence cites what it is based on, and sentences citing anything the lookups did not return are removed. We chose this over generating Cypher (`Text2CypherRetriever`), whose output Neo4j says is not guaranteed to be correct. |
 
 ### 5. Fast because the hard work happens before the alert
 - A shortest-path search from each node to the crown jewels stores "steps to nearest crown jewel" on every node. Scoring a new alert becomes a lookup.
@@ -58,11 +58,11 @@ This is standard engineering practice, not a new algorithm.
 | # | Moment | What the judge sees |
 |---|---|---|
 | 1 | Beat the 29-minute clock | A timer at 29:00. An alert fires and one click shows what the attacker can reach. |
-| 2 | 12 alerts become 1 story | A raw alert list on the left. The same alerts as one attack in ATT&CK order on the right. |
+| 2 | Scattered alerts become 1 story | The 4 attack alerts are spread among 26 others in the raw list. GraphOps links them into one incident, listed by time and tagged with attack stages, and drafts its story. |
 | 3 | The fix-it button | "Remove these N permissions and X% of attack paths disappear." The red paths vanish on screen. Numbers come from our data. |
 | 4 | The shrinking circle | Blast radius over granted access, then over used access. The circle shrinks. |
-| 5 | The sleeping alert wakes up | An alert ranked #47 jumps to #1 when a new alert links it to a path toward the database. |
-| 6 | Set the trap (bonus) | GraphOps suggests where to place a decoy admin account on the most likely attack path. Backed by Adelaide and CSIRO research. We have not checked whether products already do this. |
+| 5 | The sleeping alert wakes up (not in our data yet) | An alert low in the inbox jumps to the top when a new alert links it to a path toward the database. In our sample day this does not happen: the attack's first alert already arrives at #2, because its laptop is close to the crown jewels. Showing it needs a scenario built for it. |
+| 6 | Set the trap (bonus, not built) | GraphOps suggests where to place a decoy admin account on the most likely attack path. Backed by Adelaide and CSIRO research. We have not checked whether products already do this. |
 
 **Proof.** Time 2 or 3 people answering "what happened?" with the raw alert list, then with GraphOps. Show both times.
 
@@ -120,4 +120,4 @@ Read from the [hackFront India page](https://whereuelevate.com/drills/hackfronti
 ### Partners worth knowing
 - **DSCI Cybersecurity Centre of Excellence** is the industry partner. Expect judges who know security well.
 - **Neo4j** is the track partner.
-- **Sarvam** is the AI partner and builds Indian-language AI. An idea to check: incident stories in Indian languages. We have not checked Sarvam's API yet.
+- **Sarvam** is the AI partner and builds Indian-language AI. GraphOps uses it for the incident story and the Ask tab, with answers in English or 10 Indian languages (Sarvam Track).

@@ -56,7 +56,7 @@ export default function Landing() {
           <a className="btn primary" href="#/console">Open the console</a>
           <a className="btn ghost" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
         </div>
-        <p className="neo4j-line">Built on <b>Neo4j</b> and its <b>Graph Data Science</b> library. The graph is not a store behind the product; it is the product.</p>
+        <p className="neo4j-line">Built on <b>Neo4j</b>, using its <b>Graph Data Science</b> library where it is installed. The graph is not a store behind the product; it is the product.</p>
         <p className="made-for">Built by Team Pingu Haters for hackFront India 2026, Cybersecurity theme.</p>
         <div className="hero-word">GRAPHOPS</div>
       </header>
