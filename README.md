@@ -12,14 +12,42 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 **Live at [graph-ops.vercel.app](https://graph-ops.vercel.app)** (synthetic data only).
 
+The console now has three views for an analyst on shift: **Triage** (rank and investigate today's alerts),
+**Exposure** (attack paths and choke points before an attack) and **Access** (granted vs used access). The
+[analyst guide](docs/analyst-guide.md) walks through them. The second build's scope and its tests (R9 to R21)
+are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-ready-october-2026).
+
 | Part | Status |
 |---|---|
-| First flow: ranked alert inbox, blast radius, linked incident, incident story, analyst verdict | Works, on a synthetic sample organisation. Scope and requirements in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
-| Live streaming through Kafka: simulator, Kafka, ingest, scoring as each alert lands | Works on a laptop and on the hosted site. Measured on the hosted site: all 30 alerts of the sample day read from Kafka, saved and ranked 2.4 seconds after they were sent. Details in [docs/streaming.md](docs/streaming.md). |
-| Hosting: Vercel, Neo4j AuraDB Free, Aiven for Apache Kafka | Works. How it is set up in [docs/hosting.md](docs/hosting.md). |
-| Dashboard showing alerts arriving live, and a replay button | Not built yet. The live data is available at `/api/live`, but the dashboard still loads the inbox once. |
-| Ranking model that learns from analyst verdicts | Not built yet. Verdicts are saved; scores use hand-set weights. |
-| LANL evaluation, access comparison view, plain-English question box | Planned, not built. |
+| Triage: ranked alert inbox, blast radius, linked incident, incident story, verdict | Built. First-flow requirements R1 to R8 in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
+| Live dashboard: alerts arrive as the day streams through Kafka, replay and reset from the top bar | Built. Polls `/api/live`; new alerts slide into the inbox and rank changes are flagged. |
+| Exposure: attack paths from low-trust zones to critical assets, MITRE-tagged, with choke points and a minimum-cut remediation whose effect is recomputed exactly | Built. `GET /api/exposure`, `POST /api/exposure/simulate`. |
+| Access: granted vs used access per identity, the unused-access ranking, and blast radius over granted vs used routes | Built. `GET /api/entities/{id}/access`, `/api/access/overview`, blast-radius `mode=granted\|used`. |
+| Community detection (Louvain) and cross-community (lateral) incident flagging | Built. Runs on Neo4j GDS, falls back to networkx on AuraDB Free. |
+| Ingest beyond Kafka: HTTP webhook, Microsoft Sentinel / Splunk ES / Elastic / Wazuh alert maps, BloodHound import | Built. See [docs/ingest.md](docs/ingest.md). |
+| Analyst workflow: stable incident IDs across re-scoring, incident status and notes, benign verdicts, one-click incident report, mark-asset-critical | Built. |
+| Graph view: the Neo4j engine made explicit — a live algorithm roster (Dijkstra, betweenness, PageRank, Louvain, WCC, min-cut), the one Cypher query behind each panel, and a graph-vs-SQL reachability proof timed live | Built. `GET /api/graph/algorithms`, `/api/graph/reachability-proof`. |
+| Beat-the-clock guided demo: one-click attack replay against a 29-minute breakout countdown, the kill chain lighting up step by step, ending with the time-to-connected-picture | Built. |
+| Cinematic remediation: applying an Exposure fix collapses the cut attack paths and counts the risk number down to the recomputed value | Built. |
+| Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
+| Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
+| Continuous integration: the backend tests and the dashboard build run on every push and pull request | Built. [.github/workflows/ci.yml](.github/workflows/ci.yml). |
+| Ranking model that learns from analyst verdicts | Not built. Verdicts are saved with who and when, ready to train on; scores use hand-set weights. |
+| LANL evaluation and the plain-English question box | Planned, not built. |
+
+## Current state vs. roadmap to production
+
+GraphOps is a **working prototype, not a production deployment**. Everything in the Status table above runs today on synthetic data, and the evaluation numbers are measured, not estimated. Before a real SOC runs it on live incidents, five things stand between the prototype and production. We list them plainly, because the gap is part of an honest pitch.
+
+| Dimension | Where it is today | What a production deployment needs |
+|---|---|---|
+| **Access control** | No login: anyone who can reach the port has full analyst control. | Authentication, per-analyst roles, and an audit trail of who triaged and remediated what. |
+| **Real feeds** | Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, built and unit-tested against sample exports. | A pilot against live SIEM and EDR feeds, where real data is messier and higher-volume than the fixtures. |
+| **Scale** | Validated on the synthetic sample organisation; precompute and query times measured there. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
+| **Hardening** | Dev defaults: no rate limiting, no ingest size caps, a single app and database instance, CORS set to the dev origin. | Rate-limited and size-capped ingest behind the access control above, and a backup and high-availability story for Neo4j. |
+| **Field validation** | Measured against labelled synthetic days, including a held-out day it was never tuned on. | A supervised pilot on real incidents to confirm the ranking holds on live attacks. |
+
+None of these are defects; they are the normal distance between a tested prototype and a deployed product. The build is complete and honest for what a hackathon judges: a live, measured demonstration that the graph beats sorting by severity. The list above is what turns it into a tool a SOC runs on shift.
 
 ## The problem
 
@@ -199,7 +227,6 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 |---|---|---|
 | Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst verdicts. |
 | Plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
-| Continuous checks | GitHub Actions | Run the tests on every push. Today we run them by hand. |
 
 ### Tools we considered and left out
 
@@ -230,9 +257,25 @@ The console always states that its data is synthetic.
 | Break tests | Empty events, very large events and malformed events are rejected without crashing the pipeline. |
 | AI checks | Incident stories that cite a node outside the incident are rejected. Generated queries that try to write are refused. The ranking model is compared against hand-set weights on held-out alerts. |
 | People test | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
-| Continuous checks | Planned: unit and integration tests run on every push through GitHub Actions. Today we run them by hand. |
+| Continuous checks | GitHub Actions runs the backend tests (real Neo4j and Kafka in Docker via Testcontainers) and the dashboard build on every push and pull request. See [.github/workflows/ci.yml](.github/workflows/ci.yml). |
 
 ## Run it
+
+### Everything in one command
+
+With Docker Desktop running:
+
+```bash
+cp .env.example .env                          # choose a local password
+docker compose --profile app up --build       # Neo4j + Kafka + the app, seeded
+# open http://localhost:8000
+```
+
+This builds the dashboard, seeds the sample organisation and serves the console and API on port 8000. The
+`app` profile is opt-in, so the plain `docker compose up -d` below still starts only the infrastructure when
+you want to run the backend and dashboard yourself.
+
+### For development
 
 You need Docker Desktop, Python 3.12 or newer and Node.js 20 or newer.
 

@@ -40,7 +40,12 @@ def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "al
 def load_network(session, network_path=SAMPLE / "network.json"):
     """wipe the database and load the network only: users, machines, groups, permissions and past activity.
     this is the starting point of the live replay, before any of the day's events arrive."""
-    network = json.loads(network_path.read_text())
+    load_network_data(session, json.loads(network_path.read_text()))
+
+
+def load_network_data(session, network):
+    """load a network given as a dict with nodes, granted and observed. used by load_network (from a file) and
+    by the importers (from BloodHound or CSV), so every entry point builds the same graph the same way."""
     session.run("MATCH (n) DETACH DELETE n")
     for label in NODE_LABELS:
         session.run(f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.id IS UNIQUE")

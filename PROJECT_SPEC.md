@@ -73,3 +73,59 @@ and requirements R1 to R8 pass.
 | Whether NVL is easy to use in React | Resolved: NVL's licence only allows use with Neo4j Aura or Neo4j's commercial products, so we draw the graph ourselves in SVG instead. |
 | Whether the Graph Data Science plugin installs cleanly in Docker on this laptop | Resolved: Neo4j, Graph Data Science and APOC 2026.09.0 all load. |
 | Good ranking weights | Open: hand-set weights in `backend/app/scoring.py` pass R8 on the sample data. They are our design choice, not measured. |
+
+---
+
+# Flow 2: SOC-ready (branch `feature/soc-ready`, October 2026)
+
+The first flow proved the idea on one scripted day. This flow turns GraphOps into something a security team could run on its own network and that judges can click through end to end. It follows the problem statement's four capabilities and the "what a good solution demonstrates" list, and the team's own research notes (branch `raja`, `docs/data-and-testing-research.md`).
+
+## 1. Goals, in order
+
+1. **Pre-incident exposure.** Map the attack paths from low-trust machines to critical assets, name the choke points and show which few permissions or sessions to remove to cut the most paths, with the effect recomputed exactly.
+2. **Zero trust in numbers.** Compare the access each identity is granted with the access it actually uses, and draw the blast radius twice: granted and used. The gap is the risk least privilege removes.
+3. **Live.** Alerts arrive while the analyst watches, scores and incidents change in front of them, and the dashboard says what moved and why.
+4. **Structure, not rules.** Louvain communities over observed activity. An incident that spans communities is lateral movement; a first-time route that crosses communities is stranger than one inside them.
+5. **Real data in.** One event schema, reachable three ways: Kafka topics, an HTTP webhook (with field maps for common SIEM and EDR alert formats) and file imports (BloodHound SharpHound JSON, CSV for inventory, logons and flows).
+6. **Analyst workflow.** Verdicts that match how SOCs grade (real, benign, false), incident status and notes, and a one-click incident report whose sections follow what CERT-In's 6-hour report asks for.
+7. **Deployable.** `docker compose --profile app up` runs the whole stack. Tests run on every push.
+
+## 2. Requirements and how each is tested
+
+| # | Requirement | How we test it |
+|---|---|---|
+| R9 | `GET /api/exposure` lists every shortest attack path from low-trust machines (and optionally all identities) to critical assets, each edge tagged with its MITRE ATT&CK technique, plus choke points ranked by paths through them and a minimum edge cut. | Known-answer unit tests on a 7-node graph; on the sample organisation `server-7` and `svc_db`'s session sit on every path from the developers to `customer-db`. |
+| R10 | `POST /api/exposure/simulate` recomputes reachability after removing chosen nodes or edges and reports pairs and paths cut, exactly, not estimated. | Removing `laptop-42 -HasSession-> it_admin` cuts every path from the low-trust zone; removing `g_helpdesk` leaves the Domain Admins path. |
+| R11 | `GET /api/entities/{id}/access` returns granted reach, used reach (last N days) and the grants never used. `GET /api/access/overview` ranks identities by unused grants. | `it_admin` holds admin rights on 9 machines and used 4 in the last 30 days. |
+| R12 | Blast radius takes `mode=all|granted|used`; the used radius is never larger than the granted one on the sample data. | Compare node counts for `a-03` across modes. |
+| R13 | Louvain communities are stored on every entity (`community`). Incidents report the communities they span. The never-taken reason says when a route crosses communities. | The attack incident spans at least 2 communities; its first hop crosses communities. Works without Graph Data Science (networkx fallback). |
+| R14 | Incident IDs are stable across re-scoring: an incident keeps its ID when alerts join it. Incident status and notes survive re-scoring. | Score, add an alert that joins the incident, score again: same ID, notes intact. |
+| R15 | The dashboard polls `/api/live` while a replay runs, shows new alerts within one poll, and marks rank changes. Replay can be started and reset from the dashboard. | Streaming test already proves the API; a frontend build plus a scripted API walk-through covers the flow. |
+| R16 | `PATCH /api/assets/{id}` marks an asset critical or sets its zone and re-runs the analysis and scoring. | Mark `server-files` critical: `printer-01` gains no path (not an attack edge), alerts on `hr_1` gain hops points. |
+| R17 | Verdicts accept `real`, `benign` and `false`, and record who and when. | Read back from Neo4j. Unknown values still return 422. |
+| R18 | `POST /api/ingest` accepts a batch of events in the streaming schema; `POST /api/ingest/alerts?format=...` maps alert payloads shaped like Microsoft Sentinel, Splunk ES, Elastic Security and Wazuh into it. Unknown hosts and accounts named by an alert are created so the graph grows from telemetry. | Sample payloads per format produce the expected alert, entities and ATT&CK tags; the alert is scored on the next read. |
+| R19 | `python -m app.import_bloodhound <dir or zip>` loads SharpHound JSON (users, groups, computers) into the schema, with Tier Zero groups and domain controllers marked critical. | A SharpHound-shaped fixture of the sample organisation loads to the same node and edge counts as `network.json`. |
+| R20 | `GET /api/incidents/{id}/report` returns a Markdown report: summary, timeline in ATT&CK order, affected assets, blast radius, communities, recommended containment, and the analyst's notes. | The attack incident's report names all four alerts and `customer-db`. |
+| R21 | Existing requirements R1 to R8 still pass unchanged. | Same tests. |
+
+## 3. What it does not do
+
+- No ranking model trained on verdicts yet. Verdicts now carry analyst and time so training is possible later.
+- No plain-English question box. Every analytic has a fixed, read-only Cypher or Python path and shows its numbers.
+- No sign-in. The hosted site is a demo on synthetic data.
+- The sample organisation stays as it is. Realism work (default rights, hubs, normal first-time routes) belongs in a separate dataset, as the research recommends.
+- Field maps for SIEM formats are written from public documentation and sample payloads we wrote. They are starting points to check against a real tenant, not certified connectors.
+
+## 4. Design decisions
+
+- **Paths come from Neo4j, remediation maths from Python.** `allShortestPaths` in Cypher finds the paths; `networkx` ranks choke points, finds the minimum cut and recomputes reachability after a simulated fix. This runs the same on AuraDB Free (no Graph Data Science) and on a laptop.
+- **One event schema for every door.** Kafka, the webhook and the file importers all produce the same JSON events and go through `events.apply_batch`, so every path is idempotent and tested once.
+- **IDs are names.** Imported identities use their principal name (`jdoe@corp.local`) as `id` so the dashboard reads naturally; the SID is kept as a property.
+- **Honest numbers.** Every "cuts X of Y paths" figure is recomputed on the graph after removal, never estimated from betweenness.
+
+## 5. Order of work
+
+1. Backend analytics (`exposure.py`, `access.py`, `communities.py`, `attack.py`), stable incidents, asset and verdict endpoints, with tests.
+2. Dashboard: view switcher (Triage, Exposure, Access), live mode, blast radius modes, critical toggle, incident workflow and report.
+3. Ingest: webhook and field maps, BloodHound and CSV importers, with fixtures and tests.
+4. Deployability: Dockerfiles, compose profile, GitHub Actions. Docs: README status, analyst guide, ingest guide, corrections from the research notes that touch this work.

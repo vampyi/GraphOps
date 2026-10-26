@@ -1,4 +1,5 @@
 """backend server: the api the dashboard calls."""
+import datetime as dt
 import logging
 import os
 import threading
@@ -7,16 +8,21 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
+from .attack import GRANTED_EDGES, USED_EDGES, tag
+from .communities import summary as community_summary
 from .db import ROOT, driver
-from .scoring import WEIGHTS
+from .report import incident_report
+from .scoring import WEIGHTS, score_all
 from .story import write_story
-from . import simulate, stream
 
 app = FastAPI(title="GraphOps")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 _driver = driver()
 
+# the edges an attacker follows, as one pipe-separated string for cypher. one source: app/attack.py.
 ATTACK_EDGES = "MemberOf|AdminTo|CanRDP|GenericAll|HasSession|RemoteLogon"
+BLAST_EDGES = {"all": ATTACK_EDGES, "granted": "|".join(GRANTED_EDGES), "used": "|".join(USED_EDGES)}
 
 
 @app.get("/api/alerts")
@@ -50,20 +56,27 @@ def _with_breakdown(rows):
 
 
 @app.get("/api/alerts/{alert_id}/blast-radius")
-def blast_radius(alert_id: str):
-    """everything reachable from the alert's machines and users in 1, 2 and 3 attack steps."""
+def blast_radius(alert_id: str, mode: str = "all", days: int = access.DEFAULT_DAYS):
+    """everything reachable from the alert's machines and users in 1, 2 and 3 steps. mode picks the edges:
+    all attack edges, only granted permissions, or only logons actually used in the last `days` days. the two
+    circles for granted and used are how we show the risk that least privilege removes."""
+    if mode not in BLAST_EDGES:
+        raise HTTPException(422, "mode must be 'all', 'granted' or 'used'")
+    rel = BLAST_EDGES[mode]
+    window = access.since(days) if mode == "used" else None
     with _driver.session() as s:
         if not s.run("MATCH (a:Alert {id: $id}) RETURN a", id=alert_id).single():
             raise HTTPException(404, "alert not found")
         rings = [dict(r) for r in s.run(
             f"""
             MATCH (a:Alert {{id: $id}})-[:Involves]->(start)
-            MATCH p = (start)-[:{ATTACK_EDGES}*1..3]->(n)
+            MATCH p = (start)-[:{rel}*1..3]->(n)
             WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
+              AND ($win IS NULL OR all(r IN relationships(p) WHERE coalesce(r.last_seen, $win) >= $win))
             WITH n, min(length(p)) AS hop
             RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, hop
             ORDER BY hop, id
-            """, id=alert_id)]
+            """, id=alert_id, win=window)]
         starts = [dict(r) for r in s.run(
             "MATCH (:Alert {id: $id})-[:Involves]->(e) RETURN e.id AS id, labels(e)[0] AS kind, coalesce(e.critical, false) AS critical, 0 AS hop",
             id=alert_id)]
@@ -72,33 +85,48 @@ def blast_radius(alert_id: str):
         ids = [n["id"] for n in nodes]
         edges = [dict(r) for r in s.run(
             f"""
-            MATCH (x)-[r:{ATTACK_EDGES}]->(y) WHERE x.id IN $ids AND y.id IN $ids
+            MATCH (x)-[r:{rel}]->(y) WHERE x.id IN $ids AND y.id IN $ids
+              AND ($win IS NULL OR coalesce(r.last_seen, $win) >= $win)
             RETURN x.id AS src, type(r) AS type, y.id AS dst
-            """, ids=ids)]
+            """, ids=ids, win=window)]
         details = {r["id"]: r for r in (dict(x) for x in s.run(
             """
             MATCH (n) WHERE n.id IN $ids
             RETURN n.id AS id, n.name AS name, n.zone AS zone, n.os AS os, n.owner AS owner,
+                   n.community AS community,
                    n.hops_to_critical AS hops_to_critical, n.critical_within_3 AS critical_within_3,
                    round(coalesce(n.choke_score, 0), 2) AS choke_score
             """, ids=ids))}
         for n in nodes:
             n.update({k: v for k, v in details.get(n["id"], {}).items() if k != "id"})
-        path = s.run(
-            f"""
-            MATCH (:Alert {{id: $id}})-[:Involves]->(start)
-            MATCH (c) WHERE c.critical = true AND c <> start
-            MATCH p = shortestPath((start)-[:{ATTACK_EDGES}*..6]->(c))
-            RETURN [x IN nodes(p) | x.id] AS ids, [r IN relationships(p) | type(r)] AS types
-            ORDER BY length(p) LIMIT 1
-            """, id=alert_id).single()
-        attack_path = {"nodes": path["ids"], "types": path["types"]} if path else None
-        return {"alert_id": alert_id, "nodes": nodes, "edges": edges, "attack_path": attack_path}
+        attack_path = None
+        if mode == "all":
+            path = s.run(
+                f"""
+                MATCH (:Alert {{id: $id}})-[:Involves]->(start)
+                MATCH (c) WHERE c.critical = true AND c <> start
+                MATCH p = shortestPath((start)-[:{rel}*..6]->(c))
+                RETURN [x IN nodes(p) | x.id] AS ids, [r IN relationships(p) | type(r)] AS types
+                ORDER BY length(p) LIMIT 1
+                """, id=alert_id).single()
+            if path:
+                attack_path = {"nodes": path["ids"], "types": path["types"],
+                               "tags": [tag(t) for t in path["types"]]}
+        counts = {"reachable": len([n for n in nodes if n["hop"] > 0]),
+                  "critical": len([n for n in nodes if n["hop"] > 0 and n["critical"]])}
+        return {"alert_id": alert_id, "mode": mode, "nodes": nodes, "edges": edges,
+                "attack_path": attack_path, "counts": counts}
 
 
 @app.get("/api/incidents/{incident_id}")
 def incident(incident_id: str):
     with _driver.session() as s:
+        meta = s.run(
+            """
+            MATCH (i:Incident {id: $id})
+            RETURN i.status AS status, i.notes AS notes, i.opened_at AS opened_at,
+                   i.communities AS communities, i.lateral AS lateral, i.stages AS stages, i.score AS score
+            """, id=incident_id).single()
         rows = [dict(r) for r in s.run(
             """
             MATCH (a:Alert {incident_id: $id})
@@ -108,7 +136,10 @@ def incident(incident_id: str):
             """, id=incident_id)]
         if not rows:
             raise HTTPException(404, "incident not found")
-        return {"id": incident_id, "alerts": rows}
+        out = {"id": incident_id, "alerts": rows}
+        if meta:
+            out.update({k: meta[k] for k in ("status", "notes", "opened_at", "communities", "lateral", "stages", "score")})
+        return out
 
 
 @app.post("/api/incidents/{incident_id}/story")
@@ -120,20 +151,244 @@ def story(incident_id: str):
         return result
 
 
+@app.get("/api/incidents/{incident_id}/report")
+def report(incident_id: str):
+    """a containment-ready incident report in markdown: summary, attack timeline in stage order, affected and
+    reachable assets, the choke points on the path and the analyst's notes. shaped around what CERT-In's 6-hour
+    report asks for."""
+    with _driver.session() as s:
+        result = incident_report(s, incident_id)
+        if result is None:
+            raise HTTPException(404, "incident not found")
+        return result
+
+
+class IncidentPatch(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+
+
+@app.patch("/api/incidents/{incident_id}")
+def patch_incident(incident_id: str, body: IncidentPatch):
+    """set an incident's status or notes. both survive re-scoring because scoring carries them over by the
+    alerts an incident shares with its previous self."""
+    allowed = ("open", "investigating", "contained", "closed")
+    if body.status is not None and body.status not in allowed:
+        raise HTTPException(422, f"status must be one of {', '.join(allowed)}")
+    with _driver.session() as s:
+        r = s.run(
+            """
+            MATCH (i:Incident {id: $id})
+            SET i.status = coalesce($status, i.status), i.notes = coalesce($notes, i.notes)
+            RETURN i.status AS status, i.notes AS notes
+            """, id=incident_id, status=body.status, notes=body.notes).single()
+        if not r:
+            raise HTTPException(404, "incident not found")
+        return {"id": incident_id, "status": r["status"], "notes": r["notes"]}
+
+
 class Verdict(BaseModel):
     status: str
+    by: str | None = None
 
 
 @app.post("/api/alerts/{alert_id}/verdict")
 def verdict(alert_id: str, body: Verdict):
-    if body.status not in ("real", "false"):
-        raise HTTPException(422, "status must be 'real' or 'false'")
+    """the analyst's call on an alert. 'benign' records real-but-allowed activity (a benign positive), which a
+    real/false-only choice cannot hold. who and when are stored so verdicts can later train a ranking model."""
+    if body.status not in ("real", "benign", "false"):
+        raise HTTPException(422, "status must be 'real', 'benign' or 'false'")
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     with _driver.session() as s:
-        r = s.run("MATCH (a:Alert {id: $id}) SET a.status = $st RETURN a.status AS status",
-                  id=alert_id, st=body.status).single()
+        r = s.run(
+            """
+            MATCH (a:Alert {id: $id})
+            SET a.status = $st, a.verdict_by = $by, a.verdict_at = $at
+            RETURN a.status AS status, a.verdict_by AS by, a.verdict_at AS at
+            """, id=alert_id, st=body.status, by=body.by, at=now).single()
         if not r:
             raise HTTPException(404, "alert not found")
-        return {"id": alert_id, "status": r["status"]}
+        return {"id": alert_id, "status": r["status"], "by": r["by"], "at": r["at"]}
+
+
+@app.get("/api/exposure")
+def get_exposure(scope: str = "low_trust", max_hops: int = exposure.MAX_HOPS):
+    """attack paths from the chosen starting zone to critical assets, the choke points they share and the
+    fixes that cut the most paths. scope 'low_trust' starts from low-trust machines, 'all' from every
+    non-critical identity and machine."""
+    if scope not in exposure.SCOPES:
+        raise HTTPException(422, f"scope must be one of {', '.join(exposure.SCOPES)}")
+    if not 1 <= max_hops <= 10:
+        raise HTTPException(422, "max_hops must be between 1 and 10")
+    with _driver.session() as s:
+        return exposure.analyse(s, scope, max_hops)
+
+
+class Removal(BaseModel):
+    scope: str = "low_trust"
+    nodes: list[str] = []
+    edges: list[dict] = []
+    max_hops: int = exposure.MAX_HOPS
+
+
+@app.post("/api/exposure/simulate")
+def post_exposure_simulate(body: Removal):
+    """recompute reachability after removing chosen nodes or edges and report, exactly, how many source-to-
+    critical pairs and paths are cut. edges are {src, type, dst}; a missing type removes every edge between the
+    pair. nothing in the database changes."""
+    if body.scope not in exposure.SCOPES:
+        raise HTTPException(422, f"scope must be one of {', '.join(exposure.SCOPES)}")
+    for e in body.edges:
+        if "src" not in e or "dst" not in e:
+            raise HTTPException(422, "each edge needs at least src and dst")
+    with _driver.session() as s:
+        return exposure.simulate_on(s, body.scope, body.nodes, body.edges, body.max_hops)
+
+
+@app.get("/api/entities/{entity_id}/access")
+def entity_access(entity_id: str, days: int = access.DEFAULT_DAYS):
+    """one identity's granted reach, its used reach over the last `days` days, and the grants it never uses."""
+    with _driver.session() as s:
+        result = access.compare(s, entity_id, days)
+        if result is None:
+            raise HTTPException(404, "entity not found")
+        return result
+
+
+@app.get("/api/access/overview")
+def access_overview(days: int = access.DEFAULT_DAYS):
+    """every user account ranked by the access it holds but has not used in the last `days` days."""
+    with _driver.session() as s:
+        return access.overview(s, days)
+
+
+@app.get("/api/communities")
+def communities():
+    """the activity communities and their members, for labelling the graph and spotting cross-group movement."""
+    with _driver.session() as s:
+        return {"communities": community_summary(s)}
+
+
+@app.get("/api/graph/algorithms")
+def graph_algorithms():
+    """the Neo4j / GDS algorithms GraphOps runs, each mapped to the SOC question it answers, with a live number.
+    this is the 'why a graph, why Neo4j' roster the dashboard shows."""
+    with _driver.session() as s:
+        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s)}
+
+
+@app.get("/api/evaluation")
+def evaluation():
+    """does GraphOps rank the attack above the noise, and better than severity-only? measured on the loaded day
+    against its (hidden-from-the-ranker) attack labels."""
+    with _driver.session() as s:
+        act = scenarios.active(s)
+        result = evaluate.evaluate(s, act["attack_ids"])
+        result["scenario"] = act["id"]
+        return result
+
+
+@app.get("/api/scenarios")
+def list_scenarios():
+    """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
+    with _driver.session() as s:
+        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog()}
+
+
+@app.post("/api/scenarios/{scenario_id}/load")
+def load_scenario(scenario_id: str):
+    """swap the whole console to a different labelled day, score it, and record its attack labels. this is how
+    we show the ranking holds on a day it was never tuned on."""
+    with _driver.session() as s:
+        result = scenarios.load_scenario(s, scenario_id)
+        if result is None:
+            raise HTTPException(404, "unknown scenario")
+        return result
+
+
+@app.get("/api/graph/reachability-proof")
+def reachability_proof(src: str, dst: str = None):
+    """answer 'can src reach dst?' as one timed Cypher traversal and show the same question written in SQL, to
+    make concrete why this is a graph problem. dst defaults to the nearest critical asset."""
+    with _driver.session() as s:
+        if dst is None:
+            row = s.run("MATCH (c) WHERE c.critical = true RETURN c.id AS id ORDER BY c.id LIMIT 1").single()
+            dst = row["id"] if row else None
+        if dst is None:
+            raise HTTPException(404, "no critical asset to reach")
+        result = graphinfo.reachability_proof(s, src, dst)
+        if "error" in result:
+            raise HTTPException(404, result["error"])
+        return result
+
+
+class AssetPatch(BaseModel):
+    critical: bool | None = None
+    zone: str | None = None
+
+
+@app.patch("/api/assets/{asset_id}")
+def patch_asset(asset_id: str, body: AssetPatch):
+    """mark an asset critical or set its zone, then re-run the analysis and scoring so every distance, choke
+    point and alert score reflects the change. this is how an analyst tells GraphOps what matters."""
+    if body.zone is not None and body.zone not in ("low_trust", "normal"):
+        raise HTTPException(422, "zone must be 'low_trust' or 'normal'")
+    with _driver.session() as s:
+        r = s.run(
+            """
+            MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer
+            SET n.critical = coalesce($critical, n.critical), n.zone = coalesce($zone, n.zone)
+            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
+            """, id=asset_id, critical=body.critical, zone=body.zone).single()
+        if not r:
+            raise HTTPException(404, "asset not found")
+        _reanalyse(s)
+        return {"id": r["id"], "kind": r["kind"], "critical": r["critical"], "zone": r["zone"]}
+
+
+def _reanalyse(s):
+    from .analysis import run_all
+    run_all(s)
+    score_all(s)
+    seq = (s.run("MATCH (st:StreamState {id: 'live'}) RETURN st.seq AS seq").single() or {"seq": 0})["seq"]
+    s.run("MATCH (a:Alert) SET a.changed_seq = $seq", seq=(seq or 0) + 1)
+    s.run("MERGE (st:StreamState {id: 'live'}) SET st.seq = $seq", seq=(seq or 0) + 1)
+
+
+class IngestEvents(BaseModel):
+    events: list[dict]
+
+
+@app.post("/api/ingest")
+def post_ingest(body: IngestEvents):
+    """accept a batch of events already in the streaming schema (the same shape Kafka carries), write them to
+    the graph once each and re-score. this is the door for a tool that posts straight to GraphOps."""
+    with _driver.session() as s:
+        result = ingest.ingest_events(s, body.events)
+        return result
+
+
+class IngestAlerts(BaseModel):
+    format: str | None = None
+    alerts: list[dict]
+
+
+@app.post("/api/ingest/alerts")
+def post_ingest_alerts(body: IngestAlerts, format: str | None = None):
+    """accept alerts shaped like a named SIEM or EDR product, map them into GraphOps alert events and ingest
+    them. hosts and accounts named by an alert that are not in the graph yet are created, so the picture grows
+    from telemetry. format can be given in the query or the body."""
+    fmt = format or body.format or "graphops"
+    if fmt not in ingest.ALERT_FORMATS:
+        raise HTTPException(422, f"format must be one of {', '.join(ingest.ALERT_FORMATS)}")
+    with _driver.session() as s:
+        try:
+            events = ingest.map_alerts(body.alerts, fmt)
+        except ingest.MappingError as exc:
+            raise HTTPException(422, str(exc))
+        result = ingest.ingest_events(s, events)
+        result["format"] = fmt
+        return result
 
 
 # live replay. with KAFKA_BOOTSTRAP set, the simulator sends to kafka and /api/live reads it back.
@@ -225,6 +480,18 @@ def live(since: int = 0):
         running = bool(_replay["thread"] and _replay["thread"].is_alive())
         return {"seq": seq, "ingested": ingested, "replaying": running,
                 "alerts": _alert_rows(s, since) if seq > since else []}
+
+
+@app.get("/api/health")
+def health():
+    """liveness and readiness for load balancers and ops probes: 200 with live Neo4j connectivity status."""
+    neo4j_ok = True
+    try:
+        _driver.verify_connectivity()
+    except Exception:
+        neo4j_ok = False
+    return {"status": "ok" if neo4j_ok else "degraded", "neo4j": neo4j_ok,
+            "time": dt.datetime.now(dt.timezone.utc).isoformat()}
 
 
 # serve the built dashboard from the same server when it exists (used on vercel and in production)
