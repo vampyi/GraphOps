@@ -712,3 +712,9 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .ask-input input { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; color: var(--text); padding: 10px 12px; font-size: 14px; font-family: inherit; }
 .ask-input input:focus { outline: none; border-color: var(--teal); }
 .ask-a code, .story code { white-space: nowrap; }
+.evalv-p { font-size: 14px; line-height: 1.6; color: var(--text-2); margin: 0 0 12px; max-width: 80ch; }
+.evalv-p.dim { color: var(--muted); }
+.learn-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 640px; }
+.learn-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); padding: 6px 10px 6px 0; }
+.learn-table td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+.learn-table td:first-child { font-family: inherit; }

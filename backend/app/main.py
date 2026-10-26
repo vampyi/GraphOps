@@ -600,6 +600,14 @@ def _entity_reach(entity_id):
             "attack_path": {"nodes": path["ids"], "types": path["types"]} if path else None}
 
 
+@app.get("/api/learning")
+def learning():
+    """the ranking model learned from analyst verdicts so far, next to the hand-set weights. not applied."""
+    from . import learn
+    with _driver.session() as s:
+        return learn.from_verdicts(s)
+
+
 @app.get("/api/languages")
 def languages():
     """languages the story and the ask tab can answer in, and whether the llm is configured."""

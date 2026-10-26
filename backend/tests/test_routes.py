@@ -30,6 +30,7 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/graph/algorithms"),
     ("GET", "/api/graph/reachability-proof"),
     ("GET", "/api/evaluation"),
+    ("GET", "/api/learning"),
     ("GET", "/api/scenarios"),
     ("POST", "/api/scenarios/{scenario_id}/load"),
     ("GET", "/api/live"),

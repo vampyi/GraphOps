@@ -38,6 +38,23 @@ Severity order breaks ties by time, oldest first. Precision@5 cannot exceed the 
 - **The ransomware day is the weakest.** The attack never nears a critical asset, so most graph questions add nothing. Two harmless alerts on the domain controller ranked above it. This is the expected limit of ranking by closeness to critical assets.
 - **Grouping breaks when steps go missing or the attack is slow.** With two alerts missing, the attack splits into 2 incidents. Over seven hours it splits into 4 and pulls in one noise alert. The ranking still puts the attack near the top, but the analyst would see it as separate incidents.
 
+## Learning the weights from labels
+
+GraphOps can learn how much each ranking question should count from analyst verdicts, with a small logistic regression written in plain Python (`backend/app/learn.py`). The Evaluation tab shows the learned weights next to the hand-set ones once there are at least 8 verdicts, 3 of each kind. They are not switched on automatically.
+
+To test it, we used each day's attack labels in place of verdicts: learn from five days, rank the sixth, and repeat for every day (`python -m app.evaluate_all --learn`). Measured on 26 October 2026:
+
+| Held-out day | Last attack rank: hand-set / learned | False alarms before first attack: hand-set / learned | Average precision: hand-set / learned |
+|---|---|---|---|
+| sample | 4 / 4 | 0 / 0 | 1.0 / 1.0 |
+| backup_account_abuse | 4 / 5 | 0 / 0 | 1.0 / 0.887 |
+| file_server_ransomware | 6 / 6 | 2 / 3 | 0.411 / 0.383 |
+| finance_breach | 5 / 5 | 0 / 0 | 1.0 / 1.0 |
+| missed_detections | 3 / 3 | 0 / 0 | 1.0 / 1.0 |
+| slow_burn | 5 / 5 | 0 / 0 | 0.887 / 0.804 |
+
+The learned weights were no better: equal on three days and slightly worse on three. With about 100 labelled alerts from days we wrote ourselves, that is expected. Every learned version gave the tool's own severity a weight of zero, meaning severity did not separate the attacks from the noise on these days. The learned model therefore stays off until real analyst verdicts exist.
+
 ## What it does not show
 
 - These days were written by us on our own small network of 37 users, groups and machines. They test known weaknesses; they are not real attacks. Results on real data are untested. That needs LANL Cyber1 or a lab dataset, as described on Raja's research branch (`docs/data-and-testing-research.md` on branch `raja`).

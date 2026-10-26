@@ -32,6 +32,7 @@ export const getCommunities = () => call("/communities");
 
 // evaluation and scenarios (credibility)
 export const getEvaluation = () => call("/evaluation");
+export const getLearning = () => call("/learning");
 export const getScenarios = () => call("/scenarios");
 export const loadScenario = (id) => post(`/scenarios/${id}/load`);
 
