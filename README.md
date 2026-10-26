@@ -32,8 +32,12 @@ are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-read
 | Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
 | Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
 | Continuous integration: the backend tests and the dashboard build run on every push and pull request | Built. [.github/workflows/ci.yml](.github/workflows/ci.yml). |
-| Ranking model that learns from analyst verdicts | Not built. Verdicts are saved with who and when, ready to train on; scores use hand-set weights. |
-| LANL evaluation and the plain-English question box | Planned, not built. |
+| Triage screen: a filterable alert list (search, severity, verdict, graph signals) next to one alert's details in tabs (why it ranks, blast radius, incident, story) | Built. Checked at 100% zoom on 1440×900 and 1280×800 screens. |
+| Incident story by Sarvam AI (`sarvam-105b`), in English or translated into 10 Indian languages with ids kept intact | Built. Tested live with Sarvam on 26 October 2026. Without a key the incident's facts are shown instead. |
+| Ask tab: plain-language questions answered by Sarvam AI from eight read-only GraphOps lookups, every sentence citing its sources | Built. Tested live on 26 October 2026; the citation check removed one sentence that cited a mistyped incident id. |
+| Ranking model that learns from analyst verdicts | Built, off by default. On our six synthetic days it ranked no better than the hand-set weights, so the hand-set weights stay in use. See [docs/evaluation.md](docs/evaluation.md). |
+| Four harder held-out days and an evaluation report | Built. [docs/evaluation.md](docs/evaluation.md). |
+| LANL evaluation | Planned, not built. |
 
 ## Current state vs. roadmap to production
 
@@ -95,9 +99,11 @@ The weight of each question is our design choice, set by hand in `backend/app/sc
 
 | Part | What it does | Tools | How we keep it honest | Status |
 |---|---|---|---|---|
-| 1. Ranking model | Learns how much each ranking question should count, from analysts marking alerts as real or false | scikit-learn (logistic regression or a decision tree) | Small and explainable. Every score shows which questions pushed it up. | Planned. Verdicts are already saved; scores use hand-set weights. |
-| 2. Incident story | Drafts a plain-English story of an incident, step by step, from the incident's alerts and the users and machines they involve | Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK | Every sentence must cite IDs from the incident. A checker drops any sentence that cites an ID outside it, and the story is marked as needing analyst approval. Without access to Claude the dashboard shows the incident's facts instead. | Built. Tested with a fake model answer. The real Claude call has not run yet because our account has no API credit, so users see the facts list. |
-| 3. Plain-English questions | Turns questions such as "what can this laptop reach?" into graph queries | `Text2CypherRetriever` from `neo4j-graphrag` | The generated query is shown to the analyst and runs in a read-only transaction, so it cannot change the graph. | Planned. |
+| 1. Ranking model | Learns how much each ranking question should count, from analysts marking alerts real, benign or false | Logistic regression written in plain Python (`backend/app/learn.py`), because the hosted site cannot install numpy or scikit-learn | Small and explainable: its weights are shown next to the hand-set ones on the Evaluation tab. It is not switched on automatically. | Built, off by default. No better than the hand-set weights on our synthetic days. |
+| 2. Incident story | Drafts a plain-English story of an incident from its alerts, users, machines and connections, then optionally translates it | Sarvam AI `sarvam-105b` for the story and `sarvam-translate:v1` for Indian languages, called over HTTPS with Python's standard library. Claude is a fallback when no Sarvam key is set. | Every sentence must cite ids from the incident; a checker drops any sentence that cites an id outside it, and the story is marked as needing analyst approval. Each connection is given to the model in plain words so it does not misread its direction. Ids are protected during translation. | Built. Tested live with Sarvam. |
+| 3. Ask tab | Answers questions such as "what can the intern's laptop reach?" in plain words | Sarvam AI `sarvam-105b` with tool calling over eight fixed lookups: top alerts, one alert, blast radius, an incident, attack paths, the access gap, ranking quality and entity search | The model can only read through those lookups; it cannot write or run free-form queries. Every sentence must cite ids the lookups returned, and other sentences are removed. The answer lists which lookups were used. | Built. Tested live with Sarvam. |
+
+The AI checks confirm that a sentence cites the right facts, not that its wording describes them correctly. Every AI answer is labelled as needing an analyst's check.
 
 ## How GraphOps differs from existing tools
 
@@ -171,29 +177,29 @@ This Python code does the slow calculations ahead of time, so nothing slow happe
 This Python program scores each new alert the moment it arrives.
 
 1. It answers the six ranking questions. Most answers are already saved on the nodes by step 3, so this takes milliseconds. For example: "server-7 is 2 steps from the customer database" and "server-7 is a choke point".
-2. It combines the answers into one score. Today the weights are set by hand. *(planned)* A small scikit-learn model will learn them from analysts marking alerts as real or false.
+2. It combines the answers into one score with hand-set weights. A small logistic regression can learn weights from analysts marking alerts real, benign or false; it is shown on the Evaluation tab but not switched on.
 3. It links alerts that share a user or machine within 2 hours, or that are joined by a login from one alert's machine to the next within 45 minutes, into one incident.
 4. It saves the score, the reasons and the incident in Neo4j and passes the ranked alert on to the backend server.
 
-### 5. Backend server (hosts AI 2, and AI 3 when built)
+### 5. Backend server (hosts AI 2 and AI 3)
 
 A FastAPI web server that sits between the dashboard and the data.
 
 - It answers the dashboard's questions, such as "what is the blast radius of laptop-42?" or "show the attack paths to the customer database", by running Cypher queries on Neo4j.
-- It serves new and changed alerts at `/api/live`. *(planned)* The dashboard will ask it every 2 seconds, so new alerts appear without a page refresh. This also works on Vercel, where long-lived connections are limited.
+- It serves new and changed alerts at `/api/live`. During a replay the dashboard asks it every 2 seconds, so new alerts appear without a page refresh. This also works on Vercel, where long-lived connections are limited.
 - It hosts the two LLM features:
 
 **Incident story writer.** When the analyst asks for an incident's story:
 1. A Cypher query pulls every alert, machine, account and connection in the incident, each with its ID.
-2. These facts go to the LLM with one rule: every sentence must cite the ID it is based on.
+2. These facts go to Sarvam AI with one rule: every sentence must cite the ID it is based on.
 3. A checker drops any sentence that cites an ID not in the incident, so the LLM cannot invent facts.
 4. The analyst sees the draft marked "needs analyst approval".
 
-**Plain-English question box** *(planned)*. When the analyst types "what can laptop-42 reach?":
-1. `Text2CypherRetriever` turns the question into a Cypher query.
-2. The query is shown on screen so the analyst can see exactly what is being asked.
-3. It runs in a read-only transaction, so it cannot change or delete anything.
-4. The answer is shown as a list and on the graph.
+**Ask tab.** When the analyst types "what can the intern's laptop reach?":
+1. Sarvam AI chooses from eight read-only lookups, for example an entity search for "intern" and then the blast radius of `laptop-42`.
+2. GraphOps runs those lookups itself and hands back the results.
+3. Sarvam writes the answer as sentences, each citing the ids it is based on. Sentences citing anything the lookups did not return are removed.
+4. The answer shows which lookups were used, and can be translated into 10 Indian languages.
 
 ### 6. Dashboard
 
@@ -202,7 +208,7 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 - **Alert inbox:** every alert, highest score first, with the reasons for its rank.
 - **Blast radius rings:** click an alert to see everything 1, 2 and 3 steps away, with the shortest attack path to a critical asset.
 - **Incident view:** linked alerts in attack-stage order with the drafted story.
-- *(planned)* **Access comparison:** the blast radius over granted access next to the blast radius over used access.
+- **Access comparison:** the blast radius over granted access next to the blast radius over used access, and the Access tab's least-privilege gap.
 
 ## Tech stack
 
@@ -216,17 +222,17 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 | Graph database | Neo4j 2026.09: Community with Graph Data Science and APOC on a laptop, AuraDB Free when hosted | Free. Shortest paths and betweenness come built in. AuraDB Free has no Graph Data Science, so there the choke point scores are worked out in Python with `networkx` instead. |
 | API | FastAPI | Same language as the rest of the backend. Runs on Vercel as a single function with no changes. |
 | Dashboard | React 19 built with Vite, with the blast radius drawn as our own SVG ring graph | Full control over the ring layout with no extra library. We first chose Neo4j's NVL, but its licence only allows use with Neo4j Aura or Neo4j's commercial products, not Neo4j Community. |
-| Incident story | Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK | Returns sentences in a fixed JSON format with the IDs each one cites, so our checker can drop any sentence that cites something outside the incident. Without access to Claude the dashboard shows the incident's facts instead. |
+| Incident story and Ask tab | Sarvam AI: `sarvam-105b` (chat with tool calling and strict JSON output) and `sarvam-translate:v1` | Sarvam is the hackathon's AI partner and builds for Indian languages. Strict JSON lets our checker read which ids each sentence cites. Called with Python's standard library, so nothing extra installs on Vercel. Claude through the `anthropic` SDK is a fallback for the story. |
+| Ranking model | Logistic regression in plain Python | Explainable, trains in a moment on a few verdicts, and needs no numpy, which the hosted site cannot install. |
 | Hosting | Vercel Hobby plan, functions in Singapore (`sin1`) | Every push to `main` redeploys. Singapore puts the backend next to the database, which made each database query 50 to 100 times faster than Vercel's default, Washington DC. |
 | Running it locally | Docker Desktop with Docker Compose | Neo4j and Kafka start with one command. |
 | Testing | pytest with Testcontainers | Tests start a real Neo4j and a real Kafka in Docker for each run, so they never touch real data. |
 
-### Planned, not built yet
+### Considered for the Ask tab and not used
 
-| Layer | Tool | Why we chose it |
-|---|---|---|
-| Ranking model | scikit-learn | Small, explainable models that train in seconds on analyst verdicts. |
-| Plain-English questions | `neo4j-graphrag` (Neo4j's official Python package for LLMs) | Its `Text2CypherRetriever` turns questions into Cypher queries. |
+| Tool | Why not |
+|---|---|
+| `neo4j-graphrag` `Text2CypherRetriever` | It turns a question into a new Cypher query, which Neo4j says "is not guaranteed to be syntactically correct". Fixed read-only lookups chosen by the model are safer and easier to check. |
 
 ### Tools we considered and left out
 
@@ -329,8 +335,8 @@ Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mo
 As the hackFront India rules require, we list every AI tool, service, framework and dataset used in this project. This list is updated as we go and will be checked again before submission.
 
 - **AI tools used to build it:** Claude Code (Anthropic) wrote and reviewed code, documents and research with us. Every claim we use was checked at its original source.
-- **AI inside the product:** Claude (`claude-opus-5-5`) through the Anthropic API drafts incident stories.
-- **Hosted services (free plans):** Vercel (hosting), Neo4j AuraDB Free (database), Aiven for Apache Kafka (streaming).
+- **AI inside the product:** Sarvam AI (`sarvam-105b` and `sarvam-translate:v1`) drafts incident stories, answers questions in the Ask tab and translates both into Indian languages. Claude through the Anthropic API is a fallback for the story when no Sarvam key is set.
+- **Hosted services (free plans and credits):** Vercel (hosting), Neo4j AuraDB Free (database), Aiven for Apache Kafka (streaming), Sarvam AI (language models, signup credits).
 - **Open source:** Neo4j Community, Graph Data Science, APOC, Apache Kafka, Python, FastAPI, Uvicorn, `confluent-kafka`, the Neo4j Python driver, `networkx`, `python-dotenv`, `certifi`, React, Vite, pytest, Testcontainers, Docker.
 - **Data:** all data in the repository and on the hosted site is synthetic, made up by us. Datasets planned for evaluation (ADSynth, LANL) are listed under [Data](#data).
 
