@@ -105,6 +105,28 @@ def _pagerank_gds(session):
     session.run("CALL gds.graph.drop('pr') YIELD graphName RETURN graphName").consume()
 
 
+def _pagerank(g, alpha=0.85, tol=1.0e-6, max_iter=100):
+    """plain power-iteration PageRank with networkx's defaults. nx.pagerank needs numpy and scipy, which the
+    hosted site does not install, so this keeps the fallback dependency-free."""
+    nodes = list(g)
+    n = len(nodes)
+    rank = {v: 1.0 / n for v in nodes}
+    out = {v: g.out_degree(v) for v in nodes}
+    for _ in range(max_iter):
+        dangling = alpha * sum(rank[v] for v in nodes if out[v] == 0) / n
+        new = {v: (1.0 - alpha) / n + dangling for v in nodes}
+        for v in nodes:
+            if out[v]:
+                share = alpha * rank[v] / out[v]
+                for w in g.successors(v):
+                    new[w] += share
+        done = sum(abs(new[v] - rank[v]) for v in nodes) < n * tol
+        rank = new
+        if done:
+            break
+    return rank
+
+
 def _pagerank_python(session):
     import networkx as nx
     rel = "|".join(attack_edge_types(session))
@@ -113,7 +135,7 @@ def _pagerank_python(session):
         g.add_node(r["id"])
     for r in session.run(f"MATCH (s)-[:{rel}]->(d) RETURN s.id AS s, d.id AS d"):
         g.add_edge(r["s"], r["d"])
-    scores = nx.pagerank(g) if g.number_of_edges() else {n: 0.0 for n in g}
+    scores = _pagerank(g) if g.number_of_edges() else {n: 0.0 for n in g}
     session.run("UNWIND $rows AS row MATCH (n {id: row.id}) SET n.pagerank = row.b",
                 rows=[{"id": k, "b": float(v)} for k, v in scores.items()])
 
