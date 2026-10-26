@@ -123,13 +123,14 @@ def answer(question, tools_impl, history=(), lang="en-IN", chat=None):
             messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": json.dumps(result, default=str)[:MAX_TOOL_CHARS]})
 
     messages.append({"role": "user", "content": ANSWER_PROMPT})
-    final = chat(messages, schema=ANSWER_SCHEMA)
+    # sarvam requires the tool list whenever tool messages are present, so send it but forbid more calls
+    final = chat(messages, tools=tool_specs(), schema=ANSWER_SCHEMA, tool_choice="none")
     sentences = llm.parse_json(final.get("content"))["sentences"]
     kept, dropped = check(sentences, allowed)
     result = {"sentences": kept, "dropped": dropped, "tools_used": used, "language": "en-IN"}
     if lang and lang != "en-IN" and kept:
         try:
-            result["sentences"] = [{**s, "text": llm.translate(s["text"], lang), "text_en": s["text"]} for s in kept]
+            result["sentences"] = [{**s, "text": llm.translate_keeping(s["text"], allowed, lang), "text_en": s["text"]} for s in kept]
             result["language"] = lang
         except Exception as exc:
             result["translation_error"] = str(exc)[:200]

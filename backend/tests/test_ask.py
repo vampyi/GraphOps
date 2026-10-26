@@ -12,7 +12,7 @@ def scripted(*replies):
     sent, queue = [], list(replies)
 
     def chat(messages, tools=None, schema=None, **kw):
-        sent.append({"messages": [dict(m) for m in messages], "tools": tools, "schema": schema})
+        sent.append({"messages": [dict(m) for m in messages], "tools": tools, "schema": schema, **kw})
         return queue.pop(0)
     chat.sent = sent
     return chat
@@ -59,7 +59,7 @@ def test_tool_loop_answers_from_lookups_and_drops_invented_ids(tools):
     assert out["tools_used"] == [{"tool": "top_alerts", "args": {"limit": 3}}]
     tool_msg = [m for m in chat.sent[-1]["messages"] if m["role"] == "tool"][0]
     assert tool_msg["tool_call_id"] == "call-top_alerts" and "a-03" in tool_msg["content"]
-    assert chat.sent[-1]["schema"] is ask.ANSWER_SCHEMA and chat.sent[-1]["tools"] is None
+    assert chat.sent[-1]["schema"] is ask.ANSWER_SCHEMA and chat.sent[-1]["tool_choice"] == "none"
 
 
 def test_a_bad_id_is_reported_to_the_model_not_raised(tools):

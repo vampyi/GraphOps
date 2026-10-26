@@ -711,3 +711,4 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .ask-input { display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); background: var(--head); }
 .ask-input input { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; color: var(--text); padding: 10px 12px; font-size: 14px; font-family: inherit; }
 .ask-input input:focus { outline: none; border-color: var(--teal); }
+.ask-a code, .story code { white-space: nowrap; }

@@ -32,11 +32,24 @@ PROMPT = """You are helping a security analyst understand one incident. Below ar
 alerts, the users and machines they involve, and the connections between them. Every item has an id.
 
 Write the incident as a short story in time order, 3 to 6 sentences, in plain English for a beginner.
-Each sentence must list in "cites" the ids of the facts it is based on. Do not state anything that is not
+Name the account, user or machine instead of writing "someone". Each sentence must list in "cites" the ids of the facts it is based on. Do not state anything that is not
 in the facts. If something is unknown, say it is unknown.
 
 Facts:
 {facts}"""
+
+
+# plain words for each connection, so the model does not misread which way an edge points
+MEANING = {
+    "HasSession": "{dst} was signed in on {src}, so {dst}'s credentials may be stored on {src}",
+    "RemoteLogon": "someone logged on from {src} to {dst}" ,
+    "LoggedInto": "{src} logged into {dst}",
+    "MemberOf": "{src} is a member of {dst}",
+    "AdminTo": "{src} has admin rights on {dst}",
+    "CanRDP": "{src} may connect to {dst} with remote desktop",
+    "GenericAll": "{src} has full control of {dst}",
+    "ConnectedTo": "{src} sent network traffic to {dst}",
+}
 
 
 def incident_facts(session, incident_id):
@@ -57,6 +70,8 @@ def incident_facts(session, incident_id):
         RETURN s.id + '-' + type(r) + '-' + d.id AS id, s.id AS src, type(r) AS type, d.id AS dst,
                r.user AS user, r.first_seen AS first_seen, r.last_seen AS last_seen
         """, ids=entity_ids)]
+    for e in edges:
+        e["means"] = MEANING.get(e["type"], "{src} is connected to {dst}").format(**e)
     return {"alerts": alerts, "entities": entities, "connections": edges}
 
 
@@ -125,7 +140,8 @@ def write_story(session, incident_id, llm=None, lang="en-IN"):
               "sentences": kept, "dropped": dropped, "language": "en-IN"}
     if lang and lang != "en-IN":
         try:
-            result["sentences"] = [{**s, "text": sarvam.translate(s["text"], lang), "text_en": s["text"]} for s in kept]
+            ids = allowed_ids(facts)
+            result["sentences"] = [{**s, "text": sarvam.translate_keeping(s["text"], ids, lang), "text_en": s["text"]} for s in kept]
             result["language"] = lang
         except Exception as exc:  # keep the english story rather than lose it
             result["translation_error"] = str(exc)[:200]
