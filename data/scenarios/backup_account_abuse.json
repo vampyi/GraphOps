@@ -1,0 +1,252 @@
+{
+  "description": "Held-out scenario: an attacker who controls the backup server uses the backup service account's normal route to the finance database, in the afternoon instead of at night. No route is new, so the never-taken-path question cannot help. Meanwhile two admins and a developer take harmless first-time routes. Neutral alert ids; 'scenario' labels are for evaluation only.",
+  "events": [
+    {
+      "src": "server-backup",
+      "type": "RemoteLogon",
+      "dst": "finance-db",
+      "user": "svc_backup",
+      "time": "2026-11-04T15:10:00",
+      "scenario": "attack"
+    },
+    {
+      "src": "laptop-it1",
+      "type": "RemoteLogon",
+      "dst": "server-files",
+      "user": "it_admin",
+      "time": "2026-11-04T10:40:00",
+      "scenario": "noise"
+    },
+    {
+      "src": "laptop-d1",
+      "type": "RemoteLogon",
+      "dst": "server-files",
+      "user": "dev_1",
+      "time": "2026-11-04T13:55:00",
+      "scenario": "noise"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "ALR-6104",
+      "time": "2026-11-04T14:22:00",
+      "name": "New service installed on backup server",
+      "severity": "medium",
+      "tactic_id": "TA0003",
+      "technique_id": "T1543",
+      "source_tool": "EDR",
+      "involves": [
+        "server-backup",
+        "svc_backup"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-6111",
+      "time": "2026-11-04T14:48:00",
+      "name": "SAM registry hive saved to disk",
+      "severity": "medium",
+      "tactic_id": "TA0006",
+      "technique_id": "T1003",
+      "source_tool": "EDR",
+      "involves": [
+        "server-backup",
+        "svc_backup"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-6118",
+      "time": "2026-11-04T15:10:00",
+      "name": "Service account logon outside its usual hours",
+      "severity": "low",
+      "tactic_id": "TA0008",
+      "technique_id": "T1021",
+      "source_tool": "SIEM",
+      "involves": [
+        "finance-db",
+        "svc_backup"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-6125",
+      "time": "2026-11-04T15:31:00",
+      "name": "Bulk read of finance tables",
+      "severity": "medium",
+      "tactic_id": "TA0010",
+      "technique_id": "T1048",
+      "source_tool": "DLP",
+      "involves": [
+        "finance-db",
+        "svc_backup"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-6131",
+      "time": "2026-11-04T10:41:00",
+      "name": "First admin logon to file server from this laptop",
+      "severity": "medium",
+      "tactic_id": "TA0008",
+      "technique_id": "T1021",
+      "source_tool": "SIEM",
+      "involves": [
+        "server-files",
+        "it_admin"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6137",
+      "time": "2026-11-04T13:56:00",
+      "name": "Remote logon from developer laptop to file server",
+      "severity": "low",
+      "tactic_id": "TA0008",
+      "technique_id": "T1021",
+      "source_tool": "SIEM",
+      "involves": [
+        "server-files",
+        "dev_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6150",
+      "time": "2026-11-04T09:12:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6151",
+      "time": "2026-11-04T09:40:00",
+      "name": "Adware bundle detected",
+      "severity": "high",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6152",
+      "time": "2026-11-04T10:05:00",
+      "name": "Brute force on VPN account",
+      "severity": "high",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6153",
+      "time": "2026-11-04T10:31:00",
+      "name": "Drive-by download blocked",
+      "severity": "critical",
+      "tactic_id": "TA0001",
+      "technique_id": "T1189",
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6154",
+      "time": "2026-11-04T11:02:00",
+      "name": "Several failed logins",
+      "severity": "low",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-hr1",
+        "hr_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6155",
+      "time": "2026-11-04T11:47:00",
+      "name": "PowerShell script ran",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1059",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d2",
+        "dev_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6156",
+      "time": "2026-11-04T12:20:00",
+      "name": "Known bad IP contacted, blocked",
+      "severity": "high",
+      "tactic_id": "TA0011",
+      "technique_id": "T1105",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6157",
+      "time": "2026-11-04T13:15:00",
+      "name": "Large file upload to cloud storage",
+      "severity": "medium",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-f1",
+        "fin_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6158",
+      "time": "2026-11-04T14:05:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-6159",
+      "time": "2026-11-04T15:30:00",
+      "name": "Antivirus definitions out of date",
+      "severity": "low",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d1"
+      ],
+      "scenario": "noise"
+    }
+  ]
+}
