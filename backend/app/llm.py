@@ -101,3 +101,14 @@ def translate_keeping(text, ids, target):
     for n, i in enumerate(found, 1):
         out = out.replace(f"<{n}>", i)
     return out
+
+
+def clean_text(text):
+    """plain prose for the dashboard: no markdown backticks or emphasis, and no bracketed id lists, since the
+    ids are shown separately as citations."""
+    text = re.sub(r"\s*\[[^\]]{1,300}\]", "", text or "")
+    # a trailing "cites a-03, it_admin" or "(cites: ...)" written into the sentence itself
+    text = re.sub(r"[\s,;]*\(?\b(?:cites?|citing|sources?)\b:?\s+[\w.\-]+(?:\s*(?:,|and)\s*[\w.\-]+)*\)?(?=\s*[.!?]?\s*$)", "", text, flags=re.I)
+    text = text.replace("`", "").replace("**", "")
+    text = re.sub(r"\s+([.,;:])", r"\1", re.sub(r"\s{2,}", " ", text)).strip()
+    return text + "." if text and text[-1] not in ".!?।" else text

@@ -177,3 +177,22 @@ export function ReportModal({ report, onClose }) {
     </div>
   );
 }
+
+// a small "i" that explains a label on hover, keyboard focus or tap, so explanations stay off the screen until asked for
+export function Info({ text, align = "left" }) {
+  return (
+    <span className={`info ${align}`}>
+      <button type="button" className="info-btn" aria-label={text}>i</button>
+      <span className="info-tip" role="tooltip">{text}</span>
+    </span>
+  );
+}
+
+// citation chips. a connection id such as "laptop-42-RemoteLogon-server-7" reads as "laptop-42 → server-7"
+const EDGE_ID = /^(.+)-(RemoteLogon|LoggedInto|HasSession|MemberOf|AdminTo|CanRDP|GenericAll|ConnectedTo)-(.+)$/;
+export function Cites({ ids }) {
+  return ids.map((c) => {
+    const m = c.match(EDGE_ID);
+    return <code key={c} title={m ? `${m[1]} ${m[2]} ${m[3]}` : undefined}>{m ? `${m[1]} → ${m[3]}` : c}</code>;
+  });
+}

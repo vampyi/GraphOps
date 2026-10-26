@@ -15,21 +15,21 @@ const PAINS = [
   { title: "How bad is this?", status: "live", problem: "Nobody can quickly see what a hacked machine can reach.", fix: "Draws the 1, 2 and 3 hop blast radius around any alert." },
   { title: "Hidden danger", status: "live", problem: "Risky access paths exist long before anyone uses them.", fix: "Maps attack paths and choke points before any attack, and shows which few fixes cut the most paths." },
   { title: "Too much access", status: "live", problem: "People hold far more access than they use.", fix: "Compares the access each identity is granted with the access it actually uses." },
-  { title: "One step at a time", status: "live", problem: "Each step can look normal while the whole route is strange.", fix: "Raises an alert when the logon route next to it was used for the first time." },
+  { title: "One step at a time", status: "live", problem: "Each step can look normal while the whole route is strange.", fix: "Scores an alert higher when a logon route next to it was used for the first time." },
 ];
 
 const STEPS = [
   { n: "01", title: "Collect", text: "Logins, permissions, machines and alerts stream in from a company's existing tools." },
   { n: "02", title: "Connect", text: "Everything becomes one Neo4j graph: users, machines and groups as dots, logins and permissions as lines." },
   { n: "03", title: "Rank", text: "Each alert is scored on six graph questions and linked to the alerts on the same attack path." },
-  { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack step by step and an AI-drafted story that cites its facts." },
+  { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack step by step and a cited incident story, in English or an Indian language." },
 ];
 
 const WINS = [
-  { title: "One query per question", text: "Attack paths come straight from Neo4j graph queries. Betweenness, PageRank and Louvain run in Neo4j Graph Data Science where it is installed, and in Python elsewhere, each doing a real SOC job." },
-  { title: "Beat the 29-minute clock", text: "Replay an attack live against the breakout budget and watch the kill chain connect itself into one incident in seconds, not the hours of manual stitching it replaces." },
-  { title: "The shrinking circle", text: "Draw an identity's blast radius over the access it holds, then over the access it actually uses. The gap is the risk least privilege removes." },
-  { title: "Measured, not guessed", text: "On five held-out attack days, GraphOps put the attack above sorting by severity every time. On the hardest, two harmless alerts still came first. We show every number." },
+  { title: "Built on the graph", text: "Attack paths, blast radius, choke points and unused access are all graph queries on Neo4j." },
+  { title: "Granted vs used", text: "Each identity's blast radius is drawn twice: over the access it holds and the access it uses. The gap is the risk least privilege removes." },
+  { title: "Ask in plain language", text: "Questions are answered from GraphOps' own lookups, every sentence cited, in English or ten Indian languages, with Sarvam AI." },
+  { title: "Measured", text: "On five held-out attack days, GraphOps ranked the attack above severity sorting every time. Every number is published." },
 ];
 
 export default function Landing() {
@@ -56,9 +56,7 @@ export default function Landing() {
           <a className="btn primary" href="#/console">Open the console</a>
           <a className="btn ghost" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
         </div>
-        <p className="neo4j-line">Built on <b>Neo4j</b>, using its <b>Graph Data Science</b> library where it is installed. The graph is not a store behind the product; it is the product.</p>
         <p className="made-for">Built by Team Pingu Haters for hackFront India 2026, Cybersecurity theme.</p>
-        <div className="hero-word">GRAPHOPS</div>
       </header>
 
       <section className="stats">
@@ -73,13 +71,12 @@ export default function Landing() {
 
       <section id="problem" className="section">
         <p className="kicker">The seven pain points</p>
-        <h2>What keeps a security team from seeing the attack</h2>
+        <h2>Why attacks get missed</h2>
         <div className="pains">
           {PAINS.map((p, i) => (
             <div key={p.title} className="pain">
               <div className="pain-head">
                 <h3>{p.title}</h3>
-                <span className={`badge ${p.status}`}>{p.status === "live" ? "Available now" : "Planned"}</span>
               </div>
               <p className="pain-problem">{p.problem}</p>
               <p className="pain-fix">{p.fix}</p>
@@ -90,7 +87,7 @@ export default function Landing() {
 
       <section id="how" className="section">
         <p className="kicker">How it works</p>
-        <h2>From scattered alerts to one connected story</h2>
+        <h2>From scattered alerts to one incident</h2>
         <div className="steps">
           {STEPS.map((s, i) => (
             <div key={s.n} className="step">
@@ -99,12 +96,12 @@ export default function Landing() {
             </div>
           ))}
         </div>
-        <div className="cta center"><a className="btn primary" href="#/console">Explore the sample organisation</a></div>
+        <div className="cta center"><a className="btn primary" href="#/console">Open the console</a></div>
       </section>
 
       <section id="wins" className="section">
-        <p className="kicker">Why it wins</p>
-        <h2>The graph is the product</h2>
+        <p className="kicker">What sets it apart</p>
+        <h2>Graph-native security triage</h2>
         <div className="wins">
           {WINS.map((w) => (
             <div key={w.title} className="win-card">

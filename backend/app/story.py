@@ -32,7 +32,7 @@ PROMPT = """You are helping a security analyst understand one incident. Below ar
 alerts, the users and machines they involve, and the connections between them. Every item has an id.
 
 Write the incident as a short story in time order, 3 to 6 sentences, in plain English for a beginner.
-Name the account, user or machine instead of writing "someone". Each sentence must list in "cites" the ids of the facts it is based on. Do not state anything that is not
+Name the account, user or machine instead of writing "someone". Write times as HH:MM. Plain text only: no markdown, and do not put ids or brackets in the text; list ids only in "cites". Each sentence must list in "cites" the ids of the facts it is based on. Do not state anything that is not
 in the facts. If something is unknown, say it is unknown.
 
 Facts:
@@ -135,6 +135,7 @@ def write_story(session, incident_id, llm=None, lang="en-IN"):
         sentences = llm(facts)
     except Exception as exc:  # no key, no login, network error or refusal: fall back to the plain fact list
         return {"source": "facts", "reason": str(exc)[:200], "sentences": fact_list(facts), "dropped": []}
+    sentences = [{**x, "text": sarvam.clean_text(x.get("text"))} for x in sentences]
     kept, dropped = check_citations(sentences, allowed_ids(facts))
     result = {"source": "llm", "provider": provider, "status": "needs analyst approval",
               "sentences": kept, "dropped": dropped, "language": "en-IN"}

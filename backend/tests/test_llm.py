@@ -91,3 +91,10 @@ def test_story_falls_back_to_facts_when_sarvam_fails(neo4j_driver, seeded, fake)
         inc = s.run("MATCH (a:Alert {id: 'a-01'}) RETURN a.incident_id AS i").single()["i"]
         result = write_story(s, inc)
     assert result["source"] == "facts" and len(result["sentences"]) >= 4
+
+
+def test_clean_text_removes_inline_citations_and_markdown():
+    assert llm.clean_text("At 10:00 `intern_a` clicked a link on laptop-42 [a-01, intern_a].") == "At 10:00 intern_a clicked a link on laptop-42."
+    assert llm.clean_text("It hit server-7 cites a-03, server-7.") == "It hit server-7."
+    assert llm.clean_text("The **top** alert is a-03 (cites: a-03)") == "The top alert is a-03."
+    assert llm.clean_text("Sources of risk sit on server-7.") == "Sources of risk sit on server-7."

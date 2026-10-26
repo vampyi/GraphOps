@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Info } from "./parts.jsx";
 import { getExposure, getGraphAlgorithms, getReachabilityProof } from "./api.js";
 
 // the Neo4j story, made clickable: one graph query per SOC question, the algorithms in play, and a live
@@ -28,18 +29,15 @@ export default function GraphEngine({ onError }) {
     setRunning(false);
   }
 
-  if (!data) return <div className="view-loading">Reading the graph…</div>;
+  if (!data) return <div className="view-loading">Loading…</div>;
   const sm = data.summary;
 
   return (
     <div className="graph-engine">
       <div className="ge-hero">
         <div className="ge-hero-main">
-          <div className="ge-badge">Neo4j · Graph Data Science</div>
-          <h2>Every question a SOC asks is one graph query.</h2>
-          <p>GraphOps stores the whole organisation as one property graph, so tracing an attacker is a traversal,
-             not a pile of table joins. The same graph answers "what can this reach", "what is the fastest route",
-             "which node is the choke point" and "who holds access they never use".</p>
+          <div className="ge-badge">Neo4j</div>
+          <h2>The graph<Info text="Users, groups, machines, permissions and logins in one Neo4j graph. Reachability, attack paths, choke points and unused access are each answered by a graph query or algorithm." /></h2>
         </div>
         <div className="ge-stats">
           <div><b>{sm.entities}</b><span>users, groups & machines</span></div>
@@ -50,8 +48,9 @@ export default function GraphEngine({ onError }) {
 
       <div className="ge-proof panel">
         <div className="panel-head">
-          <h2>Graph vs SQL, same question</h2>
-          <small>“Can this machine reach that crown jewel?” — one Cypher traversal, timed live</small>
+          <h2>Graph vs SQL</h2>
+          <small>Can this machine reach that asset?</small>
+          <Info text="The Cypher query runs live and is timed. The SQL is shown for comparison and not run." />
         </div>
         <div className="ge-proof-controls">
           <label>From <select value={src} onChange={(e) => setSrc(e.target.value)}>
@@ -77,17 +76,16 @@ export default function GraphEngine({ onError }) {
                 <pre>{proof.cypher}</pre>
               </div>
               <div className="ge-code sql">
-                <div className="ge-code-head"><span className="ge-tag warn">SQL</span> {proof.reachable ? `${proof.hops} self-joins, fixed depth` : "a query per depth"}</div>
+                <div className="ge-code-head"><span className="ge-tag warn">SQL</span> {proof.reachable ? `${proof.hops} self-joins, fixed depth` : "a query per depth"}{proof.sql_note && <Info align="right" text={proof.sql_note} />}</div>
                 <pre>{proof.sql}</pre>
               </div>
             </div>
-            <div className="ge-note">{proof.sql_note}</div>
           </>
         )}
       </div>
 
       <div className="ge-algos">
-        <h3>Graph algorithms, each doing a SOC job</h3>
+        <h3>Algorithms<Info text="Engine shows where each runs: Neo4j Graph Data Science where installed, otherwise Cypher or Python (networkx)." /></h3>
         <div className="algo-grid">
           {data.algorithms.map((a) => (
             <div key={a.algorithm} className="algo-card">
@@ -103,7 +101,7 @@ export default function GraphEngine({ onError }) {
       </div>
 
       <div className="ge-queries">
-        <h3>The one query behind each view</h3>
+        <h3>Queries behind each view</h3>
         {Object.entries(sm.cypher).map(([key, q]) => (
           <div key={key} className={`ge-query ${openCypher === key ? "open" : ""}`}>
             <button className="ge-query-head" onClick={() => setOpenCypher(openCypher === key ? null : key)}>

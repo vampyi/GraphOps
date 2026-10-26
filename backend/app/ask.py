@@ -42,7 +42,9 @@ Call tools to gather facts first. Use find_entities when the question names a pe
 ANSWER_PROMPT = """Now answer the analyst's question using only the tool results above.
 Write 1 to 6 short sentences in plain English for a beginner. Every sentence must list in "cites" the ids
 (alert ids like a-03, incident ids, or user/machine/group ids) from the tool results that it is based on.
-If the tool results do not answer the question, write one sentence saying so, citing nothing."""
+If the tool results do not answer the question, write one sentence saying so, citing nothing.
+Describe only what the results show; do not generalise beyond them (for example, do not call an alert the lowest
+when you only looked at the top few). Plain text only: no markdown or backticks, and do not put ids, brackets or the word "cites" in the text; list ids only in "cites"."""
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -125,7 +127,7 @@ def answer(question, tools_impl, history=(), lang="en-IN", chat=None):
     messages.append({"role": "user", "content": ANSWER_PROMPT})
     # sarvam requires the tool list whenever tool messages are present, so send it but forbid more calls
     final = chat(messages, tools=tool_specs(), schema=ANSWER_SCHEMA, tool_choice="none")
-    sentences = llm.parse_json(final.get("content"))["sentences"]
+    sentences = [{**x, "text": llm.clean_text(x.get("text"))} for x in llm.parse_json(final.get("content"))["sentences"]]
     kept, dropped = check(sentences, allowed)
     result = {"sentences": kept, "dropped": dropped, "tools_used": used, "language": "en-IN"}
     if lang and lang != "en-IN" and kept:

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getBlastRadius, getIncident, getLanguages, getReport, patchAsset, patchIncident, setVerdict, writeStory } from "./api.js";
 import { SEVERITY_RANK } from "./tactics.js";
 import RingGraph from "./RingGraph.jsx";
-import { MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
+import { Cites, Info, MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
 
 const BLAST_MODES = [
   { id: "all", label: "All attack edges", hint: "Every route an attacker could follow" },
@@ -153,11 +153,12 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
   return (
     <>
       <section className="tri-summary" data-tour="kpis">
-        <span><b>{summary.alerts}</b> alerts{live.on ? " arriving live" : " today"}, none hidden</span>
-        <span><b>{summary.incidents}</b> incidents of linked alerts</span>
-        <span className="tint"><b>{summary.near}</b> near a critical asset</span>
-        <span className="warn"><b>{summary.routes}</b> on a new route</span>
-        <span><b>{summary.open}</b> not reviewed</span>
+        <span><b>{summary.alerts}</b> alerts<Info text="Every alert is kept and ranked. None are filtered out." /></span>
+        <span><b>{summary.incidents}</b> incidents<Info text="Groups of alerts linked by a shared user or machine, or by a login from one alert's machine to the next." /></span>
+        <span className="tint"><b>{summary.near}</b> near critical assets<Info text="Alerts within 3 attack steps of a critical asset, such as the customer database or a domain controller." /></span>
+        <span className="warn"><b>{summary.routes}</b> new routes<Info text="Alerts next to a machine-to-machine logon route used for the first time shortly before." /></span>
+        <span><b>{summary.open}</b> unreviewed</span>
+        {live.on && <span className="live-tag">Live</span>}
       </section>
 
       <main className="tri">
@@ -175,19 +176,20 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
               {SIGNALS.map((s) => <Chip key={s.id} on={signalF.has(s.id)} onClick={() => setSignalF(toggle(signalF, s.id))}>{s.label}</Chip>)}
             </FilterRow>
             <div className="tri-count">
-              <span>{filtering ? `Showing ${shown.length} of ${alerts.length}` : `${alerts.length} alerts`}</span>
+              <span>{filtering ? `${shown.length} of ${alerts.length}` : `${alerts.length} alerts`}</span>
               {filtering ? <button className="linkish" onClick={clearFilters}>Clear filters</button> : null}
               <div className="sort" role="group" aria-label="Sort order">
                 <button className={sortBy === "score" ? "on" : ""} onClick={() => setSortBy("score")}>GraphOps score</button>
-                <button className={sortBy === "severity" ? "on" : ""} onClick={() => setSortBy("severity")}>Severity only</button>
+                <button className={sortBy === "severity" ? "on" : ""} onClick={() => setSortBy("severity")}>Severity</button>
+                <Info align="right" text="GraphOps score: 0 to 100, from six graph questions plus the tool's own severity. Severity: the order most security consoles use." />
               </div>
             </div>
           </div>
 
           {emptyLive
-            ? <div className="live-empty">Replay started. Alerts will appear here as the day streams in…</div>
+            ? <div className="live-empty">Waiting for alerts…</div>
             : !shown.length
-              ? <div className="live-empty">No alerts match these filters.</div>
+              ? <div className="live-empty">No matching alerts</div>
               : (
                 <ol className="tri-rows">
                   {shown.map((a) => {
@@ -218,7 +220,7 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
         </section>
 
         <section className="panel tri-detail" data-tour="side">
-          {!selected ? <div className="live-empty">Pick an alert on the left.</div> : (
+          {!selected ? <div className="live-empty">Select an alert</div> : (
             <>
               <header className="det-head">
                 <div className="sel-score" title="GraphOps score out of 100">{Math.round(selected.score)}</div>
@@ -229,12 +231,12 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
                     <span>{selected.time.slice(11, 16)}</span>
                     <span>{selected.involves.join(" · ")}</span>
                     <span>{selected.source_tool}</span>
-                    <span>#{scoreRank[selected.id]} in GraphOps, #{sevRank[selected.id]} by severity</span>
+                    <span>Rank #{scoreRank[selected.id]} · #{sevRank[selected.id]} by severity</span>
                   </div>
                 </div>
                 <div className="verdicts" aria-label="Verdict">
                   <button className={selected.status === "real" ? "on real" : ""} onClick={() => mark("real")}>Real attack</button>
-                  <button className={selected.status === "benign" ? "on benign" : ""} onClick={() => mark("benign")} title="Real but allowed activity">Benign</button>
+                  <button className={selected.status === "benign" ? "on benign" : ""} onClick={() => mark("benign")} title="Real activity that is allowed">Benign</button>
                   <button className={selected.status === "false" ? "on false" : ""} onClick={() => mark("false")}>False alarm</button>
                 </div>
               </header>
@@ -279,11 +281,11 @@ function Chip({ on, cls = "", onClick, children }) {
 function WhyTab({ alert }) {
   return (
     <div className="tab-pane" data-tour="why">
-      <p className="tab-lead">The score adds up seven questions. Six are answered from the graph; the last is the tool's own severity. Longer bars added more points.</p>
+      <h3 className="pane-h">Score breakdown<Info text="Points each question added. The score is out of 100." /></h3>
       <ReasonBars breakdown={alert.breakdown} />
       {alert.reasons?.length > 0 && (
         <>
-          <h3>In plain words</h3>
+          <h3 className="pane-h">Reasons</h3>
           <ul className="reasons">{alert.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
         </>
       )}
@@ -296,13 +298,13 @@ function BlastTab({ blast, mode, onMode, maxHop, onHop, node, onNode, onToggleCr
   const pathEnd = blast?.attack_path?.nodes?.at(-1);
   return (
     <div className="tab-pane blast" data-tour="graph">
-      <p className="tab-lead">What an attacker holding this alert's machine or account could reach. Click a shape for details.</p>
       <div className="blast-controls">
         <div className="segctl" data-tour="modes" role="group" aria-label="Which access to follow">
           {BLAST_MODES.map((m) => (
             <button key={m.id} className={mode === m.id ? "on" : ""} title={m.hint} onClick={() => onMode(m.id)}>{m.label}</button>
           ))}
         </div>
+        <Info text="What an attacker holding this alert's machine or account could reach. Granted follows only permissions held; Used follows only routes used in the last 30 days. The gap is what least privilege removes. Click a shape for details." />
         <div className="segctl" data-tour="hops" role="group" aria-label="How many steps">
           {[1, 2, 3].map((h) => {
             const within = blast ? blast.nodes.filter((n) => n.hop > 0 && n.hop <= h) : [];
@@ -315,11 +317,10 @@ function BlastTab({ blast, mode, onMode, maxHop, onHop, node, onNode, onToggleCr
           })}
         </div>
       </div>
-      {mode !== "all" && <div className="mode-note">{mode === "granted" ? "Access this identity is entitled to." : "Access actually used in the last 30 days. The gap from “granted” is what least privilege removes."}</div>}
       {blast?.attack_path && (
         <div className="path-banner">
           <span className="path-dot" />
-          Shortest attack path to <b>{pathEnd}</b>:{" "}
+          Shortest path to <b>{pathEnd}</b>:{" "}
           {blast.attack_path.nodes.map((id, i) => (
             <span key={id}>{i > 0 && <em> {blast.attack_path.types[i - 1]} </em>}<code>{id}</code></span>
           ))}
@@ -353,7 +354,7 @@ function BlastTab({ blast, mode, onMode, maxHop, onHop, node, onNode, onToggleCr
         <span><i className="lg hop" />reachable</span>
         <span><i className="lg critical" />critical asset</span>
         <span><i className="lg path" />attack path</span>
-        <span>rings: 1, 2 and 3 hops from the alert</span>
+        <span>rings: 1, 2, 3 hops</span>
         <span className="shapes">● user ■ group ◆ computer</span>
       </div>
     </div>
@@ -361,14 +362,14 @@ function BlastTab({ blast, mode, onMode, maxHop, onHop, node, onNode, onToggleCr
 }
 
 function IncidentTab({ incident, selectedId, onStatus, onReport }) {
-  if (!incident) return <div className="tab-pane"><p className="tab-lead">This alert is not linked to any other alert.</p></div>;
+  if (!incident) return <div className="tab-pane"><div className="live-empty">Not linked to other alerts</div></div>;
   return (
     <div className="tab-pane">
       <div className="inc-head">
-        <p className="tab-lead">
-          <b>{incident.id}</b>: {incident.alerts.length} linked alert{incident.alerts.length > 1 ? "s" : ""}, listed by time and tagged with their attack stage
-          {incident.lateral ? `. It spans ${incident.communities?.length} activity groups, a sign of lateral movement.` : "."}
-        </p>
+        <h3 className="pane-h">
+          {incident.id} · {incident.alerts.length} alert{incident.alerts.length > 1 ? "s" : ""}
+          {incident.lateral && <span className="lat-tag">Lateral movement<Info text={`The incident spans ${incident.communities?.length} groups of machines that normally work together, a sign the attacker is moving across the network.`} /></span>}
+        </h3>
         <label className="inc-status">Status
           <select value={incident.status || "open"} onChange={(e) => onStatus(e.target.value)}>
             {INCIDENT_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -376,38 +377,34 @@ function IncidentTab({ incident, selectedId, onStatus, onReport }) {
         </label>
       </div>
       <StageTimeline alerts={incident.alerts} selectedId={selectedId} />
-      <div className="inc-actions"><button className="btn" onClick={onReport}>Open incident report</button></div>
+      <div className="inc-actions"><button className="btn" onClick={onReport}>Incident report</button></div>
     </div>
   );
 }
 
 function StoryTab({ incident, story, busy, onDraft, lang, onLang, languages }) {
-  if (!incident) return <div className="tab-pane"><p className="tab-lead">A story is written for an incident. This alert is not linked to any other alert.</p></div>;
+  if (!incident) return <div className="tab-pane"><div className="live-empty">Not linked to other alerts</div></div>;
   return (
     <div className="tab-pane">
-      <p className="tab-lead">An AI drafts the story of {incident.id} from the incident's facts only. Every sentence cites the alerts, users or machines it is based on, and a checker removes any sentence that cites something outside the incident.</p>
       <div className="story-controls">
-        <label>Language
-          <select value={lang} onChange={(e) => onLang(e.target.value)}>
-            {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
-          </select>
-        </label>
-        <button className="btn primary" disabled={busy} onClick={onDraft}>{busy ? "Writing…" : story ? "Draft again" : "Draft the story"}</button>
+        <h3 className="pane-h">{incident.id}<Info text="Written by Sarvam AI from this incident's facts only. Each sentence cites the alerts, users or machines it uses; a sentence citing anything outside the incident is removed." /></h3>
+        <select value={lang} onChange={(e) => onLang(e.target.value)} aria-label="Language">
+          {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+        </select>
+        <button className="btn primary" disabled={busy} onClick={onDraft}>{busy ? "Writing…" : story ? "Redraft" : "Draft story"}</button>
       </div>
       {story && (
         <div className="story">
           <div className="story-head">
-            {story.source === "facts"
-              ? "AI is not available right now, so these are the incident's facts."
-              : `Drafted by AI${story.provider === "sarvam" ? " (Sarvam)" : ""}. Needs analyst approval.`}
-            {story.translation_error && " Translation failed, so the story is in English."}
+            {story.source === "facts" ? <span className="tag-ai off">AI unavailable · incident facts</span> : <span className="tag-ai">AI draft · review before use</span>}
+            {story.translation_error && <span className="tag-ai off">Translation unavailable</span>}
+            {story.dropped?.length > 0 && <span className="tag-ai off">{story.dropped.length} unsupported sentence{story.dropped.length > 1 ? "s" : ""} removed</span>}
           </div>
           {story.sentences.map((s, i) => (
-            <p key={i}>{s.text} {s.cites.map((c) => <code key={c}>{c}</code>)}
+            <p key={i}>{s.text} <Cites ids={s.cites} />
               {s.text_en && <span className="story-en">{s.text_en}</span>}
             </p>
           ))}
-          {story.dropped?.length > 0 && <div className="dropped">{story.dropped.length} sentence(s) removed for citing facts outside this incident.</div>}
         </div>
       )}
     </div>

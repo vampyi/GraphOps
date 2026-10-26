@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Info } from "./parts.jsx";
 import { getExposure, simulateExposure } from "./api.js";
 import ExposureGraph from "./ExposureGraph.jsx";
 
@@ -60,7 +61,7 @@ export default function Exposure({ onError }) {
     } catch (e) { onError(e.message); }
   };
 
-  if (loading || !data) return <div className="view-loading">Mapping attack paths…</div>;
+  if (loading || !data) return <div className="view-loading">Loading…</div>;
 
   const chokeIds = data.chokepoints.map((c) => c.id);
   const removedNodes = sim?.rec.kind === "node" ? [sim.rec.id] : [];
@@ -83,14 +84,13 @@ export default function Exposure({ onError }) {
             <div className="big-stat-v"><AnimatedNumber value={current} /></div>
             <div className="big-stat-l">
               {sim
-                ? <>{plural(current, "path")} left after this fix{" "}<span className="cut-pill">−{sim.result.pairs_cut} of {reach.reachable} cut</span></>
-                : <>source → critical {plural(current, "pair")} an attacker could reach, of {reach.possible} possible</>}
+                ? <>of {reach.possible} start-to-critical pairs still reachable after this fix{" "}<span className="cut-pill">−{sim.result.pairs_cut}</span></>
+                : <>of {reach.possible} start-to-critical pairs reachable<Info text="Pairs of a starting machine and a critical asset that an attacker could connect, before any attack happens." /></>}
             </div>
           </div>
         </div>
 
-        <h3>Fix the choke points</h3>
-        <p className="muted-p">Each fix is measured on the graph: how many of the {reach.reachable} {plural(reach.reachable, "path")} it actually cuts. Click one to see it on the map.</p>
+        <h3>Fixes<Info text="Each fix is recomputed on the graph to count the start-to-critical pairs it really cuts. Select one to see it on the map." /></h3>
         <ul className="recs">
           {data.recommendations.map((r, i) => {
             const active = sim?.rec === r;
@@ -102,19 +102,19 @@ export default function Exposure({ onError }) {
                   <span className="rec-cut">{Math.round((result?.share_cut ?? r.share_cut) * 100)}%</span>
                 </div>
                 <div className="rec-sub">
-                  cuts {result?.pairs_cut ?? r.pairs_cut} of {result?.pairs_before ?? reach.reachable} {plural(result?.pairs_before ?? reach.reachable, "path")}
-                  {r.kind === "node" ? ` · ${r.pairs_through} ${plural(r.pairs_through, "path passes", "paths pass")} through ${r.id}` : ""}
+                  cuts {result?.pairs_cut ?? r.pairs_cut} of {result?.pairs_before ?? reach.reachable} {plural(result?.pairs_before ?? reach.reachable, "pair")}
+                  {r.kind === "node" ? ` · ${r.pairs_through} through ${r.id}` : ""}
                 </div>
                 {r.kind === "cut" && (
                   <ul className="rec-edges">{r.edges.map((e, j) => <li key={j}>{e.action}</li>)}</ul>
                 )}
-                {active && <div className="rec-after">{result.pairs_after === 0 ? "No path from the low-trust zone to a critical asset remains." : `${result.pairs_after} ${plural(result.pairs_after, "path")} would remain.`}</div>}
+                {active && <div className="rec-after">{result.pairs_after === 0 ? "No pairs remain reachable" : `${result.pairs_after} ${plural(result.pairs_after, "pair")} still reachable`}</div>}
               </li>
             );
           })}
         </ul>
 
-        <h3>Choke points</h3>
+        <h3>Choke points<Info text="Machines or accounts that many attack paths pass through. Securing one cuts every path through it." /></h3>
         <table className="choke-table">
           <thead><tr><th>Node</th><th>Paths</th><th>Pairs</th></tr></thead>
           <tbody>
@@ -128,10 +128,11 @@ export default function Exposure({ onError }) {
       <div className="exp-main panel">
         <div className="panel-head">
           <h2>Attack map</h2>
-          <small>low-trust machines on the left, critical assets on the right, each step tagged with its ATT&CK technique</small>
+          <small>start → critical asset</small>
+          <Info text="Starting machines on the left, critical assets on the right. Each step is tagged with its MITRE ATT&CK technique." />
         </div>
         {data.nodes.length === 0
-          ? <div className="view-loading">No path from this starting point to a critical asset. That is the goal.</div>
+          ? <div className="view-loading">No paths to a critical asset</div>
           : <div className="exp-graph-wrap">
               <ExposureGraph data={data} chokeIds={chokeIds} removedNodes={removedNodes} removedEdges={removedEdges} remaining={remaining} />
             </div>}

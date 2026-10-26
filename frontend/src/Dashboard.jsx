@@ -11,12 +11,12 @@ import Evaluation from "./Evaluation.jsx";
 import Ask from "./Ask.jsx";
 
 const VIEWS = [
-  { id: "triage", label: "Triage", hint: "Rank and investigate today's alerts" },
-  { id: "exposure", label: "Exposure", hint: "Attack paths and choke points before an attack" },
-  { id: "access", label: "Access", hint: "Granted vs used access, the least-privilege gap" },
-  { id: "graph", label: "Graph", hint: "The Neo4j engine: one query per SOC question" },
-  { id: "ask", label: "Ask", hint: "Ask about today's alerts in plain words, in English or an Indian language" },
-  { id: "evaluation", label: "Evaluation", hint: "Does GraphOps find the attack sooner than sorting by severity?" },
+  { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
+  { id: "exposure", label: "Exposure", hint: "Attack paths and choke points" },
+  { id: "access", label: "Access", hint: "Granted vs used access" },
+  { id: "graph", label: "Graph", hint: "Queries and algorithms" },
+  { id: "ask", label: "Ask", hint: "Questions in plain language" },
+  { id: "evaluation", label: "Evaluation", hint: "Ranking quality" },
 ];
 const POLL_MS = 2000;
 const VIEW_IDS = VIEWS.map((v) => v.id);
@@ -153,7 +153,7 @@ export default function Dashboard() {
           ))}
         </div>
         <div className="dnav-right">
-          {!guided && <button className="guided-btn" onClick={startGuided} title="Replay the attack against a 29-minute breakout clock">Beat the clock</button>}
+          {!guided && <button className="guided-btn" onClick={startGuided} title="Replay the attack against CrowdStrike's 29-minute average breakout time (2025)">Beat the clock</button>}
           {!guided && <LiveControls live={live} onStart={startReplay} onStop={stopLive} />}
           <button className="tour-btn" onClick={() => setTouring(true)}>Tour</button>
           <ThemeToggle />
@@ -222,7 +222,7 @@ function GuidedBanner({ guided, alerts, onClose }) {
     <div className={`guided ${guided.done ? "done" : ""}`} role="status">
       <div className="guided-clock">
         <div className="guided-clock-v">{fmt(guided.done ? spare : guided.remaining)}</div>
-        <div className="guided-clock-l">{guided.done ? "left of the 29:00 budget" : "attacker breakout budget"}</div>
+        <div className="guided-clock-l">{guided.done ? "remaining" : "breakout window"}</div>
       </div>
       <div className="guided-mid">
         <div className="guided-chain">
@@ -233,8 +233,8 @@ function GuidedBanner({ guided, alerts, onClose }) {
           ))}
         </div>
         {guided.done
-          ? <div className="guided-result">GraphOps connected the full attack chain in <b>{guided.elapsedSec}s</b>. The attacker's 29-minute head start is still on the clock, so you have the whole budget to contain it. Reading these as separate alerts, an analyst reconstructs this by hand.</div>
-          : <div className="guided-status">Watching the attack unfold live. GraphOps links each step into one incident as it lands.</div>}
+          ? <div className="guided-result">Attack chain connected in <b>{guided.elapsedSec}s</b>, with <b>{fmt(spare)}</b> of the 29-minute breakout window left.</div>
+          : <div className="guided-status">Linking each step into one incident as it arrives</div>}
       </div>
       <button className="guided-close" onClick={onClose}>{guided.done ? "Done" : "Stop"}</button>
     </div>

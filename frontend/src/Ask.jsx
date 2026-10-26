@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { askQuestion, getLanguages } from "./api.js";
+import { Cites, Info } from "./parts.jsx";
 
 const SUGGESTIONS = [
   "Which alert should I look at first, and why?",
@@ -44,8 +45,8 @@ export default function Ask() {
       const answer = await askQuestion(question, history, lang);
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer } : t)));
     } catch (e) {
-      const msg = e.message.startsWith("503") ? "The Ask tab needs a Sarvam AI key on the server. It is not set yet."
-        : e.message.startsWith("502") ? "The AI service did not answer. Try again in a moment." : `Something went wrong: ${e.message}`;
+      const msg = e.message.startsWith("503") ? "Unavailable: no AI key on this server"
+        : e.message.startsWith("502") ? "The AI service did not respond. Try again." : "Something went wrong. Try again.";
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, error: msg } : t)));
     }
     setBusy(false);
@@ -55,23 +56,20 @@ export default function Ask() {
     <main className="ask">
       <section className="panel ask-chat">
         <header className="ask-head">
-          <div>
-            <h2>Ask GraphOps</h2>
-            <p>Ask in plain words. The answer comes only from what GraphOps has already worked out, and every sentence shows the alerts, people or machines it is based on. Sentences that cite anything else are removed.</p>
-          </div>
-          <label className="ask-lang">Answer in
+          <h2>Ask GraphOps<Info text="Answers come only from GraphOps' own read-only lookups: alerts, blast radius, incidents, attack paths and access. Each sentence cites what it is based on; a sentence citing anything else is removed. Powered by Sarvam AI." /></h2>
+          <label className="ask-lang">Language
             <select value={lang} onChange={(e) => setLang(e.target.value)}>
               {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
             </select>
           </label>
         </header>
 
-        {!ready && <div className="ask-note">The AI key is not set on this server, so questions cannot be answered yet.</div>}
+        {!ready && <div className="ask-note">Unavailable: no AI key on this server</div>}
 
         <div className="ask-log">
           {!turns.length && (
             <div className="ask-empty">
-              <div className="ask-empty-h">Try one of these</div>
+              <div className="ask-empty-h">Suggested</div>
               <div className="ask-sugs">
                 {SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)} disabled={busy}>{s}</button>)}
               </div>
@@ -82,7 +80,7 @@ export default function Ask() {
               <div className="ask-q">{t.question}</div>
               {t.error && <div className="ask-err">{t.error}</div>}
               {t.answer && <Answer a={t.answer} />}
-              {!t.answer && !t.error && busy && i === turns.length - 1 && <div className="ask-wait">Looking it up…</div>}
+              {!t.answer && !t.error && busy && i === turns.length - 1 && <div className="ask-wait">Looking up…</div>}
             </div>
           ))}
           <div ref={end} />
@@ -90,7 +88,7 @@ export default function Ask() {
 
         <form className="ask-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500}
-            placeholder="For example: what can the intern's laptop reach?" aria-label="Your question" />
+            placeholder="Ask about alerts, machines, people or attack paths" aria-label="Your question" />
           <button className="btn primary" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
         </form>
       </section>
@@ -99,19 +97,20 @@ export default function Ask() {
 }
 
 function Answer({ a }) {
+  const sources = [...new Set(a.tools_used.map((u) => TOOL_LABEL[u.tool] || u.tool))];
   return (
     <div className="ask-a">
       {a.sentences.length
         ? a.sentences.map((s, i) => (
-          <p key={i}>{s.text} {s.cites.map((c) => <code key={c}>{c}</code>)}
+          <p key={i}>{s.text} <Cites ids={s.cites} />
             {s.text_en && <span className="story-en">{s.text_en}</span>}
           </p>))
-        : <p>No answer passed the citation check.</p>}
+        : <p>No supported answer.</p>}
       <div className="ask-meta">
-        {a.tools_used.length ? <>Looked up: {[...new Set(a.tools_used.map((u) => TOOL_LABEL[u.tool] || u.tool))].join(", ")}</> : "No lookups were needed"}
-        {a.dropped?.length > 0 && <> · {a.dropped.length} sentence{a.dropped.length > 1 ? "s" : ""} removed for citing something the lookups did not return</>}
-        {a.translation_error && <> · translation failed, shown in English</>}
-        <> · Drafted by AI (Sarvam), check before acting</>
+        <span className="tag-ai">AI draft</span>
+        {sources.map((x) => <span key={x} className="src-tag">{x}</span>)}
+        {a.dropped?.length > 0 && <span className="tag-ai off">{a.dropped.length} unsupported sentence{a.dropped.length > 1 ? "s" : ""} removed</span>}
+        {a.translation_error && <span className="tag-ai off">Translation unavailable</span>}
       </div>
     </div>
   );
