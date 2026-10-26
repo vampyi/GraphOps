@@ -52,6 +52,7 @@ export default function Dashboard() {
   const [scenarios, setScenarios] = useState(null);
   const [error, setError] = useState(null);
   const timer = useRef(null);
+  const sending = useRef(false); // true while the replay request is still sending the day (it can take minutes on vercel)
   const guidedTimer = useRef(null);
 
   const load = () =>
@@ -75,9 +76,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!live.on) return;
     let seq = live.seq;
+    let stopped = false;
+    // ask again only after the previous answer arrives, so slow answers never pile up
     const tick = async () => {
       try {
         const data = await getLive(seq);
+        if (stopped) return;
         seq = data.seq;
         if (data.alerts.length) {
           setAlerts((prev) => {
@@ -87,12 +91,12 @@ export default function Dashboard() {
           });
           setChanged(new Set(data.alerts.map((a) => a.id)));
         }
-        setLive((l) => ({ ...l, seq, replaying: data.replaying, ingested: l.ingested + data.ingested }));
-      } catch (e) { setError(e.message); }
+        setLive((l) => ({ ...l, seq, replaying: sending.current || data.replaying, ingested: l.ingested + data.ingested }));
+      } catch (e) { if (!stopped) setError(e.message); }
+      if (!stopped) timer.current = setTimeout(tick, POLL_MS);
     };
-    timer.current = setInterval(tick, POLL_MS);
     tick();
-    return () => clearInterval(timer.current);
+    return () => { stopped = true; clearTimeout(timer.current); };
   }, [live.on]); // eslint-disable-line
 
   const startReplay = async (attack) => {
@@ -100,9 +104,16 @@ export default function Dashboard() {
     try {
       setAlerts([]); setChanged(new Set());
       await replayReset();
-      await replayStart(attack, 60);
+      send(attack, 60);
       setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack });
     } catch (e) { setError(`Could not start the replay. ${e.message}`); }
+  };
+  // start sending the day without waiting for it to finish; alerts appear through polling as they land
+  const send = (attack, speed) => {
+    sending.current = true;
+    replayStart(attack, speed)
+      .catch((e) => setError(`The replay stopped early. ${e.message}`))
+      .finally(() => { sending.current = false; });
   };
   const stopLive = () => { setLive((l) => ({ ...l, on: false })); load(); };
 
@@ -113,7 +124,7 @@ export default function Dashboard() {
     try {
       setAlerts([]); setChanged(new Set());
       await replayReset();
-      await replayStart(true, 600);
+      send(true, 600);
       goView("triage");
       setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack: true });
       setGuided({ startedAt: Date.now(), remaining: BREAKOUT_BUDGET, done: false, elapsedSec: 0, incidentId: null });
