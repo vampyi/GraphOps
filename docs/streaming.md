@@ -43,7 +43,7 @@ Vercel runs our backend as short-lived functions. On the Hobby plan a function c
 
 | Option | What we found | Decision |
 |---|---|---|
-| Aiven for Apache Kafka, free plan | Real Apache Kafka. "No credit card needed." Up to 5 topics with 2 partitions each, up to 250 kb/s in and out, data kept up to 3 days. Powers off when nothing is produced or consumed; topic data is lost on shutdown, configuration is kept. Kafka Connect is not included. | **Use it.** Same Kafka as the laptop version, and exactly 5 topics is what we need. Losing topic data on shutdown does not matter because every event ends up in Neo4j. Now in use. |
+| Aiven for Apache Kafka, free plan | Real Apache Kafka. "No credit card needed." Up to 5 topics with 2 partitions each, up to 250 KiB/s in and out, data kept up to 3 days. Powers off when nothing is produced or consumed; topic data is lost on shutdown, configuration is kept. Kafka Connect is not included. | **Use it.** Same Kafka as the laptop version, and exactly 5 topics is what we need. Losing topic data on shutdown does not matter because every event ends up in Neo4j. Now in use. |
 | Vercel Queues | Public beta, "available on all plans", Python SDK, push or poll consumers. | Not chosen. It only exists on Vercel, so the laptop version would need different code, and it is not Kafka. |
 | Upstash Redis | Free tier: 250 MB and 500K commands a month. | Fallback only. It is a key-value store with streams, not a message broker. |
 | No broker at all | The replay endpoint writes straight into Neo4j. | Kept as the emergency fallback. Simplest, but it hides the pipeline judges asked about. |
@@ -63,14 +63,14 @@ What we checked on 13 October 2026:
 Two choices make this safe when many short calls read the same topics.
 
 - **We track our own read position.** Normally Kafka consumers join a "consumer group" and Kafka remembers how far each one has read. Joining a group takes a few seconds each time, which is too slow for a call every 2 seconds. Instead we read each partition directly and save the position (the offset) in Neo4j, in the same transaction as the events we just wrote. If the call crashes halfway, neither the events nor the new position are saved, and the next call picks up from the same place.
-- **Every event has an ID and is written with `MERGE` on that ID.** If two people have the dashboard open and both calls read the same message, the second write changes nothing. No event is counted twice.
+- **Every event has an ID, and an ID already seen is skipped.** The rest are created, with a uniqueness rule on the ID as a backstop. If two people have the dashboard open and both calls read the same message, the second write changes nothing. No event is counted twice.
 
 ## The data simulator
 
 We have no real company sending us security data, so the simulator plays one day at the sample organisation as if it were happening now.
 
 - **Baseline day.** It replays the saved events and alerts from `data/sample_org/` in time order.
-- **Everyday activity.** It adds 150 random normal events between the day's saved noise alerts: users logging into their own laptops, programs starting and traffic to the file server. It only repeats routes already seen before the day, so it never creates a new path, and it never sends remote logons, because the ranker reads their timing. This makes the stream look like a real network instead of a script.
+- **Everyday activity.** It adds 150 random normal events between the day's saved noise alerts: users logging into their own laptops, programs starting and traffic to the file server. It only repeats routes already seen before the day, so it never creates a new path, and it never sends remote logons, because the ranker reads their timing. So the attack is not the only activity in the stream, but the stream is still far simpler than a real network.
 - **The attack on command.** The scripted attack (phishing, credential dumping, remote logon, pass-the-hash) is injected only when asked, with `--attack` or the dashboard button. This lets us show the inbox before and after the attack.
 - **Speed.** The sample day covers about 4 hours (08:05 to 11:55). At the default 60x it plays in about 4 minutes, which fits inside one Vercel function call. `--speed 1` plays in real time, `--speed 600` in under half a minute.
 - **Repeatable.** A fixed random seed gives the same stream every time, so tests can check exact results.
@@ -143,7 +143,7 @@ In the graph: creates or updates the machine node. Marking an asset critical mak
 ## What happens when an alert arrives
 
 1. The ingest code writes the alert and links it to the users and machines involved.
-2. It re-runs the scoring for the alerts of that day. With tens of alerts this takes milliseconds, so the existing `score_all` is reused as it is.
+2. It re-scores every alert in the database (`score_all`). With tens of alerts this takes milliseconds, so the existing `score_all` is reused as it is.
 3. The distances to critical assets and the choke point scores are recomputed only when the network itself changes (a new edge, a permission change or a new critical asset), not on every alert.
 4. `GET /api/live` returns the alerts that are new or whose score changed, and the dashboard slides them into the inbox.
 
@@ -164,7 +164,7 @@ All pass, run with `.venv/bin/python -m pytest tests/test_streaming.py`.
 | Attack replay | The scripted attack streamed through Kafka ends up as one incident, with its alerts in the top 5, matching the batch result. |
 | Duplicates | Sending every message twice gives the same graph and the same scores. |
 | Crash halfway | Killing ingest mid-batch and restarting loses no event and counts none twice. |
-| Speed | Time from an alert being sent to it showing in `/api/live` is under 5 seconds at 60x. |
+| Speed | Time from an alert being sent to it showing in `/api/live` is under 5 seconds. The test sends one alert straight to Kafka, with no replay speed. |
 | Bad messages | Empty, oversized and malformed messages are skipped and logged without stopping the stream. |
 | No broker | Replaying straight into Neo4j without Kafka gives the same result as the batch load. |
 

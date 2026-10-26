@@ -17,7 +17,7 @@ Everything lives in one free, self-hosted Neo4j graph that takes data from any v
 
 ### 2. We fill the two empty spots
 - **The shrinking circle (pain point 6).** Draw a hacked user's blast radius twice: once over all the access they are allowed and once over only the access they use. The difference is the risk that least privilege removes.
-- **The never-taken path (pain point 7).** Flag a user reaching a server by a route they have never used, even when each step looks normal.
+- **The never-taken path (pain point 7).** Raise an alert's score when a machine-to-machine logon route near it was used for the first time shortly before, even when each step looks normal.
 
 ### 3. We rank alerts by where they sit on the attacker's map
 Every platform ranks alerts. Wiz uses graph context to rank threats, but only in the cloud. For on-premises and hybrid networks, none of the tools we checked lists attack paths, choke points or distance to critical systems as ranking inputs. Ours does.
@@ -46,10 +46,10 @@ How much each question counts is our design choice. We tune it on test data.
 | Plain-English questions | "What can this laptop reach?" becomes a graph query through Neo4j's `Text2CypherRetriever` | The query is shown to the analyst and runs read-only. |
 
 ### 5. Fast because the hard work happens before the alert
-- One backward search from the crown jewels stores "steps to nearest crown jewel" on every node. Scoring a new alert becomes a lookup.
-- Blast radius is a search capped at 3 hops that visits each node once.
+- A shortest-path search from each node to the crown jewels stores "steps to nearest crown jewel" on every node. Scoring a new alert becomes a lookup.
+- Blast radius is a search capped at 3 hops.
 - Linked alerts are grouped with connected components, one of the cheapest graph algorithms.
-- Heavy jobs such as choke points and communities run on a timer, never while the analyst waits.
+- Heavy jobs such as choke points and communities are worked out ahead of time, when the network changes, never while the analyst waits.
 
 This is standard engineering practice, not a new algorithm.
 
@@ -112,7 +112,7 @@ Read from the [hackFront India page](https://whereuelevate.com/drills/hackfronti
 | Innovation | Ranking by graph position, the shrinking circle, the never-taken path |
 | Problem solving | The 7 pain points |
 | Technical execution | A working, clickable demo |
-| Scalability | Precomputed scores, capped searches, heavy jobs on a timer |
+| Scalability | Precomputed scores, capped searches, heavy jobs run ahead of time |
 | Real-world impact | SANS 73%, 29-minute breakout, CERT-In 6 hours, INR 25.5 crore per breach |
 | Deployable | Runs with one `docker compose up` |
 | Neo4j prize | Relationships are the whole product: paths, choke points, communities and blast radius |

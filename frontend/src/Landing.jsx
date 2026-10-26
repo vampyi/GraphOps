@@ -10,26 +10,26 @@ const STATS = [
 
 const PAINS = [
   { title: "Too many alarms", status: "live", problem: "Most alerts are false, so the real attack hides in the noise.", fix: "Ranks every alert by where it sits on the attacker's map. Nothing is deleted." },
-  { title: "Alerts don't connect", status: "live", problem: "One attack shows up as many separate alerts.", fix: "Links alerts along the path the attacker took and orders them by attack stage." },
+  { title: "Alerts don't connect", status: "live", problem: "One attack shows up as many separate alerts.", fix: "Links alerts along the path the attacker took and tags each with its attack stage." },
   { title: "Attackers are faster", status: "live", problem: "Attackers spread in minutes while analysts take hours.", fix: "Works out each machine's distance to critical assets ahead of time, so scoring is instant." },
   { title: "How bad is this?", status: "live", problem: "Nobody can quickly see what a hacked machine can reach.", fix: "Draws the 1, 2 and 3 hop blast radius around any alert." },
   { title: "Hidden danger", status: "live", problem: "Risky access paths exist long before anyone uses them.", fix: "Maps attack paths and choke points before any attack, and shows which few fixes cut the most paths." },
   { title: "Too much access", status: "live", problem: "People hold far more access than they use.", fix: "Compares the access each identity is granted with the access it actually uses." },
-  { title: "One step at a time", status: "live", problem: "Each step can look normal while the whole route is strange.", fix: "Flags a user reaching a system through a route they have never used." },
+  { title: "One step at a time", status: "live", problem: "Each step can look normal while the whole route is strange.", fix: "Raises an alert when the logon route next to it was used for the first time." },
 ];
 
 const STEPS = [
   { n: "01", title: "Collect", text: "Logins, permissions, machines and alerts stream in from a company's existing tools." },
   { n: "02", title: "Connect", text: "Everything becomes one Neo4j graph: users, machines and groups as dots, logins and permissions as lines." },
   { n: "03", title: "Rank", text: "Each alert is scored on six graph questions and linked to the alerts on the same attack path." },
-  { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack in stage order and an AI-drafted story that cites its facts." },
+  { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack step by step and an AI-drafted story that cites its facts." },
 ];
 
 const WINS = [
-  { title: "One query per question", text: "Every answer is a single graph traversal. Shortest path, betweenness, PageRank, Louvain and the minimum cut all come from Neo4j and its Graph Data Science library, each doing a real SOC job." },
+  { title: "One query per question", text: "Attack paths come straight from Neo4j graph queries. Betweenness, PageRank and Louvain run in Neo4j Graph Data Science where it is installed, and in Python elsewhere, each doing a real SOC job." },
   { title: "Beat the 29-minute clock", text: "Replay an attack live against the breakout budget and watch the kill chain connect itself into one incident in seconds, not the hours of manual stitching it replaces." },
   { title: "The shrinking circle", text: "Draw an identity's blast radius over the access it holds, then over the access it actually uses. The gap is the risk least privilege removes." },
-  { title: "Measured, not guessed", text: "GraphOps ranks every attack alert to the top, even on a day it was never tuned on, with no false alarms read first. We show the numbers against sorting by severity." },
+  { title: "Measured, not guessed", text: "On five held-out attack days, GraphOps put the attack above sorting by severity every time. On the hardest, two harmless alerts still came first. We show every number." },
 ];
 
 export default function Landing() {

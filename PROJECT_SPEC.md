@@ -20,7 +20,7 @@ Each requirement can be tested.
 | R2 | Show every alert in an inbox, highest score first, each with the reasons behind its score. No alert is hidden. | Inbox count equals alert count in Neo4j |
 | R3 | Score each alert on at least four graph questions: hops to the nearest critical asset, critical assets within 3 hops, links to other alerts and never-taken path | Unit tests on a small graph with known answers |
 | R4 | Clicking an alert draws its 1, 2 and 3 hop blast radius | Rings match a Cypher query run by hand |
-| R5 | Linked alerts appear as one incident, ordered by MITRE ATT&CK tactic | The scripted attack's alerts form exactly one incident in the right order |
+| R5 | Linked alerts appear as one incident, listed by time, whose tactics follow MITRE ATT&CK order | The scripted attack's alerts form exactly one incident in the right order |
 | R6 | The incident story is drafted by an LLM. Every sentence cites node IDs and any sentence citing an ID outside the incident is dropped. Without an LLM key, the incident's facts are shown as a list instead. | Feed a fake LLM answer with a wrong ID and check that the sentence is dropped |
 | R7 | The analyst marks an alert as real or false and the verdict is saved on the alert | Read the alert back from Neo4j |
 | R8 | The scripted attack's alerts rank in the top 5 of about 30 alerts | Seed the sample data and check the inbox order |
@@ -86,7 +86,7 @@ The first flow proved the idea on one scripted day. This flow turns GraphOps int
 2. **Zero trust in numbers.** Compare the access each identity is granted with the access it actually uses, and draw the blast radius twice: granted and used. The gap is the risk least privilege removes.
 3. **Live.** Alerts arrive while the analyst watches, scores and incidents change in front of them, and the dashboard says what moved and why.
 4. **Structure, not rules.** Louvain communities over observed activity. An incident that spans communities is lateral movement; a first-time route that crosses communities is stranger than one inside them.
-5. **Real data in.** One event schema, reachable three ways: Kafka topics, an HTTP webhook (with field maps for common SIEM and EDR alert formats) and file imports (BloodHound SharpHound JSON, CSV for inventory, logons and flows).
+5. **Real data in.** One event schema, reachable three ways: Kafka topics, an HTTP webhook (with field maps for common SIEM and EDR alert formats) and file imports (BloodHound SharpHound JSON; CSV for inventory, logons and flows is planned).
 6. **Analyst workflow.** Verdicts that match how SOCs grade (real, benign, false), incident status and notes, and a one-click incident report whose sections follow what CERT-In's 6-hour report asks for.
 7. **Deployable.** `docker compose --profile app up` runs the whole stack. Tests run on every push.
 
@@ -94,17 +94,17 @@ The first flow proved the idea on one scripted day. This flow turns GraphOps int
 
 | # | Requirement | How we test it |
 |---|---|---|
-| R9 | `GET /api/exposure` lists every shortest attack path from low-trust machines (and optionally all identities) to critical assets, each edge tagged with its MITRE ATT&CK technique, plus choke points ranked by paths through them and a minimum edge cut. | Known-answer unit tests on a 7-node graph; on the sample organisation `server-7` and `svc_db`'s session sit on every path from the developers to `customer-db`. |
+| R9 | `GET /api/exposure` lists every shortest attack path from low-trust machines (and optionally all identities) to critical assets, each edge tagged with its MITRE ATT&CK technique, plus choke points ranked by paths through them and a minimum edge cut. | Known-answer unit tests on a 13-node graph; on the sample organisation `server-7` is a choke point. |
 | R10 | `POST /api/exposure/simulate` recomputes reachability after removing chosen nodes or edges and reports pairs and paths cut, exactly, not estimated. | Removing `laptop-42 -HasSession-> it_admin` cuts every path from the low-trust zone; removing `g_helpdesk` leaves the Domain Admins path. |
 | R11 | `GET /api/entities/{id}/access` returns granted reach, used reach (last N days) and the grants never used. `GET /api/access/overview` ranks identities by unused grants. | `it_admin` holds admin rights on 9 machines and used 4 in the last 30 days. |
 | R12 | Blast radius takes `mode=all|granted|used`; the used radius is never larger than the granted one on the sample data. | Compare node counts for `a-03` across modes. |
-| R13 | Louvain communities are stored on every entity (`community`). Incidents report the communities they span. The never-taken reason says when a route crosses communities. | The attack incident spans at least 2 communities; its first hop crosses communities. Works without Graph Data Science (networkx fallback). |
+| R13 | Louvain communities are stored on every entity (`community`). Incidents report the communities they span. (Planned: the never-taken reason says when a route crosses communities.) | The attack incident spans at least 2 communities. Works without Graph Data Science (networkx fallback). |
 | R14 | Incident IDs are stable across re-scoring: an incident keeps its ID when alerts join it. Incident status and notes survive re-scoring. | Score, add an alert that joins the incident, score again: same ID, notes intact. |
 | R15 | The dashboard polls `/api/live` while a replay runs, shows new alerts within one poll, and marks rank changes. Replay can be started and reset from the dashboard. | Streaming test already proves the API; a frontend build plus a scripted API walk-through covers the flow. |
 | R16 | `PATCH /api/assets/{id}` marks an asset critical or sets its zone and re-runs the analysis and scoring. | Mark `server-files` critical: `printer-01` gains no path (not an attack edge), alerts on `hr_1` gain hops points. |
 | R17 | Verdicts accept `real`, `benign` and `false`, and record who and when. | Read back from Neo4j. Unknown values still return 422. |
 | R18 | `POST /api/ingest` accepts a batch of events in the streaming schema; `POST /api/ingest/alerts?format=...` maps alert payloads shaped like Microsoft Sentinel, Splunk ES, Elastic Security and Wazuh into it. Unknown hosts and accounts named by an alert are created so the graph grows from telemetry. | Sample payloads per format produce the expected alert, entities and ATT&CK tags; the alert is scored on the next read. |
-| R19 | `python -m app.import_bloodhound <dir or zip>` loads SharpHound JSON (users, groups, computers) into the schema, with Tier Zero groups and domain controllers marked critical. | A SharpHound-shaped fixture of the sample organisation loads to the same node and edge counts as `network.json`. |
+| R19 | `python -m app.import_bloodhound <dir or zip>` loads SharpHound JSON (users, groups, computers) into the schema, with Tier Zero groups and domain controllers marked critical. | A small SharpHound-shaped fixture (6 nodes, 5 edges) loads with the expected counts and Tier Zero marked critical. |
 | R20 | `GET /api/incidents/{id}/report` returns a Markdown report: summary, timeline in ATT&CK order, affected assets, blast radius, communities, recommended containment, and the analyst's notes. | The attack incident's report names all four alerts and `customer-db`. |
 | R21 | Existing requirements R1 to R8 still pass unchanged. | Same tests. |
 

@@ -19,7 +19,7 @@ The default view. Every alert of the day, ranked by where it sits on the attacke
 - **Mark an asset critical.** Click any machine in the graph and use the button in its details. GraphOps
   re-runs distances, choke points and every alert score at once, so the inbox reflects the new crown jewel.
 - **Why it ranks here.** The six graph questions and the points each added, for the selected alert.
-- **Incident.** Alerts GraphOps linked into one attack, in ATT&CK stage order. Set the incident's **status**
+- **Incident.** Alerts GraphOps linked into one attack, listed by time and tagged with their ATT&CK stage. Set the incident's **status**
   (open, investigating, contained, closed) and it sticks, even as new alerts arrive. **Draft story (AI)** writes
   a plain-English account where every sentence must cite a real node, or shows the facts when AI is off.
   **Incident report** opens a containment-ready write-up you can copy into a ticket or a CERT-In notice.

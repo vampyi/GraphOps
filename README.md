@@ -26,7 +26,7 @@ are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-read
 | Community detection (Louvain) and cross-community (lateral) incident flagging | Built. Runs on Neo4j GDS, falls back to networkx on AuraDB Free. |
 | Ingest beyond Kafka: HTTP webhook, Microsoft Sentinel / Splunk ES / Elastic / Wazuh alert maps, BloodHound import | Built. See [docs/ingest.md](docs/ingest.md). |
 | Analyst workflow: stable incident IDs across re-scoring, incident status and notes, benign verdicts, one-click incident report, mark-asset-critical | Built. |
-| Graph view: the Neo4j engine made explicit — a live algorithm roster (Dijkstra, betweenness, PageRank, Louvain, WCC, min-cut), the one Cypher query behind each panel, and a graph-vs-SQL reachability proof timed live | Built. `GET /api/graph/algorithms`, `/api/graph/reachability-proof`. |
+| Graph view: the Neo4j engine made explicit — a live algorithm roster (Dijkstra, betweenness, PageRank, Louvain, WCC, min-cut), the one Cypher query behind each panel, and a reachability proof that times the Cypher query live next to the SQL you would need (shown, not run) | Built. `GET /api/graph/algorithms`, `/api/graph/reachability-proof`. |
 | Beat-the-clock guided demo: one-click attack replay against a 29-minute breakout countdown, the kill chain lighting up step by step, ending with the time-to-connected-picture | Built. |
 | Cinematic remediation: applying an Exposure fix collapses the cut attack paths and counts the risk number down to the recomputed value | Built. |
 | Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
@@ -42,8 +42,8 @@ GraphOps is a **working prototype, not a production deployment**. Everything in 
 | Dimension | Where it is today | What a production deployment needs |
 |---|---|---|
 | **Access control** | No login: anyone who can reach the port has full analyst control. | Authentication, per-analyst roles, and an audit trail of who triaged and remediated what. |
-| **Real feeds** | Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, built and unit-tested against sample exports. | A pilot against live SIEM and EDR feeds, where real data is messier and higher-volume than the fixtures. |
-| **Scale** | Validated on the synthetic sample organisation; precompute and query times measured there. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
+| **Real feeds** | Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, built and unit-tested against sample payloads we wrote from public documentation. | A pilot against live SIEM and EDR feeds, where real data is messier and higher-volume than the fixtures. |
+| **Scale** | Run only on the synthetic sample organisation. Precompute and query times have not been measured. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
 | **Hardening** | Dev defaults: no rate limiting, no ingest size caps, a single app and database instance, CORS set to the dev origin. | Rate-limited and size-capped ingest behind the access control above, and a backup and high-availability story for Neo4j. |
 | **Field validation** | Measured against labelled synthetic days, including a held-out day it was never tuned on. | A supervised pilot on real incidents to confirm the ranking holds on live attacks. |
 
@@ -61,12 +61,12 @@ None of these are defects; they are the normal distance between a tested prototy
 | # | Pain point | What GraphOps does |
 |---|---|---|
 | 1 | Too many alerts, most of them false | Ranks every alert by where it sits in the graph. No alert is deleted and every rank shows its reasons. |
-| 2 | Alerts arrive as separate rows | Links alerts that share a user or machine into one incident, ordered by MITRE ATT&CK stage. |
+| 2 | Alerts arrive as separate rows | Links alerts that share a user or machine into one incident, listed by time and tagged with each alert's MITRE ATT&CK stage. |
 | 3 | Attackers move faster than analysts | Precomputes each node's distance to critical assets so a new alert is scored instantly. |
 | 4 | No quick answer to "how bad is this?" | Shows the 1, 2 and 3 hop blast radius around any alerted node. |
 | 5 | Dangerous paths exist before any attack | Maps attack paths from low-trust zones to critical assets and lists the choke points that cut off the most paths. |
 | 6 | People hold more access than they use | Draws the blast radius twice: once over granted access and once over access actually used. The difference is the risk that least privilege removes. |
-| 7 | Rules check one step at a time | Flags a user reaching a system through a path they have never used before, even when each step looks normal. |
+| 7 | Rules check one step at a time | Adds points to an alert when a machine-to-machine logon route near it was used for the first time shortly before, even when each step looks normal. |
 
 ### AI agents as identities
 
@@ -141,7 +141,7 @@ We have no real company sending us live security data, so this Python script pla
 
 - It reads saved events in time order, for example "10:42:03, raja logged into server-7".
 - It waits the real gap between events, or a shorter gap: at the default 60x the sample day of about 4 hours plays in about 4 minutes.
-- It mixes random everyday activity, such as normal logins, programs starting and file share traffic, in with the day's saved noise alerts, so the stream looks like a real network.
+- It mixes random everyday activity, such as normal logins, programs starting and file share traffic, in with the day's saved noise alerts, so the attack is not the only activity in the stream. It never creates a new route or a remote logon.
 - It injects the scripted attack only when asked, so we can show the inbox before and after the attack.
 - It sends each event to Kafka, into a topic for its source: logins and permissions to `identity`, programs started to `edr`, network connections to `flows`, security alerts to `alerts` and machine inventory to `cmdb`.
 
@@ -153,7 +153,7 @@ This Python program listens to the five Kafka topics and turns each event into d
 
 - "raja logged into server-7" becomes a `LoggedInto` edge from the user `raja` to the machine `server-7`.
 - If the edge already exists, it updates "last seen". If it is new, it records "first seen". This is how GraphOps later knows a path has never been used before.
-- Every event has an ID and is written with `MERGE` on that ID, so a message read twice changes nothing.
+- Every event has an ID. The loader skips IDs it has already seen and creates the rest, with a uniqueness rule on the ID as a backstop, so a message read twice changes nothing.
 - It saves how far it has read in each topic in Neo4j, in the same transaction as the events, so a crash never loses or repeats an event.
 - On a laptop it runs all the time. On the hosted site, where functions stop after a few minutes, the same code runs each time the dashboard asks for new alerts.
 - When the event is an alert, it saves the alert as a node linked to the user and machine involved, then tells the alert ranker a new alert has arrived.
@@ -241,7 +241,7 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 | Source | What it gives us | Real or synthetic |
 |---|---|---|
 | ADSynth | A realistic company network: users, groups, computers and permissions in Active Directory and the cloud | Synthetic |
-| LANL 2015 (Los Alamos National Laboratory) | 58 days of real logins and network flows, with labelled red-team attacks | Real, anonymised |
+| LANL 2015 (Los Alamos National Laboratory) | 58 days of authentication events and network flows from a real network, with one controlled red-team exercise | Real background activity, anonymised; the attack is a controlled exercise. Not loaded yet. |
 | Scripted attack scenario | A known attack replayed as live events and alerts | Synthetic |
 
 The console always states that its data is synthetic.
@@ -250,13 +250,14 @@ The console always states that its data is synthetic.
 
 | Test | What it proves |
 |---|---|
-| Known-answer graphs | On small graphs where we know the right answer, blast radius, attack paths and choke points come out exactly right. |
-| Detection on real attacks | On the LANL data we measure precision, missed attacks and alerts per day against the red-team labels. We do not report AUC on its own. |
-| Attack replay | A scripted attack streamed through Kafka ends up as one incident, ranked near the top, with the correct path. |
-| Speed | We replay data at 1x, 10x and 100x and measure events per second and the time from alert to score. |
+| Known-answer graphs | On a small hand-made graph, attack paths, choke points and the minimum cut come out exactly right. Blast radius is checked on the sample organisation. |
+| Held-out scenarios | Five attack days the weights were never tuned on, each built around a known weakness, compared with sorting by severity. Results and limits in [docs/evaluation.md](docs/evaluation.md). |
+| Detection on a red-team exercise (planned) | On the LANL data we will measure precision, missed attacks and alerts per day against the red-team labels. We do not report AUC on its own. |
+| Attack replay | A scripted attack streamed through Kafka ends up as one incident, ranked near the top, the same as loading it in one batch. |
+| Speed | We send one alert straight to Kafka and check it shows in `/api/live` within 5 seconds. On the hosted site we timed a whole replayed day once (see [docs/hosting.md](docs/hosting.md)). |
 | Break tests | Empty events, very large events and malformed events are rejected without crashing the pipeline. |
-| AI checks | Incident stories that cite a node outside the incident are rejected. Generated queries that try to write are refused. The ranking model is compared against hand-set weights on held-out alerts. |
-| People test | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
+| AI checks | Incident stories that cite a node outside the incident are rejected. Planned: generated queries that try to write are refused, and a ranking model is compared against hand-set weights. |
+| People test (planned) | People who have not seen GraphOps answer "what happened?" first from a raw alert list and then with GraphOps. We time both. |
 | Continuous checks | GitHub Actions runs the backend tests (real Neo4j and Kafka in Docker via Testcontainers) and the dashboard build on every push and pull request. See [.github/workflows/ci.yml](.github/workflows/ci.yml). |
 
 ## Run it
@@ -277,7 +278,7 @@ you want to run the backend and dashboard yourself.
 
 ### For development
 
-You need Docker Desktop, Python 3.12 or newer and Node.js 20 or newer.
+You need Docker Desktop, Python 3.12 or newer and Node.js 20.19 or newer (on version 22, 22.12 or newer).
 
 ```bash
 # 1. settings: copy the example and choose a local password
