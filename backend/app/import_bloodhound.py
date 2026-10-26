@@ -12,6 +12,7 @@ their SID inside the file and given a readable id (the name, lower-cased, domain
 SID kept as a property. Tier Zero (high-value) groups and computers are marked critical."""
 import json
 import sys
+from collections import Counter
 import zipfile
 from pathlib import Path
 
@@ -80,11 +81,26 @@ def to_network(collection):
     sid_to_id, nodes = {}, []
     sessions, members, admins, rdp, genericall = [], [], [], [], []
 
-    def register(obj, label):
+    def sid_of(obj):
+        return obj.get("ObjectIdentifier") or (obj.get("Properties", {}) or {}).get("objectid")
+
+    # one entry per SID: merged collections can list the same object in more than one file
+    objects = {}
+    for kind, label in (("users", "User"), ("groups", "Group"), ("computers", "Computer")):
+        for obj in collection.get(kind, []):
+            sid = sid_of(obj)
+            if sid and sid not in objects:
+                objects[sid] = (obj, label)
+
+    # short readable ids, unless two objects share one (krbtgt exists in every domain): then keep the domain
+    short = {sid: _short((o.get("Properties", {}) or {}).get("name"), sid, strip_dns=(lab == "Computer"))
+             for sid, (o, lab) in objects.items()}
+    clashes = {i for i, n in Counter(short.values()).items() if n > 1}
+
+    def register(sid, obj, label):
         props = obj.get("Properties", {}) or {}
-        sid = obj.get("ObjectIdentifier") or props.get("objectid")
         name = props.get("name")
-        nid = _short(name, sid, strip_dns=(label == "Computer"))
+        nid = short[sid] if short[sid] not in clashes else (str(name).lower() if name else sid)
         sid_to_id[sid] = nid
         node = {"id": nid, "label": label, "name": (name or nid)}
         high = bool(props.get("highvalue") or props.get("system_tags") == "admin_tier_0")
@@ -100,9 +116,8 @@ def to_network(collection):
             node["is_service_account"] = bool(props.get("serviceprincipalnames"))
         return node
 
-    for kind, label in (("users", "User"), ("groups", "Group"), ("computers", "Computer")):
-        for obj in collection.get(kind, []):
-            nodes.append(register(obj, label))
+    for sid, (obj, label) in objects.items():
+        nodes.append(register(sid, obj, label))
 
     # second pass: relationships, now that every SID has an id
     def rid(sid):
@@ -116,18 +131,26 @@ def to_network(collection):
                 members.append({"src": src, "type": "MemberOf", "dst": gid})
     for obj in collection.get("computers", []):
         cid = rid(obj.get("ObjectIdentifier") or obj.get("Properties", {}).get("objectid"))
-        for s in _results(obj.get("Sessions")):
-            uid = rid(s.get("UserSID") or s.get("ObjectIdentifier"))
-            if uid and cid:
-                sessions.append({"src": cid, "type": "HasSession", "dst": uid})
-        for a in _results(obj.get("LocalAdmins")):
-            pid = rid(a.get("ObjectIdentifier"))
-            if pid and cid:
-                admins.append({"src": pid, "type": "AdminTo", "dst": cid})
-        for r in _results(obj.get("RemoteDesktopUsers")):
-            pid = rid(r.get("ObjectIdentifier"))
-            if pid and cid:
-                rdp.append({"src": pid, "type": "CanRDP", "dst": cid})
+        # current SharpHound (format v6) splits sessions three ways; older files have only Sessions
+        for key in ("Sessions", "PrivilegedSessions", "RegistrySessions"):
+            for s in _results(obj.get(key)):
+                uid = rid(s.get("UserSID") or s.get("ObjectIdentifier"))
+                if uid and cid:
+                    sessions.append({"src": cid, "type": "HasSession", "dst": uid})
+        # older files list local admins and RDP users directly; v6 puts them in LocalGroups, identified by the
+        # well-known local group SIDs (names can be anything): -544 Administrators, -555 Remote Desktop Users
+        local = {"AdminTo": list(_results(obj.get("LocalAdmins"))), "CanRDP": list(_results(obj.get("RemoteDesktopUsers")))}
+        for g in obj.get("LocalGroups") or []:
+            gsid = str(g.get("ObjectIdentifier") or "")
+            if gsid.endswith("-544"):
+                local["AdminTo"] += _results(g)
+            elif gsid.endswith("-555"):
+                local["CanRDP"] += _results(g)
+        for edge_type, members_of_group in local.items():
+            for m in members_of_group:
+                pid = rid(m.get("ObjectIdentifier"))
+                if pid and cid:
+                    (admins if edge_type == "AdminTo" else rdp).append({"src": pid, "type": edge_type, "dst": cid})
     for kind in ("users", "groups", "computers"):
         for obj in collection.get(kind, []):
             oid = rid(obj.get("ObjectIdentifier") or obj.get("Properties", {}).get("objectid"))
@@ -137,6 +160,7 @@ def to_network(collection):
 
     granted = members + admins + rdp + genericall
     granted = [e for e in granted if e["type"] in GRANTED_EDGES] + sessions  # HasSession stored with grants
+    granted = list({(e["src"], e["type"], e["dst"]): e for e in granted}.values())  # duplicate objects repeat edges
     return {"nodes": nodes, "granted": granted, "observed": []}
 
 

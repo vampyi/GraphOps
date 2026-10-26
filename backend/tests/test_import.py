@@ -4,6 +4,7 @@ import json
 
 from app import exposure
 from app.analysis import run_all
+from app.db import ROOT
 from app.import_bloodhound import load_sharphound, to_network, read_collection
 
 USERS = {"meta": {"type": "users"}, "data": [
@@ -73,3 +74,21 @@ def test_read_collection_from_zip(tmp_path):
             z.write(f, f.name)
     net = to_network(read_collection(zpath))
     assert len(net["nodes"]) == 6
+
+
+def test_real_bloodhound_ce_sample_loads(neo4j_driver):
+    """SpecterOps' public sample: three domains, SharpHound format v6, objects repeated across merged files."""
+    from app.analysis import run_all
+    zip_path = ROOT / "backend" / "tests" / "fixtures" / "bloodhound_ce_sample" / "ad_sampledata.zip"
+    network = to_network(read_collection(zip_path))
+    kinds = {e["type"] for e in network["granted"]}
+    assert {"MemberOf", "AdminTo", "HasSession"} <= kinds
+    ids = [n["id"] for n in network["nodes"]]
+    assert len(ids) == len(set(ids))
+    assert "krbtgt@phantom.corp" in ids and "krbtgt@wraith.corp" in ids
+    with neo4j_driver.session() as s:
+        counts = load_sharphound(s, zip_path)
+        run_all(s)
+        reach = s.run("MATCH (n) WHERE n.hops_to_critical > 0 RETURN count(n) AS c").single()["c"]
+    assert counts["nodes"] == len(ids)
+    assert reach > 0
