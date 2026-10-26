@@ -4,7 +4,7 @@ const W = 780;
 const H = 660;
 const CX = W / 2;
 const CY = H / 2;
-const RADII = [0, 130, 220, 305];
+const RADII = [0, 120, 215, 300];
 const KIND_SHAPE = { User: "circle", Group: "square", Computer: "diamond" };
 
 // place nodes on rings by hop. each ring is ordered by the angle of the node that leads to it,
@@ -62,6 +62,11 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
   }, [full, maxHop]);
   if (!data) return null;
 
+  // fit the picture to the rings actually drawn, so a small blast radius is drawn large and readable
+  const outer = Math.max(1, ...data.nodes.map((n) => n.hop));
+  const extent = Math.max(230, RADII[Math.min(outer, maxHop)] + 60);
+  const viewBox = `${CX - extent} ${CY - extent} ${2 * extent} ${2 * extent}`;
+
   const pathIds = data.attack_path?.nodes || [];
   const pathEdge = new Set(pathIds.slice(1).map((id, i) => `${pathIds[i]}>${id}`));
   const focus = hover || selectedNode;
@@ -69,7 +74,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
   if (focus) data.edges.forEach((e) => { if (e.src === focus || e.dst === focus) { linked.add(e.src); linked.add(e.dst); } });
 
   return (
-    <svg className="ring-graph" viewBox={`0 0 ${W} ${H}`} key={data.alert_id}>
+    <svg className="ring-graph" viewBox={viewBox} preserveAspectRatio="xMidYMid meet" key={data.alert_id}>
       <defs>
         <radialGradient id="halo-red"><stop offset="0" style={{ stopColor: "var(--red)", stopOpacity: 0.28 }} /><stop offset="1" style={{ stopColor: "var(--red)", stopOpacity: 0 }} /></radialGradient>
         <radialGradient id="halo-amber"><stop offset="0" style={{ stopColor: "var(--amber)", stopOpacity: 0.22 }} /><stop offset="1" style={{ stopColor: "var(--amber)", stopOpacity: 0 }} /></radialGradient>
@@ -80,7 +85,6 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
       {RADII.slice(1, maxHop + 1).map((r, i) => (
         <g key={r} className="ring" style={{ animationDelay: `${i * 0.18}s` }}>
           <circle cx={CX} cy={CY} r={r} />
-          <text x={CX + r * Math.cos(-0.6) + 6} y={CY + r * Math.sin(-0.6) - 4}>{i + 1} hop{i ? "s" : ""}</text>
         </g>
       ))}
 
@@ -91,12 +95,12 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
         const dim = focus && !(e.src === focus || e.dst === focus);
         const lit = focus && !dim;
         const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-        const trim = 13;
+        const trim = 19;
         const x2 = b.x - (dx / len) * trim, y2 = b.y - (dy / len) * trim;
         return (
           <g key={i} className={`edge ${onPath ? "path" : ""} ${dim ? "dim" : ""} ${lit ? "lit" : ""}`}>
             <line x1={a.x} y1={a.y} x2={x2} y2={y2} markerEnd={onPath ? "url(#arrow-red)" : "url(#arrow)"} />
-            {(lit || onPath) && <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 4}>{e.type}</text>}
+            {lit && <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 4}>{e.type}</text>}
           </g>
         );
       })}
@@ -107,7 +111,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
         const onPath = pathIds.includes(n.id);
         const dim = focus && !linked.has(n.id) && n.id !== focus;
         const cls = n.hop === 0 ? "alerted" : n.critical ? "critical" : onPath ? "onpath" : `hop${n.hop}`;
-        const r = n.critical ? 11 : n.hop === 0 ? 11 : 8;
+        const r = n.critical ? 17 : n.hop === 0 ? 17 : 13;
         return (
           <g
             key={n.id}
@@ -119,7 +123,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
           >
             {(n.critical || n.hop === 0) && <circle cx={p.x} cy={p.y} r={r * 2.6} fill={n.critical ? "url(#halo-red)" : "url(#halo-amber)"} />}
             <Shape kind={n.kind} x={p.x} y={p.y} r={r} className="shape" />
-            <text x={p.x} y={p.y + r + 13}>{n.id}</text>
+            <text x={p.x} y={p.y + r + 22}>{n.id}</text>
           </g>
         );
       })}

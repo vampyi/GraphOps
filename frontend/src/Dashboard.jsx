@@ -7,12 +7,14 @@ import Triage from "./Triage.jsx";
 import Exposure from "./Exposure.jsx";
 import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
+import Evaluation from "./Evaluation.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Rank and investigate today's alerts" },
   { id: "exposure", label: "Exposure", hint: "Attack paths and choke points before an attack" },
   { id: "access", label: "Access", hint: "Granted vs used access, the least-privilege gap" },
   { id: "graph", label: "Graph", hint: "The Neo4j engine: one query per SOC question" },
+  { id: "evaluation", label: "Evaluation", hint: "Does GraphOps find the attack sooner than sorting by severity?" },
 ];
 const POLL_MS = 2000;
 const VIEW_IDS = VIEWS.map((v) => v.id);
@@ -139,7 +141,7 @@ export default function Dashboard() {
   const focusAlertId = guided && alerts.length ? alerts[0].id : null;
 
   return (
-    <div className="dash">
+    <div className={`dash ${guided ? "has-guided" : ""}`}>
       <nav className="dnav">
         <a className="brand" href="#/"><Logo />GraphOps</a>
         <div className="views" role="tablist" data-tour="views">
@@ -173,6 +175,7 @@ export default function Dashboard() {
       {view === "exposure" && <Exposure onError={setError} />}
       {view === "access" && <Access onError={setError} />}
       {view === "graph" && <GraphEngine onError={setError} />}
+      {view === "evaluation" && <Evaluation onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
 
       {guided && <GuidedBanner guided={guided} alerts={alerts} onClose={endGuided} />}
     </div>
