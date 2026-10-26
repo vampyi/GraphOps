@@ -18,6 +18,7 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/incidents/{incident_id}/report"),
     ("PATCH", "/api/incidents/{incident_id}"),
     ("POST", "/api/incidents/{incident_id}/story"),
+    ("GET", "/api/languages"),
     ("POST", "/api/alerts/{alert_id}/verdict"),
     ("PATCH", "/api/assets/{asset_id}"),
     ("GET", "/api/exposure"),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getBlastRadius, getIncident, getReport, patchAsset, patchIncident, setVerdict, writeStory } from "./api.js";
+import { getBlastRadius, getIncident, getLanguages, getReport, patchAsset, patchIncident, setVerdict, writeStory } from "./api.js";
 import { SEVERITY_RANK } from "./tactics.js";
 import RingGraph from "./RingGraph.jsx";
 import { MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
@@ -49,6 +49,9 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
   const [node, setNode] = useState(null);
   const [maxHop, setMaxHop] = useState(3);
   const [busy, setBusy] = useState(false);
+  const [lang, setLang] = useState("en-IN");
+  const [languages, setLanguages] = useState([{ code: "en-IN", name: "English" }]);
+  useEffect(() => { getLanguages().then((d) => setLanguages(d.languages)).catch(() => {}); }, []);
 
   // the guided tour switches tabs so it can point at what lives inside them
   useEffect(() => {
@@ -119,7 +122,7 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
 
   const draftStory = async () => {
     setBusy(true);
-    try { setStory(await writeStory(incident.id)); } catch (e) { onError(e.message); }
+    try { setStory(await writeStory(incident.id, lang)); } catch (e) { onError(e.message); }
     setBusy(false);
   };
 
@@ -254,7 +257,7 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
                 {tab === "incident" && (
                   <IncidentTab incident={incident} selectedId={selected.id} onStatus={setStatus} onReport={openReport} />
                 )}
-                {tab === "story" && <StoryTab incident={incident} story={story} busy={busy} onDraft={draftStory} />}
+                {tab === "story" && <StoryTab incident={incident} story={story} busy={busy} onDraft={draftStory} lang={lang} onLang={setLang} languages={languages} />}
               </div>
             </>
           )}
@@ -378,16 +381,32 @@ function IncidentTab({ incident, selectedId, onStatus, onReport }) {
   );
 }
 
-function StoryTab({ incident, story, busy, onDraft }) {
+function StoryTab({ incident, story, busy, onDraft, lang, onLang, languages }) {
   if (!incident) return <div className="tab-pane"><p className="tab-lead">A story is written for an incident. This alert is not linked to any other alert.</p></div>;
   return (
     <div className="tab-pane">
       <p className="tab-lead">An AI drafts the story of {incident.id} from the incident's facts only. Every sentence cites the alerts, users or machines it is based on, and a checker removes any sentence that cites something outside the incident.</p>
-      <button className="btn primary" disabled={busy} onClick={onDraft}>{busy ? "Writing…" : story ? "Draft again" : "Draft the story"}</button>
+      <div className="story-controls">
+        <label>Language
+          <select value={lang} onChange={(e) => onLang(e.target.value)}>
+            {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+        </label>
+        <button className="btn primary" disabled={busy} onClick={onDraft}>{busy ? "Writing…" : story ? "Draft again" : "Draft the story"}</button>
+      </div>
       {story && (
         <div className="story">
-          <div className="story-head">{story.source === "facts" ? "AI is not available right now, so these are the incident's facts." : "Drafted by AI. Needs analyst approval."}</div>
-          {story.sentences.map((s, i) => <p key={i}>{s.text} {s.cites.map((c) => <code key={c}>{c}</code>)}</p>)}
+          <div className="story-head">
+            {story.source === "facts"
+              ? "AI is not available right now, so these are the incident's facts."
+              : `Drafted by AI${story.provider === "sarvam" ? " (Sarvam)" : ""}. Needs analyst approval.`}
+            {story.translation_error && " Translation failed, so the story is in English."}
+          </div>
+          {story.sentences.map((s, i) => (
+            <p key={i}>{s.text} {s.cites.map((c) => <code key={c}>{c}</code>)}
+              {s.text_en && <span className="story-en">{s.text_en}</span>}
+            </p>
+          ))}
           {story.dropped?.length > 0 && <div className="dropped">{story.dropped.length} sentence(s) removed for citing facts outside this incident.</div>}
         </div>
       )}

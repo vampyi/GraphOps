@@ -15,7 +15,8 @@ export const getBlastRadius = (id, mode = "all", days = 30) => call(`/alerts/${i
 export const getIncident = (id) => call(`/incidents/${id}`);
 export const getReport = (id) => call(`/incidents/${id}/report`);
 export const patchIncident = (id, body) => patch(`/incidents/${id}`, body);
-export const writeStory = (id) => post(`/incidents/${id}/story`);
+export const writeStory = (id, lang = "en-IN") => post(`/incidents/${id}/story?lang=${encodeURIComponent(lang)}`);
+export const getLanguages = () => call("/languages");
 export const setVerdict = (id, status, by) => post(`/alerts/${id}/verdict`, { status, by });
 export const patchAsset = (id, body) => patch(`/assets/${id}`, body);
 

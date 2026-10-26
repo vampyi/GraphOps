@@ -15,6 +15,7 @@ from .db import ROOT, driver
 from .report import incident_report
 from .scoring import WEIGHTS, score_all
 from .story import write_story
+from .llm import LANGUAGES
 
 app = FastAPI(title="GraphOps")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -143,9 +144,11 @@ def incident(incident_id: str):
 
 
 @app.post("/api/incidents/{incident_id}/story")
-def story(incident_id: str):
+def story(incident_id: str, lang: str = "en-IN"):
+    if lang not in LANGUAGES:
+        raise HTTPException(422, f"lang must be one of {', '.join(LANGUAGES)}")
     with _driver.session() as s:
-        result = write_story(s, incident_id)
+        result = write_story(s, incident_id, lang=lang)
         if result is None:
             raise HTTPException(404, "incident not found")
         return result
@@ -480,6 +483,13 @@ def live(since: int = 0):
         running = bool(_replay["thread"] and _replay["thread"].is_alive())
         return {"seq": seq, "ingested": ingested, "replaying": running,
                 "alerts": _alert_rows(s, since) if seq > since else []}
+
+
+@app.get("/api/languages")
+def languages():
+    """languages the story and the ask tab can answer in, and whether the llm is configured."""
+    from . import llm
+    return {"languages": [{"code": k, "name": v} for k, v in LANGUAGES.items()], "llm": llm.available()}
 
 
 @app.get("/api/health")

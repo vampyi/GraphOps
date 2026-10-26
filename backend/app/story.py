@@ -1,6 +1,10 @@
 """incident story writer (requirement R6): an llm drafts the story, a checker drops any sentence
-that cites a node outside the incident, and without llm access the facts are returned as a list."""
+that cites a node outside the incident, and without llm access the facts are returned as a list.
+sarvam ai is used when SARVAM_API_KEY is set, claude when it is not and a login exists. stories can be
+translated into indian languages with sarvam's translation api; the citations stay with each sentence."""
 import json
+
+from . import llm as sarvam
 
 MODEL = "claude-opus-5-5"
 
@@ -75,7 +79,15 @@ def fact_list(facts):
             for a in facts["alerts"]]
 
 
-def ask_llm(facts):
+def ask_sarvam(facts):
+    reply = sarvam.chat(
+        [{"role": "system", "content": "You write short, factual incident summaries for security analysts. Reply with JSON only."},
+         {"role": "user", "content": PROMPT.format(facts=json.dumps(facts, indent=2))}],
+        schema=SCHEMA, max_tokens=2000)
+    return sarvam.parse_json(reply.get("content"))["sentences"]
+
+
+def ask_claude(facts):
     import anthropic
     client = anthropic.Anthropic()  # uses the `ant auth login` profile, no key in the code
     response = client.beta.messages.create(
@@ -92,14 +104,29 @@ def ask_llm(facts):
     return json.loads(text)["sentences"]
 
 
-def write_story(session, incident_id, llm=ask_llm):
+ask_llm = ask_claude  # kept for older callers
+
+
+def default_llm():
+    return (ask_sarvam, "sarvam") if sarvam.available() else (ask_claude, "claude")
+
+
+def write_story(session, incident_id, llm=None, lang="en-IN"):
     facts = incident_facts(session, incident_id)
     if not facts["alerts"]:
         return None
+    llm, provider = (llm, "llm") if llm else default_llm()
     try:
         sentences = llm(facts)
-        source = "llm"
-    except Exception as exc:  # no login, network error or refusal: fall back to the plain fact list
+    except Exception as exc:  # no key, no login, network error or refusal: fall back to the plain fact list
         return {"source": "facts", "reason": str(exc)[:200], "sentences": fact_list(facts), "dropped": []}
     kept, dropped = check_citations(sentences, allowed_ids(facts))
-    return {"source": source, "status": "needs analyst approval", "sentences": kept, "dropped": dropped}
+    result = {"source": "llm", "provider": provider, "status": "needs analyst approval",
+              "sentences": kept, "dropped": dropped, "language": "en-IN"}
+    if lang and lang != "en-IN":
+        try:
+            result["sentences"] = [{**s, "text": sarvam.translate(s["text"], lang), "text_en": s["text"]} for s in kept]
+            result["language"] = lang
+        except Exception as exc:  # keep the english story rather than lose it
+            result["translation_error"] = str(exc)[:200]
+    return result

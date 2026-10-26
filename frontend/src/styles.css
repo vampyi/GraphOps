@@ -681,3 +681,7 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .tri-rows .moved { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; line-height: 1.2; }
 .tri-rows .moved small { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 10px; color: var(--faint); }
 .dash.has-guided .tri > .panel { height: calc(100vh - 168px - 104px); }
+.story-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.story-controls label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.story-controls select { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 13px; }
+.story-en { display: block; font-size: 12px; color: var(--faint); margin-top: 2px; }
