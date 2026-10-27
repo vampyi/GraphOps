@@ -21,13 +21,11 @@ export default function Ask() {
   const [turns, setTurns] = useState([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [lang, setLang] = useState("en-IN");
-  const [languages, setLanguages] = useState([{ code: "en-IN", name: "English" }]);
   const [ready, setReady] = useState(true);
   const end = useRef(null);
 
   useEffect(() => {
-    getLanguages().then((d) => { setLanguages(d.languages); setReady(d.llm); }).catch(() => {});
+    getLanguages().then((d) => setReady(d.llm)).catch(() => {});
   }, []);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [turns, busy]);
 
@@ -42,7 +40,7 @@ export default function Ask() {
     setTurns((ts) => [...ts, { question }]);
     setBusy(true);
     try {
-      const answer = await askQuestion(question, history, lang);
+      const answer = await askQuestion(question, history, "en-IN");
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer } : t)));
     } catch (e) {
       const msg = e.message.startsWith("503") ? "Unavailable: no AI key on this server"
@@ -57,11 +55,6 @@ export default function Ask() {
       <section className="panel ask-chat">
         <header className="ask-head">
           <h2>Ask GraphOps<Info text="Answers come only from GraphOps' own read-only lookups: alerts, blast radius, incidents, attack paths and access. Each sentence cites what it is based on; a sentence citing anything else is removed. Powered by Sarvam AI." /></h2>
-          <label className="ask-lang">Language
-            <select value={lang} onChange={(e) => setLang(e.target.value)}>
-              {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
-            </select>
-          </label>
         </header>
 
         {!ready && <div className="ask-note">Unavailable: no AI key on this server</div>}
