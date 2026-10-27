@@ -17,9 +17,9 @@ export default function Evaluation({ onError, dayName }) {
       {data && (
         <section className="panel evalv-result">
           <div className="evalv-title">
-            Ranking quality · {dayName || "Loaded day"}
+            Ranking quality · {dayName || "Loaded scenario"}
             <small>{data.total} alerts · {data.attack} in the attack</small>
-            <Info text="Each day comes with labels marking the attack's alerts. The ranker never sees them. The Sample day set the weights; the other days in the Day menu are held-out attacks, each built around a known weakness. All days are synthetic." />
+            <Info text="Each scenario comes with labels marking the attack's alerts. The ranker never sees them. The weights were set on the customer-database scenario; the others are held-out attacks, each built around a known weakness. All scenarios are synthetic." />
           </div>
           <div className="evalv-grid">
             <Column title="GraphOps" badge="graph position" win m={data.graphops} />

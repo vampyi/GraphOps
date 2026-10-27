@@ -28,10 +28,8 @@ The default view. Every alert of the day, ranked by where it sits on the attacke
 
 ## Live: watch it happen
 
-The top bar has **Replay attack live** and **Normal day**. These stream the saved day through Kafka as if it
-were happening now. Alerts arrive one by one and the inbox reorders in front of you, so you can watch the attack
-climb from the noise. **Stop** returns to the full day. Use this to show breakout time: an alert fires, one click
-shows the blast radius, and the critical asset is two hops away.
+**Stream live** in the top bar replays the selected scenario's telemetry through Kafka as if it were happening
+now. Alerts arrive one by one and the inbox re-ranks as they land. **Stop** returns to the full scenario.
 
 ## Exposure: fix it before it is used
 

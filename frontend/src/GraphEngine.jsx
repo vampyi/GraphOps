@@ -48,9 +48,8 @@ export default function GraphEngine({ onError }) {
 
       <div className="ge-proof panel">
         <div className="panel-head">
-          <h2>Graph vs SQL</h2>
-          <small>Can this machine reach that asset?</small>
-          <Info text="The Cypher query runs live and is timed. The SQL is shown for comparison and not run." />
+          <h2>Path finder</h2>
+          <small>shortest attack path between two systems</small>
         </div>
         <div className="ge-proof-controls">
           <label>From <select value={src} onChange={(e) => setSrc(e.target.value)}>
@@ -59,7 +58,7 @@ export default function GraphEngine({ onError }) {
           <label>to <select value={dst} onChange={(e) => setDst(e.target.value)}>
             {uniq([dst, ...nodes.targets]).map((n) => <option key={n} value={n}>{n}</option>)}
           </select></label>
-          <button className="btn primary" disabled={running} onClick={() => run()}>{running ? "Running…" : "Run the query"}</button>
+          <button className="btn primary" disabled={running} onClick={() => run()}>{running ? "Finding…" : "Find path"}</button>
         </div>
         {proof && (
           <>
@@ -67,19 +66,13 @@ export default function GraphEngine({ onError }) {
               {proof.reachable
                 ? <>Reachable in <b>{proof.hops} hop{proof.hops !== 1 ? "s" : ""}</b>: {proof.path.ids.map((id, i) => (
                     <span key={id}>{i > 0 && <em> {proof.path.types[i - 1]} </em>}<code>{id}</code></span>))}</>
-                : <>No path. <b>{proof.src}</b> cannot reach <b>{proof.dst}</b> through attack edges.</>}
+                : <>No attack path from <b>{proof.src}</b> to <b>{proof.dst}</b></>}
               <span className="ge-ms">{proof.cypher_ms} ms</span>
             </div>
-            <div className="ge-cols">
-              <div className="ge-code graph">
-                <div className="ge-code-head"><span className="ge-tag ok">Neo4j · Cypher</span> one query, any depth</div>
-                <pre>{proof.cypher}</pre>
-              </div>
-              <div className="ge-code sql">
-                <div className="ge-code-head"><span className="ge-tag warn">SQL</span> {proof.reachable ? `${proof.hops} self-joins, fixed depth` : "a query per depth"}{proof.sql_note && <Info align="right" text={proof.sql_note} />}</div>
-                <pre>{proof.sql}</pre>
-              </div>
-            </div>
+            <details className="ge-query-inline">
+              <summary>Query</summary>
+              <pre>{proof.cypher}</pre>
+            </details>
           </>
         )}
       </div>

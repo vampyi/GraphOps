@@ -20,11 +20,11 @@ def _attack_ids(alerts_path):
 
 
 def catalog():
-    items = [{"id": "sample", "name": "Sample day", "path": str(SAMPLE_ALERTS),
+    items = [{"id": "sample", "name": "Lateral movement to customer database", "path": str(SAMPLE_ALERTS),
               "description": "The default demo day: a lateral-movement attack to the customer database."}]
     for f in sorted(SCENARIO_DIR.glob("*.json")):
         doc = json.loads(f.read_text())
-        items.append({"id": f.stem, "name": f.stem.replace("_", " ").title(), "path": str(f),
+        items.append({"id": f.stem, "name": doc.get("name") or f.stem.replace("_", " ").capitalize(), "path": str(f),
                       "description": doc.get("description", "")})
     return items
 

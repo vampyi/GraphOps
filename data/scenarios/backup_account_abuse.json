@@ -1,4 +1,5 @@
 {
+  "name": "Backup account abuse",
   "description": "Held-out scenario: an attacker who controls the backup server uses the backup service account's normal route to the finance database, in the afternoon instead of at night. No route is new, so the never-taken-path question cannot help. Meanwhile two admins and a developer take harmless first-time routes. Neutral alert ids; 'scenario' labels are for evaluation only.",
   "events": [
     {

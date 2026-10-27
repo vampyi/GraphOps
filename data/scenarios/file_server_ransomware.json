@@ -1,4 +1,5 @@
 {
+  "name": "File server ransomware",
   "description": "Held-out scenario: ransomware that never goes near the critical assets. A sales laptop is compromised and the attacker encrypts the file server, which has no attack path to a critical asset. Meanwhile admins do harmless but unusual-looking work right next to the domain controller. Neutral alert ids; 'scenario' labels are for evaluation only.",
   "events": [
     {

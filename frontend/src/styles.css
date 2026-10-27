@@ -494,42 +494,6 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
   .ge-cols { grid-template-columns: 1fr; }
 }
 
-/* ===== guided "beat the clock" demo ===== */
-.guided-btn { background: var(--red); border: 1px solid var(--red); color: #fff; border-radius: 4px;
-  padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 0.01em; }
-.guided-btn::before { content: "\25B6"; font-size: 9px; margin-right: 6px; }
-.guided-btn:hover { filter: brightness(1.1); }
-
-.guided { position: fixed; left: 0; right: 0; bottom: 0; z-index: 120; display: flex; align-items: center;
-  gap: 22px; padding: 14px 24px; background: var(--surface); border-top: 2px solid var(--red);
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.4); }
-.guided.done { border-top-color: var(--teal); }
-.guided-clock { text-align: center; min-width: 108px; }
-.guided-clock-v { font-family: var(--mono); font-size: 38px; font-weight: 600; line-height: 1; color: var(--red); }
-.guided.done .guided-clock-v { color: var(--teal); }
-.guided-clock-l { font-size: 10px; color: var(--muted); margin-top: 4px; }
-.guided-mid { flex: 1; }
-.guided-chain { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.gchain { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint);
-  border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; }
-.gchain i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-.gchain.hit { color: var(--text); border-color: var(--red); }
-.gchain.hit i { background: var(--red); }
-.guided.done .gchain.hit { border-color: var(--teal); }
-.guided.done .gchain.hit i { background: var(--teal); }
-.gchain.next { color: var(--text-2); }
-.gchain.next i { background: var(--amber); animation: livepulse 1.1s ease-in-out infinite; }
-.guided-status { font-size: 13px; color: var(--muted); }
-.guided-result { font-size: 13px; color: var(--text-2); line-height: 1.55; }
-.guided-result b { color: var(--teal); font-family: var(--mono); }
-.guided-close { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 4px;
-  padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.guided.done .guided-close { background: var(--teal); border-color: var(--teal); color: #042f2a; }
-
-@media (max-width: 900px) {
-  .guided { flex-direction: column; align-items: flex-start; gap: 10px; }
-}
-
 /* ===== cinematic fix-it (exposure remediation) ===== */
 .exp-edge path, .exp-edge text, .exp-node { transition: opacity 0.55s ease, stroke 0.3s ease; }
 .exp-edge.faded path { opacity: 0.1; }
@@ -680,7 +644,6 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 @media (max-width: 900px) { .evalv-grid, .evalv-col { grid-template-columns: 1fr; } }
 .tri-rows .moved { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; line-height: 1.2; }
 .tri-rows .moved small { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 10px; color: var(--faint); }
-.dash.has-guided .tri > .panel { height: calc(100vh - 168px - 104px); }
 .story-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .story-controls label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .story-controls select { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 13px; }
@@ -752,3 +715,9 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .acc-note { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .sort .info-btn { padding: 0; border: 1px solid var(--line-hover); border-radius: 50%; width: 15px; height: 15px; font-size: 10px; line-height: 13px; background: transparent; color: var(--muted); }
 .evalv { margin: 0 auto; width: 100%; }
+.live-controls button { display: inline-flex; align-items: center; gap: 7px; }
+.live-controls:not(.on) .live-dot { width: 7px; height: 7px; background: var(--red); }
+.ge-query-inline { margin-top: 12px; font-size: 12px; color: var(--muted); }
+.ge-query-inline summary { cursor: pointer; }
+.ge-query-inline pre { margin: 8px 0 0; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--text-2); white-space: pre-wrap; }
+.live-controls .info-btn, .sort .info-btn { padding: 0; border: 1px solid var(--line-hover); border-radius: 50%; width: 15px; height: 15px; font-size: 10px; line-height: 13px; background: transparent; color: var(--muted); font-weight: 600; }

@@ -1,4 +1,5 @@
 {
+  "name": "Slow lateral movement (7 hours)",
   "description": "Held-out scenario: a slow attack over seven hours, longer than the two-hour window GraphOps uses to link alerts. A developer laptop is compromised in the morning, an admin's credentials are taken there at midday, and the attacker reaches the domain controller in the late afternoon through the admins' jump server. Neutral alert ids; 'scenario' labels are for evaluation only.",
   "events": [
     {

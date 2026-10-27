@@ -33,7 +33,7 @@ const VERDICT_LABEL = { real: "real", benign: "benign", false: "false alarm" };
 const bySeverity = (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.time.localeCompare(b.time);
 const toggle = (set, v) => { const s = new Set(set); s.has(v) ? s.delete(v) : s.add(v); return s; };
 
-export default function Triage({ alerts, changed, live, focusAlertId, onReload, onError }) {
+export default function Triage({ alerts, changed, live, onReload, onError }) {
   const [sortBy, setSortBy] = useState("score");
   const [query, setQuery] = useState("");
   const [sevF, setSevF] = useState(new Set());
@@ -66,13 +66,6 @@ export default function Triage({ alerts, changed, live, focusAlertId, onReload, 
     const fresh = alerts.find((a) => a.id === selected.id);
     if (fresh && fresh !== selected) setSelected(fresh);
   }, [alerts]); // eslint-disable-line
-
-  // the guided demo drives which alert is open (the attack as it climbs the inbox)
-  useEffect(() => {
-    if (!focusAlertId || focusAlertId === selected?.id) return;
-    const a = alerts.find((x) => x.id === focusAlertId);
-    if (a) open(a);
-  }, [focusAlertId]); // eslint-disable-line
 
   const ordered = useMemo(() => (sortBy === "severity" ? [...alerts].sort(bySeverity) : alerts), [alerts, sortBy]);
   const scoreRank = useMemo(() => Object.fromEntries(alerts.map((a, i) => [a.id, i + 1])), [alerts]);

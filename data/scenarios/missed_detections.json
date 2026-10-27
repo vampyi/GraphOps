@@ -1,4 +1,5 @@
 {
+  "name": "Lateral movement with missed detections",
   "description": "Held-out scenario: the sample day's attack path, but the credential-dumping and remote-logon alerts never fire, as happens when tools miss steps. Only the phishing alert and two alerts on the customer database remain, linked by logins the alerts do not mention. Neutral alert ids; 'scenario' labels are for evaluation only.",
   "events": [
     {
