@@ -5,14 +5,12 @@ import { Cites, Info } from "./parts.jsx";
 const SUGGESTIONS = [
   "Which alert should I look at first, and why?",
   "What can laptop-42 reach?",
-  "Explain the incident behind the top alert in simple words.",
   "Which permission should we remove first to cut attack paths?",
   "Which accounts hold access they never use?",
-  "How does GraphOps compare with sorting by severity today?",
 ];
 const TOOL_LABEL = {
-  top_alerts: "top alerts", alert_details: "one alert", blast_radius: "blast radius", incident: "an incident",
-  attack_paths: "attack paths", access_gap: "access gap", ranking_quality: "ranking quality", find_entities: "entity search",
+  top_alerts: "alerts", alert_details: "alert details", blast_radius: "blast radius", incident: "incident",
+  attack_paths: "attack paths", access_gap: "access", ranking_quality: "evaluation", find_entities: "entity search",
 };
 
 // the ask tab: plain-language questions, answered only from graphops' own read-only lookups, every sentence
@@ -21,11 +19,13 @@ export default function Ask() {
   const [turns, setTurns] = useState([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lang, setLang] = useState("en-IN");
+  const [languages, setLanguages] = useState([{ code: "en-IN", name: "English" }]);
   const [ready, setReady] = useState(true);
   const end = useRef(null);
 
   useEffect(() => {
-    getLanguages().then((d) => setReady(d.llm)).catch(() => {});
+    getLanguages().then((d) => { setLanguages(d.languages); setReady(d.llm); }).catch(() => {});
   }, []);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [turns, busy]);
 
@@ -40,10 +40,10 @@ export default function Ask() {
     setTurns((ts) => [...ts, { question }]);
     setBusy(true);
     try {
-      const answer = await askQuestion(question, history, "en-IN");
+      const answer = await askQuestion(question, history, lang);
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, answer } : t)));
     } catch (e) {
-      const msg = e.message.startsWith("503") ? "Unavailable: no AI key on this server"
+      const msg = e.message.startsWith("503") ? "Unavailable: no AI key on this server."
         : e.message.startsWith("502") ? "The AI service did not respond. Try again." : "Something went wrong. Try again.";
       setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 ? { ...t, error: msg } : t)));
     }
@@ -52,20 +52,16 @@ export default function Ask() {
 
   return (
     <main className="ask">
-      <section className="panel ask-chat">
-        <header className="ask-head">
-          <h2>Ask GraphOps<Info text="Answers come only from GraphOps' own read-only lookups: alerts, blast radius, incidents, attack paths and access. Each sentence cites what it is based on; a sentence citing anything else is removed. Powered by Sarvam AI." /></h2>
-        </header>
-
-        {!ready && <div className="ask-note">Unavailable: no AI key on this server</div>}
-
+      <section className="ask-chat">
         <div className="ask-log">
           {!turns.length && (
             <div className="ask-empty">
-              <div className="ask-empty-h">Suggested</div>
-              <div className="ask-sugs">
-                {SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)} disabled={busy}>{s}</button>)}
-              </div>
+              <h2>Ask GraphOps<Info text="Answers come only from GraphOps' read-only lookups: alerts, blast radius, incidents, attack paths and access. Each sentence cites what it is based on; a sentence citing anything else is removed. Powered by Sarvam AI." /></h2>
+              <p>Questions about alerts, machines, people, attack paths and access.</p>
+              {!ready && <p className="ask-note">Unavailable: no AI key on this server.</p>}
+              <ul className="ask-sugs">
+                {SUGGESTIONS.map((q) => <li key={q}><button onClick={() => send(q)} disabled={busy || !ready}>{q}</button></li>)}
+              </ul>
             </div>
           )}
           {turns.map((t, i) => (
@@ -81,8 +77,11 @@ export default function Ask() {
 
         <form className="ask-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500}
-            placeholder="Ask about alerts, machines, people or attack paths" aria-label="Your question" />
-          <button className="btn primary" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
+            placeholder="Ask a question" aria-label="Your question" />
+          <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Answer language" title="Answer language">
+            {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+          <button className="btn primary" disabled={busy || !text.trim()}>{busy ? "…" : "Ask"}</button>
         </form>
       </section>
     </main>
@@ -100,10 +99,9 @@ function Answer({ a }) {
           </p>))
         : <p>No supported answer.</p>}
       <div className="ask-meta">
-        <span className="tag-ai">AI draft</span>
-        {sources.map((x) => <span key={x} className="src-tag">{x}</span>)}
-        {a.dropped?.length > 0 && <span className="tag-ai off">{a.dropped.length} unsupported sentence{a.dropped.length > 1 ? "s" : ""} removed</span>}
-        {a.translation_error && <span className="tag-ai off">Translation unavailable</span>}
+        AI draft{sources.length ? ` · from ${sources.join(", ")}` : ""}
+        {a.dropped?.length > 0 && ` · ${a.dropped.length} unsupported sentence${a.dropped.length > 1 ? "s" : ""} removed`}
+        {a.translation_error && " · translation unavailable"}
       </div>
     </div>
   );

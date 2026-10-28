@@ -107,9 +107,8 @@ def incident_report(session, incident_id):
                      f"{min((e.get('hops_to_critical') for e in entities if e.get('hops_to_critical') is not None), default='an unknown number of')} "
                      f"hop(s) from one, and {reachable} critical asset(s) sit within 3 hops.")
     if path:
-        steps = " → ".join(
-            f"**{path['nodes'][0]}**" if i == 0 else f"{tag(t)['step']} **{path['nodes'][i + 1]}**"
-            for i, t in enumerate(path["types"]))
+        steps = " → ".join([f"**{path['nodes'][0]}**"] +
+                           [f"{tag(t)['step']} **{path['nodes'][i + 1]}**" for i, t in enumerate(path["types"])])
         lines += ["", f"Shortest attack path to a critical asset: {steps}."]
 
     lines += ["", "## Recommended containment", ""]

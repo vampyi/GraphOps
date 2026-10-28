@@ -277,3 +277,9 @@ def test_r20_report_names_every_attack_alert_and_the_crown_jewel(api, neo4j_driv
         assert name in md
     assert "customer-db" in md
     assert body["summary"]["has_path"] is True and body["summary"]["lateral"] is True
+
+
+def test_report_attack_path_lists_every_step(api):
+    md = api.get("/api/incidents/" + api.get("/api/alerts").json()[0]["incident_id"] + "/report").json()["markdown"]
+    line = next(l for l in md.splitlines() if l.startswith("Shortest attack path"))
+    assert "→" in line and line.count("**") >= 4
