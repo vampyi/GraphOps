@@ -48,5 +48,7 @@ export const replayStart = (attack, speed) => post("/replay/start", { attack, sp
 
 // explore
 export const getEntities = () => call("/entities");
-export const getExplore = (id, maxHops = 5) => call(`/explore/${encodeURIComponent(id)}?max_hops=${maxHops}`);
+export const getExplore = (id, maxHops = 8) => call(`/explore/${encodeURIComponent(id)}?max_hops=${maxHops}`);
 export const setControl = (body) => post("/controls", body);
+export const getVulnerabilities = () => call("/vulnerabilities");
+export const refreshVulnerabilities = () => post("/vulnerabilities/refresh");

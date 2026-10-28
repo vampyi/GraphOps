@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
-from .attack import GRANTED_EDGES, USED_EDGES, tag
+from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
 from .report import incident_report
@@ -22,7 +22,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allo
 _driver = driver()
 
 # the edges an attacker follows, as one pipe-separated string for cypher. one source: app/attack.py.
-ATTACK_EDGES = "MemberOf|AdminTo|CanRDP|GenericAll|HasSession|RemoteLogon"
+ATTACK_EDGES = "|".join(attack_edge_list)
 SEVERITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 BLAST_EDGES = {"all": ATTACK_EDGES, "granted": "|".join(GRANTED_EDGES), "used": "|".join(USED_EDGES)}
 
@@ -76,11 +76,11 @@ def blast_radius(alert_id: str, mode: str = "all", days: int = access.DEFAULT_DA
             WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
               AND ($win IS NULL OR all(r IN relationships(p) WHERE coalesce(r.last_seen, $win) >= $win))
             WITH n, min(length(p)) AS hop
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, hop
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, hop
             ORDER BY hop, id
             """, id=alert_id, win=window)]
         starts = [dict(r) for r in s.run(
-            "MATCH (:Alert {id: $id})-[:Involves]->(e) RETURN e.id AS id, labels(e)[0] AS kind, coalesce(e.critical, false) AS critical, 0 AS hop",
+            "MATCH (:Alert {id: $id})-[:Involves]->(e) RETURN e.id AS id, [l IN labels(e) WHERE l <> 'Entity'][0] AS kind, coalesce(e.critical, false) AS critical, 0 AS hop",
             id=alert_id)]
         start_ids = {x["id"] for x in starts}
         nodes = starts + [r for r in rings if r["id"] not in start_ids]
@@ -94,7 +94,8 @@ def blast_radius(alert_id: str, mode: str = "all", days: int = access.DEFAULT_DA
         details = {r["id"]: r for r in (dict(x) for x in s.run(
             """
             MATCH (n) WHERE n.id IN $ids
-            RETURN n.id AS id, n.name AS name, n.zone AS zone, n.os AS os, n.owner AS owner,
+            RETURN n.id AS id, n.name AS name, n.zone AS zone, n.os AS os, n.owner AS owner, n.location AS location,
+                   coalesce(n.kev, false) AS kev, n.vulns AS vulns,
                    n.community AS community,
                    n.hops_to_critical AS hops_to_critical, n.critical_within_3 AS critical_within_3,
                    round(coalesce(n.choke_score, 0), 2) AS choke_score
@@ -340,9 +341,9 @@ def patch_asset(asset_id: str, body: AssetPatch):
     with _driver.session() as s:
         r = s.run(
             """
-            MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer
+            MATCH (n {id: $id}) WHERE n:Entity
             SET n.critical = coalesce($critical, n.critical), n.zone = coalesce($zone, n.zone)
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
             """, id=asset_id, critical=body.critical, zone=body.zone).single()
         if not r:
             raise HTTPException(404, "asset not found")
@@ -563,10 +564,10 @@ def _ask_tools():
         with _driver.session() as s:
             return [dict(r) for r in s.run(
                 """
-                MATCH (n) WHERE (n:User OR n:Group OR n:Computer)
+                MATCH (n) WHERE n:Entity
                   AND (toLower(n.id) CONTAINS toLower($t) OR toLower(coalesce(n.name, '')) CONTAINS toLower($t)
                        OR toLower(coalesce(n.owner, '')) CONTAINS toLower($t))
-                RETURN n.id AS id, labels(n)[0] AS kind, n.name AS name, n.owner AS owner, coalesce(n.critical, false) AS critical
+                RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, n.name AS name, n.owner AS owner, coalesce(n.critical, false) AS critical
                 LIMIT 10
                 """, t=str(text)[:60])]
 
@@ -578,8 +579,8 @@ def _ask_tools():
 def _entity_reach(entity_id):
     """blast radius from one user, group or machine (the alert version starts from an alert's entities)."""
     with _driver.session() as s:
-        start = s.run("MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer "
-                      "RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical", id=entity_id).single()
+        start = s.run("MATCH (n {id: $id}) WHERE n:Entity "
+                      "RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical", id=entity_id).single()
         if not start:
             raise ValueError(f"no user, group or machine {entity_id}")
         rings = [dict(r) for r in s.run(
@@ -587,7 +588,7 @@ def _entity_reach(entity_id):
             MATCH p = (start {{id: $id}})-[:{ATTACK_EDGES}*1..3]->(n)
             WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
             WITH n, min(length(p)) AS hop
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, hop
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, hop
             """, id=entity_id)]
         path = s.run(
             f"""
@@ -609,7 +610,7 @@ def learning():
 
 
 @app.get("/api/explore/{entity_id}")
-def explore_entity(entity_id: str, max_hops: int = 5):
+def explore_entity(entity_id: str, max_hops: int = 8):
     """everything one user, group or machine can reach, and its attack paths to critical assets."""
     from . import explore
     if not 1 <= max_hops <= 8:
@@ -627,8 +628,9 @@ def entities():
     with _driver.session() as s:
         return [dict(r) for r in s.run(
             """
-            MATCH (n) WHERE n:User OR n:Group OR n:Computer
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
+            MATCH (n) WHERE n:Entity
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone,
+                   n.location AS location, n.name AS name
             ORDER BY kind, id
             """)]
 
@@ -653,6 +655,24 @@ def set_control(body: Control):
     if not n:
         raise HTTPException(404, "no such step")
     return {"updated": n}
+
+
+@app.get("/api/vulnerabilities")
+def vulnerabilities():
+    """serious cves on the software each machine runs, from nvd, cisa kev and first epss."""
+    from . import vulns
+    with _driver.session() as s:
+        return vulns.summary(s)
+
+
+@app.post("/api/vulnerabilities/refresh")
+def refresh_vulnerabilities():
+    """fetch nvd, cisa kev and epss again, update the graph and re-score."""
+    from . import vulns
+    with _driver.session() as s:
+        result = vulns.refresh(s, live=True)
+        _reanalyse(s)
+    return result
 
 
 @app.get("/api/languages")

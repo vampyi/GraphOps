@@ -2,8 +2,8 @@
 
 # edges an attacker can follow. HasSession points from a computer to the user whose
 # credentials may be stolen there, so it is followed in its stored direction too.
-ATTACK_EDGES = ["MemberOf", "AdminTo", "CanRDP", "GenericAll", "HasSession", "RemoteLogon"]
-ENTITY_LABELS = ["User", "Group", "Computer"]
+from .attack import ATTACK_EDGES  # one shared list of the steps an attacker can take
+ENTITY_LABELS = ["Entity"]
 MAX_HOPS = 8
 
 
@@ -15,12 +15,12 @@ def attack_edge_types(session):
 def hops_to_critical(session):
     """fewest attack steps from each entity to the nearest critical asset."""
     rel = "|".join(attack_edge_types(session))
-    session.run("MATCH (n) WHERE n:User OR n:Group OR n:Computer SET n.hops_to_critical = null")
-    session.run("MATCH (n) WHERE (n:User OR n:Group OR n:Computer) AND n.critical = true SET n.hops_to_critical = 0")
+    session.run("MATCH (n) WHERE n:Entity SET n.hops_to_critical = null")
+    session.run("MATCH (n) WHERE n:Entity AND n.critical = true SET n.hops_to_critical = 0")
     session.run(
         f"""
-        MATCH (n) WHERE (n:User OR n:Group OR n:Computer) AND coalesce(n.critical, false) = false
-        MATCH (c) WHERE (c:User OR c:Group OR c:Computer) AND c.critical = true
+        MATCH (n) WHERE n:Entity AND coalesce(n.critical, false) = false
+        MATCH (c) WHERE c:Entity AND c.critical = true
         MATCH p = shortestPath((n)-[:{rel}*..{MAX_HOPS}]->(c))
         WITH n, min(length(p)) AS hops
         SET n.hops_to_critical = hops
@@ -33,7 +33,7 @@ def critical_within_3(session):
     rel = "|".join(attack_edge_types(session))
     session.run(
         f"""
-        MATCH (n) WHERE n:User OR n:Group OR n:Computer
+        MATCH (n) WHERE n:Entity
         OPTIONAL MATCH (n)-[:{rel}*1..3]->(c) WHERE c.critical = true
         WITH n, count(DISTINCT c) AS crit
         SET n.critical_within_3 = crit
@@ -71,7 +71,7 @@ def _choke_scores_python(session):
     import networkx as nx
     rel = "|".join(attack_edge_types(session))
     g = nx.DiGraph()
-    for r in session.run("MATCH (n) WHERE n:User OR n:Group OR n:Computer RETURN n.id AS id"):
+    for r in session.run("MATCH (n) WHERE n:Entity RETURN n.id AS id"):
         g.add_node(r["id"])
     for r in session.run(f"MATCH (s)-[:{rel}]->(d) RETURN s.id AS s, d.id AS d"):
         g.add_edge(r["s"], r["d"])
@@ -131,7 +131,7 @@ def _pagerank_python(session):
     import networkx as nx
     rel = "|".join(attack_edge_types(session))
     g = nx.DiGraph()
-    for r in session.run("MATCH (n) WHERE n:User OR n:Group OR n:Computer RETURN n.id AS id"):
+    for r in session.run("MATCH (n) WHERE n:Entity RETURN n.id AS id"):
         g.add_node(r["id"])
     for r in session.run(f"MATCH (s)-[:{rel}]->(d) RETURN s.id AS s, d.id AS d"):
         g.add_edge(r["s"], r["d"])

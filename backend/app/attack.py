@@ -15,13 +15,25 @@ EDGES = {
     "RemoteLogon": {"p": 0.8, "tactic": "TA0008", "technique": "T1021",     "step": "has logged on to"},
     "CanRDP":      {"p": 0.7, "tactic": "TA0008", "technique": "T1021.001", "step": "can remote desktop to"},
     "HasSession":  {"p": 0.6, "tactic": "TA0006", "technique": "T1003",     "step": "holds a session of"},
+    # internet entry, cloud, hybrid and ai agent steps. p values are our design estimates, like those above.
+    "CanExploit":  {"p": 0.9, "tactic": "TA0001", "technique": "T1190",     "step": "can exploit"},
+    "SyncedTo":    {"p": 0.8, "tactic": "TA0008", "technique": "T1078.004", "step": "is synced to the cloud account"},
+    "Owns":        {"p": 0.9, "tactic": "TA0003", "technique": "T1098.001", "step": "owns"},
+    "RunsAs":      {"p": 1.0, "tactic": None,     "technique": None,        "step": "runs as"},
+    "RoleOn":      {"p": 0.9, "tactic": "TA0006", "technique": "T1555.006", "step": "holds a role on"},
+    "CanEmail":    {"p": 1.0, "tactic": "TA0001", "technique": "T1566",     "step": "can send email to"},
+    "FeedsUntrustedInput": {"p": 0.5, "tactic": "AML.TA0005", "technique": "AML.T0051.001", "step": "feeds untrusted input to"},
+    "CanPrompt":   {"p": 0.7, "tactic": "AML.TA0005", "technique": "AML.T0051.000", "step": "can prompt"},
+    "HasToolAccess": {"p": 0.9, "tactic": None,   "technique": None,        "step": "can call the tool"},
+    "CanAccess":   {"p": 0.9, "tactic": "TA0002", "technique": "T1059.001", "step": "can run commands on"},
 }
 ATTACK_EDGES = list(EDGES)
 
 # granted = a permission someone holds. observed = something the logs saw happen. a session is an observation
 # (who was signed in when the snapshot was taken), not a right, even though network.json lists it with the grants.
-GRANTED_EDGES = ["MemberOf", "AdminTo", "CanRDP", "GenericAll"]
-USED_EDGES = ["LoggedInto", "RemoteLogon"]
+GRANTED_EDGES = ["MemberOf", "AdminTo", "CanRDP", "GenericAll", "SyncedTo", "Owns", "RunsAs", "RoleOn",
+                 "CanPrompt", "HasToolAccess", "CanAccess"]
+USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool"]
 
 # mitre att&ck enterprise names, checked on attack.mitre.org. the dashboard copy in frontend/src/tactics.js matches.
 TACTICS = {
@@ -30,6 +42,8 @@ TACTICS = {
     "TA0005": "Defense Evasion", "TA0112": "Defense Impairment", "TA0006": "Credential Access",
     "TA0007": "Discovery", "TA0008": "Lateral Movement", "TA0009": "Collection",
     "TA0011": "Command and Control", "TA0010": "Exfiltration", "TA0040": "Impact",
+    # mitre atlas (ai systems), checked in atlas-data 5.6.0
+    "AML.TA0005": "Execution (ATLAS)",
 }
 TECHNIQUES = {
     "T1003": "OS Credential Dumping", "T1021": "Remote Services", "T1021.001": "Remote Desktop Protocol",
@@ -37,6 +51,10 @@ TECHNIQUES = {
     "T1078": "Valid Accounts", "T1098": "Account Manipulation", "T1105": "Ingress Tool Transfer",
     "T1110": "Brute Force", "T1189": "Drive-by Compromise", "T1204": "User Execution",
     "T1550.002": "Pass the Hash", "T1566": "Phishing",
+    "T1190": "Exploit Public-Facing Application", "T1078.004": "Valid Accounts: Cloud Accounts",
+    "T1098.001": "Additional Cloud Credentials", "T1555.006": "Cloud Secrets Management Stores",
+    "T1059.001": "PowerShell",
+    "AML.T0051.000": "LLM Prompt Injection: Direct", "AML.T0051.001": "LLM Prompt Injection: Indirect",
 }
 
 
@@ -67,4 +85,17 @@ def describe_removal(src, edge_type, dst):
         return f"Keep {dst} from signing in on {src} (its credentials sit there)"
     if edge_type == "RemoteLogon":
         return f"Block logons from {src} to {dst} (a route in use)"
-    return f"Remove {src} -{edge_type}-> {dst}"
+    fixes = {
+        "ExposedTo": f"Take {dst} off the internet or put it behind a VPN or web application firewall",
+        "CanExploit": f"Patch the vulnerable software on {dst}",
+        "SyncedTo": f"Stop syncing {src}'s password to the cloud account {dst}, or require MFA for it",
+        "Owns": f"Remove {src} as an owner of {dst}",
+        "RunsAs": f"Give {src} its own identity with only the permissions it needs, instead of {dst}",
+        "RoleOn": f"Remove {src}'s role on {dst}",
+        "CanEmail": f"Filter outside email reaching {dst}",
+        "FeedsUntrustedInput": f"Stop passing untrusted content from {src} to {dst}, or require human approval before it acts",
+        "CanPrompt": f"Limit who in {src} can instruct {dst}",
+        "HasToolAccess": f"Remove the tool {dst} from {src}, or require human approval for each call",
+        "CanAccess": f"Restrict what the tool {src} can run on {dst}",
+    }
+    return fixes.get(edge_type, f"Remove {src} -{edge_type}-> {dst}")

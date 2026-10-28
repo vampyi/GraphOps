@@ -1,0 +1,79 @@
+{
+ "fetched": "2026-10-28T07:16:50+00:00",
+ "by_cpe": {
+  "cpe:2.3:a:php:php:8.3.30:*:*:*:*:*:*:*": [
+   {
+    "id": "CVE-2025-14179",
+    "published": "2026-05-10",
+    "cvss": 9.8,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": false,
+    "kev_added": null,
+    "ransomware": null,
+    "summary": "In PHP versions 8.2.* before 8.2.31, 8.3.* before 8.3.31, 8.4.* before 8.4.21, and 8.5.* before 8.5.6, the PDO Firebird driver improperly handles NUL bytes when preparing SQL queries. During token-by-token query construction, a string token containing a NUL byte is copied via strncat(), which stops ",
+    "epss": 0.00439
+   },
+   {
+    "id": "CVE-2026-6722",
+    "published": "2026-05-10",
+    "cvss": 9.8,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": false,
+    "kev_added": null,
+    "ransomware": null,
+    "summary": "In PHP versions 8.2.* before 8.2.31, 8.3.* before 8.3.31, 8.4.* before 8.4.21, and 8.5.* before 8.5.6, the SOAP extension's object deduplication mechanism stores pointers to PHP objects in a global map\u00a0without incrementing their reference counts. When an apache:Map node contains duplicate keys, proc",
+    "epss": 0.00894
+   },
+   {
+    "id": "CVE-2026-7261",
+    "published": "2026-05-10",
+    "cvss": 9.8,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": false,
+    "kev_added": null,
+    "ransomware": null,
+    "summary": "In PHP versions 8.2.* before 8.2.31, 8.3.* before 8.3.31, 8.4.* before 8.4.21, and 8.5.* before 8.5.6, when SoapServer is configured with SOAP_PERSISTENCE_SESSION, the handler object is persisted across requests via session storage. However, in the case SOAP requests results in an error, the persist",
+    "epss": 0.00302
+   },
+   {
+    "id": "CVE-2026-17543",
+    "published": "2026-07-30",
+    "cvss": 9.8,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": false,
+    "kev_added": null,
+    "ransomware": null,
+    "summary": "Improper escaping of backslashes in attacker-provided parameters would allow for trivial SQL injection in PHP versions\u00a0from 8.2.* before 8.2.33, from 8.3.* before 8.3.33, from 8.4.* before 8.4.24, and from 8.5.* before 8.5.9.",
+    "epss": 0.0033
+   },
+   {
+    "id": "CVE-2026-109618",
+    "published": "2026-10-21",
+    "cvss": 9.8,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": true,
+    "kev_added": "2026-10-26",
+    "ransomware": "Unknown",
+    "summary": "PHP uses longjmp() for out-of-memory (OOM) errors to exit the current context and abort handling of the request. Some contexts may not properly account for this scenario and leave request memory in an uninitialized state before performing an allocation. The subsequent request cleanup procedure may r",
+    "epss": 0.99999
+   },
+   {
+    "id": "CVE-2026-109619",
+    "published": "2026-10-21",
+    "cvss": 8.1,
+    "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "remote_unauth": true,
+    "kev": true,
+    "kev_added": "2026-10-26",
+    "ransomware": "Unknown",
+    "summary": "PHP has various global state that temporarily points into request memory. In some scenarios, global state may not be correctly reset, or may be repopulated after being reset. The global state may then refer to request memory even after it has been freed. Subsequent requests may read or branch on thi",
+    "epss": 0.99999
+   }
+  ]
+ }
+}

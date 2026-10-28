@@ -43,7 +43,7 @@ def gather(session, incident_id):
     entities = [dict(r) for r in session.run(
         """
         MATCH (e) WHERE e.id IN $ids
-        RETURN e.id AS id, labels(e)[0] AS kind, coalesce(e.critical, false) AS critical, e.zone AS zone,
+        RETURN e.id AS id, [l IN labels(e) WHERE l <> 'Entity'][0] AS kind, coalesce(e.critical, false) AS critical, e.zone AS zone,
                e.hops_to_critical AS hops_to_critical, e.critical_within_3 AS critical_within_3,
                e.community AS community
         ORDER BY critical DESC, id

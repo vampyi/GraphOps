@@ -763,3 +763,31 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .edge.secured line { stroke: var(--teal); stroke-dasharray: 2 4; stroke-width: 2; }
 .lg.secured { background: var(--teal); }
 .ex-sum span { display: inline-flex; align-items: center; }
+
+/* new kinds: cloud nodes get a violet outline, ai agents a hexagon, internet a globe */
+:root, :root[data-theme="dark"] { --cloud: #a78bfa; --kev: #ef4444; }
+:root[data-theme="light"] { --cloud: #7c3aed; --kev: #dc2626; }
+.node.loc-cloud .shape { stroke: var(--cloud); stroke-width: 2.5; }
+.node.loc-external .shape { stroke: var(--muted); stroke-width: 2; }
+.node .ring-shape { fill: var(--surface) !important; stroke-width: 3; }
+.node.hop1 .ring-shape, .node.hop2 .ring-shape, .node.hop3 .ring-shape { stroke: var(--teal); }
+.node .globe-line { fill: none; stroke: var(--surface); stroke-width: 1.5; }
+.kev-badge circle { fill: var(--kev); stroke: var(--surface); stroke-width: 2; }
+.kev-badge text { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; pointer-events: none; }
+.lg.cloud { background: transparent; border: 2px solid var(--cloud); }
+.lg.kev { background: var(--kev); }
+.ex-kinds.loc { margin-top: -6px; }
+.loc-tag { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); }
+.loc-tag.cloud { border-color: var(--cloud); color: var(--cloud); }
+.loc-tag.illus { border-style: dashed; }
+.ex-vulns { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.ex-vulns-h { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.ex-vulns-h span { display: inline-flex; align-items: center; }
+.ex-vuln { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
+.ex-vuln:hover .cve { text-decoration: underline; }
+.ex-vuln .cve { font-family: var(--mono); color: var(--text); }
+.ex-vuln .meta { width: 100%; color: var(--muted); }
+.kev-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--kev); border-radius: 999px; padding: 1px 7px; text-transform: uppercase; letter-spacing: 0.03em; }
+.ex-vulns-f { font-size: 11px; color: var(--faint); margin-top: 4px; }
+.ex-kinds { flex-wrap: wrap; gap: 4px 12px; }
+.node.hop6 .shape, .node.hop7 .shape, .node.hop8 .shape { fill: var(--hop3); }

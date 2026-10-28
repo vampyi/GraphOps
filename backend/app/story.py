@@ -62,7 +62,7 @@ def incident_facts(session, incident_id):
         """, inc=incident_id)]
     entity_ids = sorted({e for a in alerts for e in a["involves"]})
     entities = [dict(r) for r in session.run(
-        "MATCH (e) WHERE e.id IN $ids RETURN e.id AS id, labels(e)[0] AS kind, e.critical AS critical",
+        "MATCH (e) WHERE e.id IN $ids RETURN e.id AS id, [l IN labels(e) WHERE l <> 'Entity'][0] AS kind, e.critical AS critical",
         ids=entity_ids)]
     edges = [dict(r) for r in session.run(
         """

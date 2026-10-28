@@ -216,7 +216,7 @@ def test_r18_unknown_format_is_rejected(api):
 
 def test_graph_algorithm_roster_has_live_numbers(api):
     body = api.get("/api/graph/algorithms").json()
-    assert body["summary"]["entities"] == 37
+    assert body["summary"]["entities"] == 50  # network.json (37) plus cloud_ai.json (13)
     names = {a["algorithm"] for a in body["algorithms"]}
     assert {"PageRank", "Betweenness centrality", "Louvain community detection", "Shortest path (Dijkstra)"} <= names
     assert all(a["result"] for a in body["algorithms"])

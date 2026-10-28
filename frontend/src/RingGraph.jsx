@@ -6,9 +6,12 @@ const CX = W / 2;
 const CY = H / 2;
 const RADII = [0, 120, 215, 300];
 // more rings for the explore view, which follows paths further than the 3-hop blast radius
-const RADII_WIDE = [0, 105, 185, 260, 330, 395];
+const RADII_WIDE = [0, 90, 160, 225, 285, 340, 390, 435, 475];
 const radiiFor = (maxHop) => (maxHop <= 3 ? RADII : RADII_WIDE);
-const KIND_SHAPE = { User: "circle", Group: "square", Computer: "diamond" };
+const KIND_SHAPE = {
+  User: "circle", Group: "square", Computer: "diamond", AIAgent: "hexagon", CloudResource: "cloud",
+  ServiceIdentity: "ring", Tool: "triangle", Internet: "globe",
+};
 
 // place nodes on rings by hop. each ring is ordered by the angle of the node that leads to it,
 // so lines stay short and do not cross the whole picture.
@@ -46,8 +49,10 @@ function layout(nodes, edges, radii = RADII) {
       const d = Math.abs(((off + step * i - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
       return d < 0.2;
     }));
-    let offset = wanted[0].a;
-    if (ring.length > 1 && clash(offset) && !clash(offset + step / 2)) offset += step / 2;
+    // try the natural angle, then half a step, then small nudges either way, until nothing lines up
+    const base = wanted[0].a;
+    const tries = [0, step / 2, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05].map((d) => base + d);
+    const offset = tries.find((t) => !clash(t)) ?? base;
     wanted.forEach(({ n }, i) => {
       const a = offset + step * i;
       pos[n.id] = { x: CX + radii[h] * Math.cos(a), y: CY + radii[h] * Math.sin(a), a, h };
@@ -60,6 +65,14 @@ function Shape({ kind, x, y, r, className }) {
   const shape = KIND_SHAPE[kind] || "circle";
   if (shape === "square") return <rect className={className} x={x - r} y={y - r} width={2 * r} height={2 * r} rx={r * 0.35} />;
   if (shape === "diamond") return <rect className={className} x={x - r * 0.85} y={y - r * 0.85} width={1.7 * r} height={1.7 * r} rx={r * 0.25} transform={`rotate(45 ${x} ${y})`} />;
+  if (shape === "hexagon") {
+    const pts = [0, 1, 2, 3, 4, 5].map((i) => { const a = Math.PI / 6 + (i * Math.PI) / 3; return `${x + r * 1.1 * Math.cos(a)},${y + r * 1.1 * Math.sin(a)}`; });
+    return <polygon className={className} points={pts.join(" ")} />;
+  }
+  if (shape === "triangle") return <polygon className={className} points={`${x},${y - r * 1.15} ${x + r * 1.05},${y + r * 0.8} ${x - r * 1.05},${y + r * 0.8}`} />;
+  if (shape === "cloud") return <rect className={className} x={x - r * 1.35} y={y - r * 0.8} width={2.7 * r} height={1.6 * r} rx={r * 0.8} />;
+  if (shape === "ring") return <circle className={`${className} ring-shape`} cx={x} cy={y} r={r * 0.95} />;
+  if (shape === "globe") return <g className={className}><circle cx={x} cy={y} r={r * 1.1} /><ellipse cx={x} cy={y} rx={r * 0.45} ry={r * 1.1} className="globe-line" /><line x1={x - r * 1.1} y1={y} x2={x + r * 1.1} y2={y} className="globe-line" /></g>;
   return <circle className={className} cx={x} cy={y} r={r} />;
 }
 
@@ -142,7 +155,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
         return (
           <g
             key={n.id}
-            className={`node ${cls} ${dim ? "dim" : ""} ${selectedNode === n.id ? "selected" : ""}`}
+            className={`node ${cls} loc-${n.location || "onprem"} ${dim ? "dim" : ""} ${selectedNode === n.id ? "selected" : ""}`}
             style={{ animationDelay: `${0.15 + n.hop * 0.18}s` }}
             onMouseEnter={() => setHover(n.id)}
             onMouseLeave={() => setHover(null)}
@@ -151,6 +164,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
             {(n.critical || n.hop === 0) && <circle cx={p.x} cy={p.y} r={r * 2.6} fill={n.critical ? "url(#halo-red)" : "url(#halo-amber)"} />}
             <Shape kind={n.kind} x={p.x} y={p.y} r={r} className="shape" />
             <Label p={p} r={r} text={n.id} />
+            {n.kev && <g className="kev-badge"><title>Runs software with a known-exploited vulnerability</title><circle cx={p.x + r} cy={p.y - r} r={7} /><text x={p.x + r} y={p.y - r + 4}>!</text></g>}
           </g>
         );
       })}

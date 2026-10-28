@@ -141,7 +141,7 @@ def summary(session):
     """headline graph stats for the Neo4j banner: nodes, relationships, labels, and the algorithms in play."""
     counts = session.run(
         """
-        MATCH (n) WHERE n:User OR n:Group OR n:Computer
+        MATCH (n) WHERE n:Entity
         WITH count(n) AS entities
         MATCH ()-[r]->() WHERE type(r) IN $rels
         RETURN entities, count(r) AS attack_edges

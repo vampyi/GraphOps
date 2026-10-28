@@ -34,6 +34,8 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/entities"),
     ("GET", "/api/explore/{entity_id}"),
     ("POST", "/api/controls"),
+    ("GET", "/api/vulnerabilities"),
+    ("POST", "/api/vulnerabilities/refresh"),
     ("GET", "/api/scenarios"),
     ("POST", "/api/scenarios/{scenario_id}/load"),
     ("GET", "/api/live"),

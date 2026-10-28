@@ -44,7 +44,7 @@ def ingest_events(session, events):
         for label in NODE_LABELS:
             ids = [i for i, lab in hints.items() if lab == label]
             if ids:
-                tx.run(f"UNWIND $ids AS id MERGE (n:{label} {{id: id}}) ON CREATE SET n.name = id", ids=ids)
+                tx.run(f"UNWIND $ids AS id MERGE (n:{label} {{id: id}}) ON CREATE SET n.name = id, n.location = 'onprem' SET n:Entity", ids=ids)
         result = apply_batch(tx, parsed) if parsed else {"events": 0, "skipped": 0, "alerts": 0, "network": False}
         tx.run("MERGE (s:StreamState {id: 'live'}) ON CREATE SET s.seq = 0, s.rescore = false, s.network = false")
         if result["alerts"] or result["network"] or hints:

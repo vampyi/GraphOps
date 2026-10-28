@@ -8,7 +8,7 @@ import networkx as nx
 from .attack import EDGES, tag
 from .exposure import fetch, graph
 
-MAX_HOPS = 5
+MAX_HOPS = 8
 PATHS_PER_TARGET = 4
 MAX_PATHS = 40
 
@@ -41,7 +41,7 @@ def explore(session, entity_id, max_hops=MAX_HOPS):
     g = graph(nodes, edges)
     secured = secured_steps(session)
     hops = nx.single_source_shortest_path_length(g, entity_id, cutoff=max_hops)
-    reach = [{"id": n, "hop": h, **{k: nodes[n].get(k) for k in ("kind", "critical", "zone", "community")}}
+    reach = [{"id": n, "hop": h, **{k: nodes[n].get(k) for k in ("kind", "critical", "zone", "community", "location", "kev", "vulns", "name", "illustrative")}}
              for n, h in sorted(hops.items(), key=lambda x: (x[1], x[0]))]
     keep = set(hops)
     edge_list = [{"src": s, "type": t, "dst": d, "secured": (s, t, d) in secured}
@@ -72,9 +72,12 @@ def explore(session, entity_id, max_hops=MAX_HOPS):
     kinds = {}
     for n in reach[1:]:
         kinds[n["kind"]] = kinds.get(n["kind"], 0) + 1
-    return {"entity": {"id": entity_id, **{k: nodes[entity_id].get(k) for k in ("kind", "critical", "zone")}},
+    by_location = {}
+    for n in reach[1:]:
+        by_location[n["location"] or "onprem"] = by_location.get(n["location"] or "onprem", 0) + 1
+    return {"entity": {"id": entity_id, **{k: nodes[entity_id].get(k) for k in ("kind", "critical", "zone", "location", "name", "illustrative")}},
             "max_hops": max_hops, "nodes": reach, "edges": edge_list, "paths": paths,
-            "summary": {"reachable": len(reach) - 1, "by_kind": kinds, "critical": len(targets),
+            "summary": {"reachable": len(reach) - 1, "by_kind": kinds, "by_location": by_location, "critical": len(targets),
                         "paths": len(paths), "secured": sum(p["secured"] for p in paths),
                         "unsecured": sum(not p["secured"] for p in paths)}}
 
