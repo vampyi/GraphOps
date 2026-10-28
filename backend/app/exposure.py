@@ -231,6 +231,7 @@ def analyse_graph(g, scope="low_trust", max_hops=MAX_HOPS):
     paths, pairs = find_paths(g, sources, targets, max_hops)
     chokes, edge_chokes = choke_points(g, paths, pairs)
     layer = layers(paths, sources)
+    last = max(layer.values(), default=0)
     on_paths = {n for p in paths for n in p["nodes"]}
     path_edges = {(a, t, b) for p in paths for a, b, t in zip(p["nodes"], p["nodes"][1:], p["types"])}
     pair_count = len({(s, t) for s in sources for t in targets if s != t})
@@ -243,7 +244,8 @@ def analyse_graph(g, scope="low_trust", max_hops=MAX_HOPS):
         "recommendations": recommendations(g, sources, targets, chokes, max_hops),
         "nodes": [{"id": n, "kind": g.nodes[n].get("kind"), "critical": bool(g.nodes[n].get("critical")),
                    "zone": g.nodes[n].get("zone"), "community": g.nodes[n].get("community"),
-                   "layer": layer.get(n, 0), "source": n in sources}
+                   # a critical asset nothing reaches still belongs in the asset column, not the start column
+                   "layer": layer.get(n, last if n in targets else 0), "source": n in sources}
                   for n in sorted(on_paths | set(sources) | set(targets))],
         "edges": [{"src": a, "type": t, "dst": b, **{k: v for k, v in tag(t).items() if k != "type"}}
                   for a, t, b in sorted(path_edges)],

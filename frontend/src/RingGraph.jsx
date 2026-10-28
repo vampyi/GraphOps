@@ -45,14 +45,13 @@ function layout(nodes, edges, radii = RADII) {
     // if a node would sit at the same angle as one on an inner ring, they line up and their labels collide:
     // rotate this ring by half a step in that case
     const inner = Object.values(pos).filter((q) => q.h > 0).map((q) => q.a);
-    const clash = (off) => wanted.some((_, i) => inner.some((b) => {
-      const d = Math.abs(((off + step * i - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
-      return d < 0.2;
-    }));
-    // try the natural angle, then half a step, then small nudges either way, until nothing lines up
+    const gap = (off) => Math.min(Infinity, ...wanted.flatMap((_, i) => inner.map((b) =>
+      Math.abs(((off + step * i - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI))));
+    // try the natural angle, then half a step, then small nudges either way, until nothing lines up;
+    // if every try lines up with something, take the one that keeps the most room
     const base = wanted[0].a;
-    const tries = [0, step / 2, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05].map((d) => base + d);
-    const offset = tries.find((t) => !clash(t)) ?? base;
+    const tries = [0, step / 2, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, step / 4, -step / 4].map((d) => base + d);
+    const offset = tries.find((t) => gap(t) >= 0.2) ?? tries.reduce((x, t) => (gap(t) > gap(x) ? t : x));
     wanted.forEach(({ n }, i) => {
       const a = offset + step * i;
       pos[n.id] = { x: CX + radii[h] * Math.cos(a), y: CY + radii[h] * Math.sin(a), a, h };
@@ -61,7 +60,7 @@ function layout(nodes, edges, radii = RADII) {
   return pos;
 }
 
-function Shape({ kind, x, y, r, className }) {
+export function Shape({ kind, x, y, r, className }) {
   const shape = KIND_SHAPE[kind] || "circle";
   if (shape === "square") return <rect className={className} x={x - r} y={y - r} width={2 * r} height={2 * r} rx={r * 0.35} />;
   if (shape === "diamond") return <rect className={className} x={x - r * 0.85} y={y - r * 0.85} width={1.7 * r} height={1.7 * r} rx={r * 0.25} transform={`rotate(45 ${x} ${y})`} />;
@@ -76,16 +75,37 @@ function Shape({ kind, x, y, r, className }) {
   return <circle className={className} cx={x} cy={y} r={r} />;
 }
 
-// labels sit outward from the centre: to the side for nodes left and right of it, below or above otherwise,
-// so neighbours on adjacent rings do not write over each other
-function Label({ p, r, text }) {
+// labels sit outward from the centre: to the side for nodes left and right of it, below or above otherwise.
+// if that spot would cover another node or a label already placed, the first free side is used instead.
+const CHAR_W = 8.2;
+const nodeSize = (n) => (n.critical || n.hop === 0 ? 17 : 13);
+function candidates(p, r, w, k) {
   const dx = p.x - CX, dy = p.y - CY, d = Math.hypot(dx, dy);
-  if (d < 1 || Math.abs(dx) / d < 0.45) {
-    const below = d < 1 || dy >= 0;
-    return <text x={p.x} y={below ? p.y + r + 22 : p.y - r - 10}>{text}</text>;
-  }
-  const right = dx > 0;
-  return <text x={p.x + (right ? r + 8 : -(r + 8))} y={p.y + 6} style={{ textAnchor: right ? "start" : "end" }}>{text}</text>;
+  const g = 8 * k, h = 16 * k;
+  const right = { x: p.x + r + g, y: p.y + 5 * k, anchor: "start", box: [p.x + r + g, p.y - h / 2 - 2, p.x + r + g + w, p.y + h / 2 - 2] };
+  const left = { x: p.x - r - g, y: p.y + 5 * k, anchor: "end", box: [p.x - r - g - w, p.y - h / 2 - 2, p.x - r - g, p.y + h / 2 - 2] };
+  const below = { x: p.x, y: p.y + r + 4 + h, anchor: "middle", box: [p.x - w / 2, p.y + r + 4, p.x + w / 2, p.y + r + 4 + h] };
+  const above = { x: p.x, y: p.y - r - 8, anchor: "middle", box: [p.x - w / 2, p.y - r - 6 - h, p.x + w / 2, p.y - r - 6] };
+  if (d < 1 || Math.abs(dx) / d < 0.45) return d < 1 || dy >= 0 ? [below, above, right, left] : [above, below, right, left];
+  return dx > 0 ? [right, below, above, left] : [left, below, above, right];
+}
+const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+function placeLabels(nodes, pos, k) {
+  const placed = {};
+  const taken = nodes.filter((n) => pos[n.id]).map((n) => {
+    const p = pos[n.id], r = nodeSize(n);
+    return { id: n.id, box: [p.x - r, p.y - r, p.x + r, p.y + r] };
+  });
+  [...nodes].sort((a, b) => a.hop - b.hop).forEach((n) => {
+    const p = pos[n.id];
+    if (!p) return;
+    const opts = candidates(p, nodeSize(n), n.id.length * CHAR_W * k, k);
+    const cost = (o) => taken.reduce((s, t) => s + (t.id === n.id ? 0 : overlap(o.box, t.box)), 0);
+    const best = opts.find((o) => cost(o) === 0) || opts.reduce((x, o) => (cost(o) < cost(x) ? o : x));
+    placed[n.id] = best;
+    taken.push({ id: `label:${n.id}`, box: best.box });
+  });
+  return placed;
 }
 
 export default function RingGraph({ data: full, onSelectNode, selectedNode, maxHop = 3, highlight = null }) {
@@ -98,11 +118,13 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
     const keep = new Set(full.nodes.filter((n) => n.hop <= maxHop).map((n) => n.id));
     return { ...full, nodes: full.nodes.filter((n) => keep.has(n.id)), edges: full.edges.filter((e) => keep.has(e.src) && keep.has(e.dst)) };
   }, [full, maxHop]);
-  if (!data) return null;
-
-  // fit the picture to the rings actually drawn, so a small blast radius is drawn large and readable
-  const outer = Math.max(1, ...data.nodes.map((n) => n.hop));
+  // fit the picture to the rings actually drawn, so a small blast radius is drawn large and readable;
+  // labels grow with the picture so they read the same size on screen
+  const outer = data ? Math.max(1, ...data.nodes.map((n) => n.hop)) : 1;
   const extent = Math.max(230, radii[Math.min(outer, maxHop, radii.length - 1)] + 60);
+  const k = Math.max(1, extent / 400);
+  const labels = useMemo(() => (data ? placeLabels(data.nodes, pos, k) : {}), [data, pos, k]);
+  if (!data) return null;
   const viewBox = `${CX - extent} ${CY - extent} ${2 * extent} ${2 * extent}`;
 
   // highlight: a list of paths (each a list of node ids) to draw in red; otherwise the alert's attack path
@@ -151,7 +173,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
         const onPath = pathIds.includes(n.id);
         const dim = focus && !linked.has(n.id) && n.id !== focus;
         const cls = n.hop === 0 ? "alerted" : n.critical ? "critical" : onPath ? "onpath" : `hop${n.hop}`;
-        const r = n.critical ? 17 : n.hop === 0 ? 17 : 13;
+        const r = nodeSize(n);
         return (
           <g
             key={n.id}
@@ -163,7 +185,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
           >
             {(n.critical || n.hop === 0) && <circle cx={p.x} cy={p.y} r={r * 2.6} fill={n.critical ? "url(#halo-red)" : "url(#halo-amber)"} />}
             <Shape kind={n.kind} x={p.x} y={p.y} r={r} className="shape" />
-            <Label p={p} r={r} text={n.id} />
+            {labels[n.id] && <text x={labels[n.id].x} y={labels[n.id].y} style={{ textAnchor: labels[n.id].anchor, fontSize: 15 * k }}>{n.id}</text>}
             {n.kev && <g className="kev-badge"><title>Runs software with a known-exploited vulnerability</title><circle cx={p.x + r} cy={p.y - r} r={7} /><text x={p.x + r} y={p.y - r + 4}>!</text></g>}
           </g>
         );

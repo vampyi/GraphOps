@@ -348,7 +348,7 @@ function BlastTab({ blast, mode, onMode, maxHop, onHop, node, onNode, onToggleCr
         <span><i className="lg critical" />critical asset</span>
         <span><i className="lg path" />attack path</span>
         <span>rings: 1, 2, 3 hops</span>
-        <span className="shapes">● user ■ group ◆ computer</span>
+        <span className="shapes">● user ■ group ◆ computer ⬢ AI agent ▲ tool ▬ cloud resource ○ service identity</span>
       </div>
     </div>
   );

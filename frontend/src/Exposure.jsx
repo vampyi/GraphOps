@@ -142,7 +142,7 @@ export default function Exposure({ onError }) {
           <span><i className="lg choke" />choke point</span>
           <span><i className="lg critical" />critical asset</span>
           {sim && <span className="legend-cut">dashed = removed by the selected fix</span>}
-          <span className="shapes">● user ■ group ◆ computer</span>
+          <span className="shapes">● user ■ group ◆ computer ⬢ AI agent ▲ tool ▬ cloud resource ○ service identity</span>
         </div>
       </div>
     </div>

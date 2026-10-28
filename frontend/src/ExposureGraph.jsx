@@ -1,6 +1,6 @@
 import { useMemo } from "react";
+import { Shape } from "./RingGraph.jsx";
 
-const KIND_SHAPE = { User: "circle", Group: "square", Computer: "diamond" };
 const PAD_X = 70;
 const PAD_Y = 34;
 const ROW = 46;
@@ -60,7 +60,7 @@ export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdg
         const cls = n.critical ? "target" : n.source ? "source" : choke.has(n.id) ? "choke" : "mid";
         return (
           <g key={n.id} className={`exp-node ${cls} ${cut ? "cut" : ""} ${faded ? "faded" : ""}`}>
-            <Shape kind={n.kind} x={p.x} y={p.y} r={n.critical || n.source ? 10 : 8} />
+            <Shape className="shape" kind={n.kind} x={p.x} y={p.y} r={n.critical || n.source ? 10 : 8} />
             {choke.has(n.id) && !n.critical && !n.source && <circle className="choke-ring" cx={p.x} cy={p.y} r={16} />}
             <text x={p.x} y={p.y - 15}>{n.id}</text>
           </g>
@@ -68,11 +68,4 @@ export default function ExposureGraph({ data, chokeIds, removedNodes, removedEdg
       })}
     </svg>
   );
-}
-
-function Shape({ kind, x, y, r }) {
-  const shape = KIND_SHAPE[kind] || "circle";
-  if (shape === "square") return <rect className="shape" x={x - r} y={y - r} width={2 * r} height={2 * r} rx={r * 0.35} />;
-  if (shape === "diamond") return <rect className="shape" x={x - r * 0.85} y={y - r * 0.85} width={1.7 * r} height={1.7 * r} rx={r * 0.25} transform={`rotate(45 ${x} ${y})`} />;
-  return <circle className="shape" cx={x} cy={y} r={r} />;
 }
