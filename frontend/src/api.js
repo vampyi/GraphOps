@@ -45,3 +45,8 @@ export const getReachabilityProof = (src, dst) =>
 export const getLive = (since = 0) => call(`/live?since=${since}`);
 export const replayReset = () => post("/replay/reset");
 export const replayStart = (attack, speed) => post("/replay/start", { attack, speed });
+
+// explore
+export const getEntities = () => call("/entities");
+export const getExplore = (id, maxHops = 5) => call(`/explore/${encodeURIComponent(id)}?max_hops=${maxHops}`);
+export const setControl = (body) => post("/controls", body);

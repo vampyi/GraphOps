@@ -10,10 +10,12 @@ import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
 import Evaluation from "./Evaluation.jsx";
 import Ask from "./Ask.jsx";
+import Explore from "./Explore.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
   { id: "exposure", label: "Exposure", hint: "Attack paths and choke points" },
+  { id: "explore", label: "Explore", hint: "Everything one system can reach" },
   { id: "access", label: "Access", hint: "Granted vs used access" },
   { id: "graph", label: "Graph", hint: "Queries and algorithms" },
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
@@ -139,6 +141,7 @@ export default function Dashboard() {
 
       {view === "triage" && <Triage alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
       {view === "exposure" && <Exposure onError={setError} />}
+      {view === "explore" && <Explore onError={setError} />}
       {view === "access" && <Access onError={setError} />}
       {view === "graph" && <GraphEngine onError={setError} />}
       {view === "ask" && <Ask />}

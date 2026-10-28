@@ -608,6 +608,53 @@ def learning():
         return learn.from_verdicts(s)
 
 
+@app.get("/api/explore/{entity_id}")
+def explore_entity(entity_id: str, max_hops: int = 5):
+    """everything one user, group or machine can reach, and its attack paths to critical assets."""
+    from . import explore
+    if not 1 <= max_hops <= 8:
+        raise HTTPException(422, "max_hops must be between 1 and 8")
+    with _driver.session() as s:
+        result = explore.explore(s, entity_id, max_hops)
+    if result is None:
+        raise HTTPException(404, "no such user, group or machine")
+    return result
+
+
+@app.get("/api/entities")
+def entities():
+    """every user, group and machine, for pickers."""
+    with _driver.session() as s:
+        return [dict(r) for r in s.run(
+            """
+            MATCH (n) WHERE n:User OR n:Group OR n:Computer
+            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
+            ORDER BY kind, id
+            """)]
+
+
+class Control(BaseModel):
+    src: str
+    type: str
+    dst: str
+    secured: bool = True
+    note: str | None = None
+
+
+@app.post("/api/controls")
+def set_control(body: Control):
+    """record that one attack step is secured (or no longer secured), with a short note such as "mfa enforced"."""
+    from . import explore
+    try:
+        with _driver.session() as s:
+            n = explore.set_secured(s, body.src, body.type, body.dst, body.secured, body.note)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    if not n:
+        raise HTTPException(404, "no such step")
+    return {"updated": n}
+
+
 @app.get("/api/languages")
 def languages():
     """languages the story and the ask tab can answer in, and whether the llm is configured."""
