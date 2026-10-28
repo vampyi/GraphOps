@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import Logo from "./Logo.jsx";
 import ThemeToggle from "./Theme.jsx";
+import StippleOrb from "./StippleOrb.jsx";
 
 const STATS = [
   { value: "73%", label: "of SANS 2025 survey respondents cited false positives as a main detection challenge", source: "SANS Institute" },
@@ -26,98 +28,213 @@ const STEPS = [
 ];
 
 const WINS = [
-  { title: "One query per question", text: "Every answer is a single graph traversal. Shortest path, betweenness, PageRank, Louvain and the minimum cut all come from Neo4j and its Graph Data Science library, each doing a real SOC job." },
-  { title: "Beat the 29-minute clock", text: "Replay an attack live against the breakout budget and watch the kill chain connect itself into one incident in seconds, not the hours of manual stitching it replaces." },
-  { title: "The shrinking circle", text: "Draw an identity's blast radius over the access it holds, then over the access it actually uses. The gap is the risk least privilege removes." },
-  { title: "Measured, not guessed", text: "GraphOps ranks every attack alert to the top, even on a day it was never tuned on, with no false alarms read first. We show the numbers against sorting by severity." },
+  { tint: "mint", title: "One query per question", text: "Every answer is a single graph traversal. Shortest path, betweenness, PageRank, Louvain and the minimum cut all come from Neo4j and its Graph Data Science library, each doing a real SOC job." },
+  { tint: "cream", title: "Beat the 29-minute clock", text: "Replay an attack live against the breakout budget and watch the kill chain connect itself into one incident in seconds, not the hours of manual stitching it replaces." },
+  { tint: "sky", title: "The shrinking circle", text: "Draw an identity's blast radius over the access it holds, then over the access it actually uses. The gap is the risk least privilege removes." },
+  { tint: "mint", title: "Measured, not guessed", text: "GraphOps ranks every attack alert to the top, even on a day it was never tuned on, with no false alarms read first. We show the numbers against sorting by severity." },
 ];
 
-export default function Landing() {
+const NAV = [
+  { label: "Problem", href: "problem" },
+  { label: "How it works", href: "how" },
+  { label: "Why it wins", href: "wins" },
+];
+
+function Arrow() {
   return (
-    <div className="landing">
-      <nav className="lnav">
-        <div className="brand"><Logo />GraphOps</div>
-        <div className="lnav-links">
-          <a href="#problem" onClick={(e) => { e.preventDefault(); document.getElementById("problem").scrollIntoView({ behavior: "smooth" }); }}>Problem</a>
-          <a href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
-          <ThemeToggle />
-          <a className="btn primary small" href="#/console">Open the console</a>
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8h9.5M8.5 4l4 4-4 4" />
+    </svg>
+  );
+}
+
+const jump = (id) => (e) => {
+  e.preventDefault();
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+// the orb has to paint itself in the colours of whichever theme is on, and the
+// theme lives as a data attribute on <html>, so watch that rather than duplicate state
+function useTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "dark");
+  useEffect(() => {
+    const el = document.documentElement;
+    const mo = new MutationObserver(() => setTheme(el.dataset.theme || "dark"));
+    mo.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return theme;
+}
+
+export default function Landing() {
+  const theme = useTheme();
+  const [stuck, setStuck] = useState(false);
+  const root = useRef(null);
+
+  useEffect(() => {
+    const onScroll = () => setStuck(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // sections fade up once as they come into view, then stay put
+  useEffect(() => {
+    const targets = root.current?.querySelectorAll("[data-reveal]");
+    if (!targets?.length) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      targets.forEach((t) => t.setAttribute("data-in", ""));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        en.target.setAttribute("data-in", "");
+        io.unobserve(en.target);
+      });
+    }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+
+  const dark = theme !== "light";
+
+  return (
+    <div className="lp-root" ref={root}>
+      <a className="lp-skip" href="#lp-main">Skip to content</a>
+
+      <nav className="lp-nav" data-stuck={stuck || undefined}>
+        <div className="lp-wrap">
+          <a className="lp-brand" href="#/"><Logo />GraphOps</a>
+          <div className="lp-links">
+            {NAV.map((n) => <a key={n.href} href={`#${n.href}`} onClick={jump(n.href)}>{n.label}</a>)}
+          </div>
+          <div className="lp-navr">
+            <ThemeToggle />
+            <a className="lp-btn lp-btn-sm" href="#/console">Open the console<Arrow /></a>
+          </div>
         </div>
       </nav>
 
-      <header className="hero">
-        <h1>Defenders think in lists.<br /><span>Attackers think in graphs.</span></h1>
-        <p className="quote-by">John Lambert, Microsoft</p>
-        <p className="lead">
-          GraphOps ranks every security alert by where it sits on the attacker's map, links scattered alerts into one
-          incident and shows what an attacker can reach next. One open graph, built on Neo4j.
-        </p>
-        <div className="cta">
-          <a className="btn primary" href="#/console">Open the console</a>
-          <a className="btn ghost" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how").scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
-        </div>
-        <p className="neo4j-line">Built on <b>Neo4j</b> and its <b>Graph Data Science</b> library. The graph is not a store behind the product; it is the product.</p>
-        <p className="made-for">Built by Team Pingu Haters for hackFront India 2026, Cybersecurity theme.</p>
-        <div className="hero-word">GRAPHOPS</div>
-      </header>
-
-      <section className="stats">
-        {STATS.map((s) => (
-          <div key={s.value} className="stat">
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-src">Source: {s.source}</div>
-          </div>
-        ))}
-      </section>
-
-      <section id="problem" className="section">
-        <p className="kicker">The seven pain points</p>
-        <h2>What keeps a security team from seeing the attack</h2>
-        <div className="pains">
-          {PAINS.map((p, i) => (
-            <div key={p.title} className="pain">
-              <div className="pain-head">
-                <h3>{p.title}</h3>
-                <span className={`badge ${p.status}`}>{p.status === "live" ? "Available now" : "Planned"}</span>
+      <main id="lp-main">
+        <header className="lp-hero">
+          <div className="lp-wrap lp-hero-grid">
+            <div className="lp-hero-copy">
+              <p className="lp-mono">Graph analytics for threat hunting</p>
+              <h1 className="lp-h1">
+                <span>Defenders think in lists.</span>
+                <span className="lp-accent">Attackers think in graphs.</span>
+              </h1>
+              <p className="lp-attrib">John Lambert, Microsoft</p>
+              <p className="lp-lead">
+                GraphOps ranks every security alert by where it sits on the attacker's map, links scattered alerts
+                into one incident and shows what an attacker can reach next.
+              </p>
+              <div className="lp-cta">
+                <a className="lp-btn" href="#/console">Open the console<Arrow /></a>
+                <a className="lp-link" href="#how" onClick={jump("how")}>See how it works<Arrow /></a>
               </div>
-              <p className="pain-problem">{p.problem}</p>
-              <p className="pain-fix">{p.fix}</p>
+              <p className="lp-neo">
+                Built on <b>Neo4j</b> and its <b>Graph Data Science</b> library. The graph is not a store behind the
+                product; it is the product.
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
+            <StippleOrb
+              dark={dark}
+              accent={dark ? "#2dd4bf" : "#0b8176"}
+              critical={dark ? "#f87171" : "#dc2626"}
+            />
+          </div>
 
-      <section id="how" className="section">
-        <p className="kicker">How it works</p>
-        <h2>From scattered alerts to one connected story</h2>
-        <div className="steps">
-          {STEPS.map((s, i) => (
-            <div key={s.n} className="step">
-              <h3>{s.title}{i < STEPS.length - 1 && <span className="arrow">→</span>}</h3>
-              <p>{s.text}</p>
+          <div className="lp-wrap lp-trust">
+            <span className="lp-mono">Built for</span>
+            <ul>
+              <li>hackFront India 2026</li>
+              <li>Cybersecurity theme</li>
+              <li>Team Pingu Haters</li>
+            </ul>
+          </div>
+        </header>
+
+        <section className="lp-sec lp-statsec" data-reveal>
+          <div className="lp-wrap">
+            <ul className="lp-stats">
+              {STATS.map((s) => (
+                <li key={s.value}>
+                  <b>{s.value}</b>
+                  <p>{s.label}</p>
+                  <small>{s.source}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="lp-sec lp-pad" id="problem" data-reveal>
+          <div className="lp-wrap">
+            <p className="lp-mono">The seven pain points</p>
+            <h2 className="lp-h2">What keeps a security team from seeing the attack</h2>
+            <ol className="lp-pains">
+              {PAINS.map((p, i) => (
+                <li key={p.title}>
+                  <span className="lp-num">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h3>{p.title}<em className={`lp-badge ${p.status}`}>{p.status === "live" ? "Available now" : "Planned"}</em></h3>
+                    <p className="lp-prob">{p.problem}</p>
+                    <p className="lp-fix">{p.fix}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="lp-sec lp-pad" id="how" data-reveal>
+          <div className="lp-wrap">
+            <p className="lp-mono">How it works</p>
+            <h2 className="lp-h2">From scattered alerts to one connected story</h2>
+            <ol className="lp-steps">
+              {STEPS.map((s) => (
+                <li key={s.n}>
+                  <span className="lp-mono">{s.n}</span>
+                  <h3>{s.title}</h3>
+                  <p>{s.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="lp-sec lp-pad" id="wins" data-reveal>
+          <div className="lp-wrap">
+            <p className="lp-mono">Why it wins</p>
+            <h2 className="lp-h2">The graph is the product</h2>
+            <div className="lp-wins">
+              {WINS.map((w) => (
+                <article key={w.title} className="lp-card" data-tint={w.tint}>
+                  <h3>{w.title}</h3>
+                  <p>{w.text}</p>
+                </article>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="cta center"><a className="btn primary" href="#/console">Explore the sample organisation</a></div>
-      </section>
+          </div>
+        </section>
 
-      <section id="wins" className="section">
-        <p className="kicker">Why it wins</p>
-        <h2>The graph is the product</h2>
-        <div className="wins">
-          {WINS.map((w) => (
-            <div key={w.title} className="win-card">
-              <h3>{w.title}</h3>
-              <p>{w.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section className="lp-sec lp-final" data-reveal>
+          <div className="lp-wrap">
+            <h2 className="lp-h2"><span>See one attack</span><span className="lp-accent">connect itself.</span></h2>
+            <p>The console runs on a fictional sample organisation. Nothing to install, nothing to sign up for.</p>
+            <a className="lp-btn lp-btn-lg" href="#/console">Explore the sample organisation<Arrow /></a>
+          </div>
+        </section>
+      </main>
 
-      <footer className="lfoot">
-        Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mohamad and SK MD Mahasin.
-        <br />The console runs on a fictional sample organisation. All data is synthetic.
+      <footer className="lp-foot">
+        <div className="lp-wrap">
+          <div className="lp-brand"><Logo />GraphOps</div>
+          <p>Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mohamad and SK MD Mahasin.</p>
+          <p className="lp-muted">The console runs on a fictional sample organisation. All data is synthetic.</p>
+        </div>
       </footer>
     </div>
   );
