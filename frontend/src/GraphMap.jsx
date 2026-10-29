@@ -16,6 +16,27 @@ export const KIND_COLOR = {
   CloudResource: "#4C8EDA", ServiceIdentity: "#569480", Software: "#D9C8AE", Internet: "#ECB5C9",
 };
 
+// columns by attack distance: how many attack steps each node is from the nearest critical asset, worked out
+// backwards from the critical assets along the attack steps. critical assets sit on the right, nodes with no
+// route to one on the left, so the picture reads left to right as the attacker's way in.
+export const COLUMNS = [
+  { key: "none", label: "No route" }, { key: 4, label: "4+ steps" }, { key: 3, label: "3 steps" },
+  { key: 2, label: "2 steps" }, { key: 1, label: "1 step" }, { key: 0, label: "Critical assets" },
+];
+export function distances(data) {
+  const into = {};
+  data.edges.filter((e) => e.attack).forEach((e) => (into[e.dst] ||= []).push(e.src));
+  const dist = {};
+  const queue = data.nodes.filter((n) => n.critical).map((n) => n.id);
+  queue.forEach((id) => (dist[id] = 0));
+  for (let i = 0; i < queue.length; i++) {
+    for (const src of into[queue[i]] || []) {
+      if (dist[src] == null) { dist[src] = dist[queue[i]] + 1; queue.push(src); }
+    }
+  }
+  return dist;
+}
+
 export const MODES = [
   { id: "types", label: "Node types", algo: "Labels",
     tip: "Colour = the kind of node (its Neo4j label), as in Neo4j Bloom. Red = critical asset." },

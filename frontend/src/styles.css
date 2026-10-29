@@ -1087,3 +1087,12 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .nvl-zoom { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
 .nvl-zoom button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; font-size: 15px; line-height: 1; }
 .nvl-zoom button:hover { border-color: var(--line-hover); }
+.nvl-col { position: absolute; transform: translate(-50%, -50%); pointer-events: none; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.nvl-col.crit { color: var(--red-soft); border-color: var(--red); }
+.ge-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.ge-fact { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ge-fact b { font-size: 24px; font-weight: 400; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ge-fact.crit b { color: var(--red-soft); }
+.ge-fact span { font-size: 12px; color: var(--muted); }
+.ge-line { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--text-2); }
+@media (max-width: 900px) { .ge-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

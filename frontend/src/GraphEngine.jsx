@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Info } from "./parts.jsx";
 import { getExposure, getGraphAlgorithms, getGraphFull, getReachabilityProof } from "./api.js";
-import GraphMap, { KIND_COLOR, MODES } from "./GraphMap.jsx";
+import GraphMap, { distances, KIND_COLOR, MODES } from "./GraphMap.jsx";
 
 // neo4j's visualization library, loaded only when the backend is on neo4j aura (its licence covers aura only)
 const NvlMap = lazy(() => import("./NvlMap.jsx"));
@@ -70,6 +70,8 @@ export default function GraphEngine({ onError }) {
           <div><b>{sm.relationships_total}</b><span>relationships in all</span></div>
         </div>
       </div>
+
+      {graph && <Facts graph={graph} mode={mode} />}
 
       {graph && (
         <div className="ge-main">
@@ -193,3 +195,34 @@ export default function GraphEngine({ onError }) {
 }
 
 const uniq = (arr) => [...new Set(arr)];
+
+const top = (nodes, key, k = 2) => nodes.filter((n) => !n.critical && n[key] != null).sort((a, b) => b[key] - a[key]).slice(0, k).map((n) => n.id);
+
+// the four things the graph says at first sight, and one line on what the selected view shows
+function Facts({ graph, mode }) {
+  const dist = distances(graph);
+  const crit = graph.nodes.filter((n) => n.critical).length;
+  const reach = graph.nodes.filter((n) => !n.critical && dist[n.id] != null).length;
+  const agents = graph.nodes.filter((n) => n.kind === "AIAgent");
+  const agentsOnRoute = agents.filter((n) => dist[n.id] != null).length;
+  const chokes = top(graph.nodes, "choke");
+  const influential = top(graph.nodes, "pagerank");
+  const communities = new Set(graph.nodes.map((n) => n.community).filter((c) => c != null)).size;
+  const cloudOnRoute = graph.nodes.filter((n) => n.location === "cloud" && !n.critical && dist[n.id] != null).length;
+  const line = {
+    types: "Read left to right: each column is one attack step closer to a critical asset.",
+    community: `${communities} groups of machines and people that normally work together. A login that crosses colours is lateral movement.`,
+    pagerank: `${influential.join(" and ")} are reached by the most attack routes, so they would cause the most damage if compromised.`,
+    choke: `${chokes.join(" and ")} sit on the most attack paths. Securing them cuts the most routes.`,
+    zones: `${cloudOnRoute} cloud system${cloudOnRoute === 1 ? "" : "s"} and the internet have routes into critical assets.`,
+  }[mode];
+  return (
+    <div className="ge-facts">
+      <div className="ge-fact crit"><b>{crit}</b><span>critical assets</span></div>
+      <div className="ge-fact"><b>{reach}</b><span>systems with an attack route to one</span></div>
+      <div className="ge-fact"><b>{chokes[0] || "–"}</b><span>top choke point</span></div>
+      <div className="ge-fact"><b>{agentsOnRoute} of {agents.length}</b><span>AI agents on an attack route</span></div>
+      <p className="ge-line">{line}</p>
+    </div>
+  );
+}

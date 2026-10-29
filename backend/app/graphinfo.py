@@ -174,7 +174,8 @@ def full_graph(session):
         RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind,
                coalesce(n.location, 'onprem') AS location, coalesce(n.critical, false) AS critical,
                n.zone AS zone, n.community AS community, n.danger AS pagerank, n.choke_score AS choke,
-               coalesce(n.illustrative, false) AS illustrative, coalesce(n.kev, false) AS kev
+               coalesce(n.illustrative, false) AS illustrative, coalesce(n.kev, false) AS kev,
+               n.hops_to_critical AS hops
         ORDER BY n.id
         """)]
     edges = [dict(r) for r in session.run(
