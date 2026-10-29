@@ -152,3 +152,44 @@ def summary(session):
             "attack_edges": counts["attack_edges"] if counts else 0,
             "nodes_total": total, "relationships_total": rels,
             "cypher": CYPHER}
+
+
+def has_gds(session):
+    """true when this database has neo4j graph data science installed (aura free does not)."""
+    try:
+        session.run("RETURN gds.version() AS v").single()
+        return True
+    except Exception:  # unknown function: no graph data science here
+        return False
+
+
+def full_graph(session):
+    """every entity and connection, with the algorithm results stored on each node, for drawing the whole graph:
+    louvain community, pagerank (danger) and betweenness (choke_score). also the data model: how many of each kind
+    of node, and how many connections of each type between each pair of kinds."""
+    nodes = [dict(r) for r in session.run(
+        """
+        MATCH (n:Entity)
+        RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind,
+               coalesce(n.location, 'onprem') AS location, coalesce(n.critical, false) AS critical,
+               n.zone AS zone, n.community AS community, n.danger AS pagerank, n.choke_score AS choke,
+               coalesce(n.illustrative, false) AS illustrative, coalesce(n.kev, false) AS kev
+        ORDER BY n.id
+        """)]
+    edges = [dict(r) for r in session.run(
+        "MATCH (s:Entity)-[r]->(d:Entity) RETURN s.id AS src, type(r) AS type, d.id AS dst ORDER BY src, dst, type")]
+    kind = {n["id"]: n["kind"] for n in nodes}
+    attack = set(ATTACK_EDGES)
+    for e in edges:
+        e["attack"] = e["type"] in attack
+    counts = {}
+    for e in edges:
+        key = (kind[e["src"]], e["type"], kind[e["dst"]])
+        counts[key] = counts.get(key, 0) + 1
+    schema = [{"src": s, "type": t, "dst": d, "count": c, "attack": t in attack,
+               "tactic": TACTICS.get(_tac(t)), "technique": _tech(t)}
+              for (s, t, d), c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+    kinds = {}
+    for n in nodes:
+        kinds[n["kind"]] = kinds.get(n["kind"], 0) + 1
+    return {"nodes": nodes, "edges": edges, "schema": schema, "kinds": kinds, "gds": has_gds(session)}

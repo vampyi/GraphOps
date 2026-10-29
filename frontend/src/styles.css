@@ -792,8 +792,7 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .rbar-track, .rbar-fill, .minibar { border-radius: 999px; }
 .ge-stats b { font-family: var(--sans); font-weight: 300; letter-spacing: -0.03em; }
 
-/* ===================================================================
-   landing page
+/* ============================================================   landing page
    Entirely scoped to .lp-root so the console keeps its own look.
    Hairlines instead of boxes, soft elevation instead of borders,
    large light-weight type, one mono voice for labels and numbers.
@@ -1034,3 +1033,42 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
   .lp-card { padding: 22px 20px 24px; border-radius: 13px; }
   .lp-root .theme-btn { padding: 0 9px; }
 }
+/* ===== graph tab: live graph and data model ===== */
+.ge-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; margin: 12px 0; }
+.ge-map { display: flex; flex-direction: column; max-height: none; }
+.ge-modes { margin-left: auto; display: flex; gap: 4px; }
+.ge-modes button { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.ge-modes button.on { background: var(--paper); color: var(--on-paper); border-color: var(--paper); }
+.ge-map-wrap { flex: 1; min-height: 460px; }
+.gmap { width: 100%; height: 100%; display: block; }
+.gm-edge { stroke-width: 1; transition: opacity 0.2s; }
+.gm-edge.attack { stroke: var(--line-hover); }
+.gm-edge.other { stroke: var(--edge); stroke-dasharray: 3 4; }
+.gm-edge.path { stroke: var(--red); stroke-width: 2.4; stroke-dasharray: 6 4; animation: dash 1.2s linear infinite; }
+.gm-edge.dim { opacity: 0.12; }
+.gm-node { cursor: default; transition: opacity 0.2s; }
+.gm-node.dim { opacity: 0.2; }
+.gm-shape { stroke: var(--surface); stroke-width: 1.5; }
+.gm-node.loc-cloud .gm-shape { stroke: var(--cloud); stroke-width: 2; }
+.gm-node.on .gm-shape { stroke: var(--red); stroke-width: 2.5; }
+.gm-node text { fill: var(--text-2); font-size: 12px; text-anchor: middle; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; font-family: var(--mono); }
+.gm-ring { fill: none; stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.gm-zone { fill: var(--faint); font-size: 13px; text-anchor: middle; text-transform: uppercase; letter-spacing: 0.08em; }
+.ge-map-foot { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border); }
+.gm-key { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+.gm-key i { display: inline-block; width: 16px; border-top: 1.5px solid var(--line-hover); margin-left: 6px; }
+.gm-key i.other { border-top: 1.5px dashed var(--edge); }
+.ge-model { max-height: 640px; }
+.ge-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ge-kind { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 4px; }
+.ge-kind svg { width: 18px; height: 18px; }
+.ge-kind-shape { fill: var(--teal); }
+.ge-kind b { font-family: var(--mono); font-weight: 500; color: var(--muted); }
+.ge-schema { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ge-schema li { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.ge-rel { display: inline-flex; flex-wrap: wrap; gap: 5px; align-items: center; flex: 1; min-width: 0; }
+.ge-rel em { font-style: normal; color: var(--text-2); }
+.ge-rel code { font-size: 11px; }
+.ge-tech { font-family: var(--mono); font-size: 10px; color: var(--red-soft); }
+.ge-schema b { font-family: var(--mono); font-weight: 500; color: var(--muted); min-width: 22px; text-align: right; }
+@media (max-width: 1100px) { .ge-main { grid-template-columns: 1fr; } .ge-modes { margin-left: 0; } }

@@ -38,6 +38,7 @@ export const loadScenario = (id) => post(`/scenarios/${id}/load`);
 
 // graph engine (the Neo4j showcase)
 export const getGraphAlgorithms = () => call("/graph/algorithms");
+export const getGraphFull = () => call("/graph/full");
 export const getReachabilityProof = (src, dst) =>
   call(`/graph/reachability-proof?src=${encodeURIComponent(src)}${dst ? `&dst=${encodeURIComponent(dst)}` : ""}`);
 

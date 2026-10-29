@@ -279,7 +279,14 @@ def graph_algorithms():
     """the Neo4j / GDS algorithms GraphOps runs, each mapped to the SOC question it answers, with a live number.
     this is the 'why a graph, why Neo4j' roster the dashboard shows."""
     with _driver.session() as s:
-        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s)}
+        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s), "gds": graphinfo.has_gds(s)}
+
+
+@app.get("/api/graph/full")
+def graph_full():
+    """the whole graph with each node's community, pagerank and choke-point score, and the data model counts."""
+    with _driver.session() as s:
+        return graphinfo.full_graph(s)
 
 
 @app.get("/api/evaluation")

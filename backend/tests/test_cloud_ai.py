@@ -45,3 +45,15 @@ def test_path_through_web01_needs_the_vulnerability(api, neo4j_driver):
     with neo4j_driver.session() as s:
         vulns.refresh(s, live=False)
     assert "web01" in {n["id"] for n in api.get("/api/explore/internet?max_hops=8").json()["nodes"]}
+
+
+def test_full_graph_carries_algorithm_results_and_the_data_model(api):
+    g = api.get("/api/graph/full").json()
+    ids = {n["id"] for n in g["nodes"]}
+    assert len(ids) == 50 and all(e["src"] in ids and e["dst"] in ids for e in g["edges"])
+    assert all(n["pagerank"] is not None and n["choke"] is not None for n in g["nodes"])
+    assert g["kinds"]["AIAgent"] == 2 and g["kinds"]["CloudResource"] == 2
+    rows = {(r["src"], r["type"], r["dst"]): r for r in g["schema"]}
+    assert rows[("Group", "AdminTo", "Computer")]["attack"]
+    assert rows[("CloudResource", "FeedsUntrustedInput", "AIAgent")]["technique"] == "AML.T0051.001"
+    assert sum(r["count"] for r in g["schema"]) == len(g["edges"])
