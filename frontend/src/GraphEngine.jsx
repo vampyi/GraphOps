@@ -210,7 +210,7 @@ function Facts({ graph, mode }) {
   const communities = new Set(graph.nodes.map((n) => n.community).filter((c) => c != null)).size;
   const cloudOnRoute = graph.nodes.filter((n) => n.location === "cloud" && !n.critical && dist[n.id] != null).length;
   const line = {
-    types: "Read left to right: each column is one attack step closer to a critical asset.",
+    types: "Each group is one kind of node; red is the critical assets. Lines are attack steps between groups.",
     community: `${communities} groups of machines and people that normally work together. A login that crosses colours is lateral movement.`,
     pagerank: `${influential.join(" and ")} are reached by the most attack routes, so they would cause the most damage if compromised.`,
     choke: `${chokes.join(" and ")} sit on the most attack paths. Securing them cuts the most routes.`,
