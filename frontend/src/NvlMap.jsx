@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InteractiveNvlWrapper } from "@neo4j-nvl/react";
-import { KIND_COLOR } from "./GraphMap.jsx";
-
-
-
+import { COMMUNITY_COLOR, KIND_COLOR, LOCATION_COLOR, topBy } from "./GraphMap.jsx";
 
 const GROUP_NAME = {
   critical: "Critical assets", Computer: "Computers", User: "Users", Group: "Groups", AIAgent: "AI agents", Tool: "Agent tools",
   CloudResource: "Cloud resources", ServiceIdentity: "Service identities", Software: "Software", Internet: "Internet",
   onprem: "On-premises", cloud: "Cloud", external: "Internet",
 };
-const groupName = (g) => GROUP_NAME[g] || (g.startsWith("c") ? `Community ${g.slice(1)}` : g);
+const groupName = (g) => (g === "none" ? "No activity" : GROUP_NAME[g] || (g.startsWith("c") ? `Community ${g.slice(1)}` : g));
 
 const CRITICAL = "#F16667";
-const COMMUNITY = ["#57C7E3", "#F79767", "#C990C0", "#8DCC93", "#FFC454", "#4C8EDA", "#DA7194", "#569480", "#D9C8AE", "#ECB5C9", "#FFE081", "#A5ABB6"];
-const LOCATION = { onprem: "#57C7E3", cloud: "#4C8EDA", external: "#FFC454" };
 
 // mix two hex colours: 0 gives a, 1 gives b. used to shade nodes by an algorithm score.
 function ramp(a, b, t) {
@@ -23,18 +18,21 @@ function ramp(a, b, t) {
   return "#" + [0, 1, 2].map((i) => Math.round(x(a, i) + (x(b, i) - x(a, i)) * k).toString(16).padStart(2, "0")).join("");
 }
 
-function color(n, mode) {
+const MUTED = { dark: "#3A3D4A", light: "#D5D7DE" };
+
+// influence and choke-point views keep the node-type groups and colours, mute everything but the top few nodes
+// and ring those, so the answer stands out instead of a gradient nobody can read
+function color(n, mode, top, dark) {
+  if (mode === "community") return n.critical ? CRITICAL : n.community ? COMMUNITY_COLOR[(n.community - 1) % COMMUNITY_COLOR.length] : (dark ? MUTED.dark : MUTED.light);
+  if (mode === "zones") return n.critical ? CRITICAL : LOCATION_COLOR[n.location] || LOCATION_COLOR.onprem;
+  if ((mode === "choke" || mode === "pagerank") && !top.has(n.id)) return n.critical ? ramp(CRITICAL, dark ? "#111018" : "#ffffff", 0.55) : (dark ? MUTED.dark : MUTED.light);
+  if (mode === "choke") return "#FFB020";
   if (n.critical) return CRITICAL;
-  if (mode === "community") return n.community ? COMMUNITY[(n.community - 1) % COMMUNITY.length] : "#A5ABB6";
-  if (mode === "zones") return LOCATION[n.location] || LOCATION.onprem;
-  if (mode === "choke") return ramp("#A5ABB6", "#FFB020", n.choke ?? 0);
-  if (mode === "pagerank") return ramp("#A5ABB6", "#2BB3D8", n.pagerank ?? 0);
   return KIND_COLOR[n.kind] || "#A5ABB6";
 }
 
-function size(n, mode) {
-  if (mode === "pagerank") return 32 + 24 * (n.pagerank ?? 0);
-  if (mode === "choke") return 32 + 24 * (n.choke ?? 0);
+function size(n, mode, top) {
+  if ((mode === "pagerank" || mode === "choke") && top.has(n.id)) return 48;
   return n.critical ? 44 : 36;
 }
 
@@ -53,14 +51,15 @@ export default function NvlMap({ data, mode, path, dark }) {
   // groups follow the view: communities in the communities view, locations in the location view, otherwise node
   // type. critical assets always form their own group so the targets sit together.
   const groupOf = useMemo(() => Object.fromEntries(data.nodes.map((n) => [n.id,
-    n.critical ? "critical" : mode === "community" ? `c${n.community ?? 0}` : mode === "zones" ? n.location : n.kind])), [data, mode]);
+    n.critical ? "critical" : mode === "community" ? (n.community ? `c${n.community}` : "none") : mode === "zones" ? n.location : n.kind])), [data, mode]);
+  const top = useMemo(() => new Set(mode === "choke" ? topBy(data.nodes, "choke").map((n) => n.id) : mode === "pagerank" ? topBy(data.nodes, "pagerank").map((n) => n.id) : []), [data, mode]);
   const clusterBy = useCallback((id) => groupOf[id], [groupOf]);
   const layoutOptions = useMemo(() => ({ clustering: { clusterBy, drawOutline: true, drawHalo: true } }), [clusterBy]);
 
   const nodes = useMemo(() => data.nodes.map((n) => ({
-    id: n.id, caption: n.id, captionSize: 3, color: color(n, mode), size: size(n, mode),
+    id: n.id, caption: n.id, captionSize: 3, color: color(n, mode, top, dark), size: size(n, mode, top),
     selected: onPath.has(n.id) || picked === n.id, disabled: !!path && !onPath.has(n.id),
-  })), [data, mode, path, onPath, picked]);
+  })), [data, mode, path, onPath, picked, top, dark]);
   // only attack steps are drawn, so the hierarchical layout can read them as a left-to-right flow towards the
   // critical assets. logins and network connections stay in the explore and triage views.
   const rels = useMemo(() => data.edges.filter((e) => e.attack).map((e, i) => {
@@ -83,6 +82,7 @@ export default function NvlMap({ data, mode, path, dark }) {
 
   // a label above each group, kept in place over the canvas as the layout settles, zooms and pans
   const [labels, setLabels] = useState([]);
+  const [rings, setRings] = useState([]);
   const [hover, setHover] = useState(null);
   useEffect(() => {
     let raf, last = "";
@@ -94,15 +94,18 @@ export default function NvlMap({ data, mode, path, dark }) {
         const b = (groups[g] ||= { x: 0, top: Infinity, count: 0 });
         b.x += n.clientPosition.x; b.top = Math.min(b.top, n.clientPosition.y); b.count += 1;
       }
-      const out = Object.entries(groups).filter(([, b]) => b.count > 1 || mode !== "types")
+      const out = Object.entries(groups).filter(([, b]) => b.count > 1)
         .map(([g, b]) => ({ g, x: b.x / b.count, y: b.top - 26, count: b.count }));
-      const key = out.map((l) => `${l.g}:${Math.round(l.x)}:${Math.round(l.y)}`).join("|");
-      if (key !== last) { last = key; setLabels(out); }
+      const scale = nvl.current?.getScale?.() || 1;
+      const rs = (nvl.current?.getNodes?.() || []).filter((n) => top.has(n.id) && n.clientPosition)
+        .map((n) => ({ id: n.id, x: n.clientPosition.x, y: n.clientPosition.y, r: 48 * scale + 8 }));
+      const key = [...out.map((l) => `${l.g}:${Math.round(l.x)}:${Math.round(l.y)}`), ...rs.map((r) => `${r.id}:${Math.round(r.x)}:${Math.round(r.y)}:${Math.round(r.r)}`)].join("|");
+      if (key !== last) { last = key; setLabels(out); setRings(rs); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [groupOf, mode]);
+  }, [groupOf, mode, top]);
 
   const node = picked && data.nodes.find((n) => n.id === picked);
   return (
@@ -127,6 +130,11 @@ export default function NvlMap({ data, mode, path, dark }) {
       {labels.map((l) => (
         <div key={l.g} className={`nvl-group ${l.g === "critical" ? "crit" : ""}`} style={{ left: l.x, top: l.y }}>
           {groupName(l.g)} · {l.count}
+        </div>
+      ))}
+      {rings.map((r) => (
+        <div key={r.id} className={`nvl-ring ${mode}`} style={{ left: r.x, top: r.y, width: 2 * r.r, height: 2 * r.r }}>
+          <span>{r.id}</span>
         </div>
       ))}
       {hover && <div className="nvl-hover" style={{ left: hover.x + 12, top: hover.y + 12 }}>{hover.id}</div>}

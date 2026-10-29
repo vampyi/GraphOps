@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Info } from "./parts.jsx";
 import { getExposure, getGraphAlgorithms, getGraphFull, getReachabilityProof } from "./api.js";
-import GraphMap, { distances, KIND_COLOR, MODES } from "./GraphMap.jsx";
+import GraphMap, { COMMUNITY_COLOR, distances, KIND_COLOR, LOCATION_COLOR, MODES, topBy } from "./GraphMap.jsx";
 
 // neo4j's visualization library, loaded only when the backend is on neo4j aura (its licence covers aura only)
 const NvlMap = lazy(() => import("./NvlMap.jsx"));
@@ -99,30 +99,7 @@ export default function GraphEngine({ onError }) {
             </div>
           </div>
 
-          <div className="panel ge-model">
-            <div className="panel-head">
-              <h2>Data model</h2>
-              <small>what is in the graph</small>
-              <Info text="Every kind of node and every kind of relationship in the loaded graph, with counts. Relationships marked with a technique are attack steps." />
-            </div>
-            <div className="ge-kinds">
-              {Object.entries(graph.kinds).sort((a, b) => b[1] - a[1]).map(([k, c]) => (
-                <span key={k} className="ge-kind">
-                  <svg viewBox="0 0 24 24" style={{ fill: KIND_COLOR[k] }}><Shape kind={k} x={12} y={12} r={6} className="ge-kind-shape" /></svg>
-                  {KIND[k] || k}<b>{c}</b>
-                </span>
-              ))}
-            </div>
-            <ul className="ge-schema">
-              {graph.schema.map((r) => (
-                <li key={`${r.src}-${r.type}-${r.dst}`}>
-                  <span className="ge-rel"><em>{KIND[r.src] || r.src}</em><code>{r.type}</code><em>{KIND[r.dst] || r.dst}</em></span>
-                  {r.technique && <span className="ge-tech" title={r.tactic || ""}>{r.technique}</span>}
-                  <b>{r.count}</b>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ViewPanel graph={graph} mode={mode} />
         </div>
       )}
 
@@ -223,6 +200,93 @@ function Facts({ graph, mode }) {
       <div className="ge-fact"><b>{chokes[0] || "–"}</b><span>top choke point</span></div>
       <div className="ge-fact"><b>{agentsOnRoute} of {agents.length}</b><span>AI agents on an attack route</span></div>
       <p className="ge-line">{line}</p>
+    </div>
+  );
+}
+
+// the right-hand panel follows the selected view: the data model for node types, the ranking behind influence
+// and choke points, the members of each community, or the count per location
+function ViewPanel({ graph, mode }) {
+  const empty = !graph.nodes.some((n) => n.pagerank != null);
+  const head = (title, sub, tip) => (
+    <div className="panel-head"><h2>{title}</h2><small>{sub}</small><Info text={tip} /></div>
+  );
+  if (mode === "types") return (
+    <div className="panel ge-model">
+      {head("Data model", "what is in the graph", "Every kind of node and every kind of relationship in the loaded graph, with counts. Relationships marked with a technique are attack steps.")}
+      <div className="ge-kinds">
+        {Object.entries(graph.kinds).sort((a, b) => b[1] - a[1]).map(([k, c]) => (
+          <span key={k} className="ge-kind">
+            <svg viewBox="0 0 24 24" style={{ fill: KIND_COLOR[k] }}><Shape kind={k} x={12} y={12} r={6} className="ge-kind-shape" /></svg>
+            {KIND[k] || k}<b>{c}</b>
+          </span>
+        ))}
+      </div>
+      <ul className="ge-schema">
+        {graph.schema.map((r) => (
+          <li key={`${r.src}-${r.type}-${r.dst}`}>
+            <span className="ge-rel"><em>{KIND[r.src] || r.src}</em><code>{r.type}</code><em>{KIND[r.dst] || r.dst}</em></span>
+            {r.technique && <span className="ge-tech" title={r.tactic || ""}>{r.technique}</span>}
+            <b>{r.count}</b>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+  if (empty) return (
+    <div className="panel ge-model">{head("Scores", "recomputing", "The graph was just reloaded, for example by a live stream. Scores appear once the analysis has run.")}
+      <p className="ge-empty">Scores are being recomputed. Refresh in a few seconds.</p></div>
+  );
+  if (mode === "pagerank" || mode === "choke") {
+    const key = mode === "pagerank" ? "pagerank" : "choke";
+    const rows = topBy(graph.nodes, key, 10);
+    return (
+      <div className="panel ge-model">
+        {mode === "pagerank"
+          ? head("Most influential", "PageRank", "PageRank on the attack graph: a node scores high when many attack routes lead into it. Ringed on the graph: the top 6. Scores are relative to the highest.")
+          : head("Top choke points", "betweenness", "Betweenness centrality on the attack graph: how many shortest attack paths pass through a node. Securing a high one cuts many paths. Ringed on the graph: the top 6.")}
+        <ol className="ge-rank">
+          {rows.map((n, i) => (
+            <li key={n.id} className={i < 6 ? "top" : ""}>
+              <span className="ge-rank-n">{i + 1}</span>
+              <span className="ge-rank-id"><i style={{ background: KIND_COLOR[n.kind] }} />{n.id}<small>{KIND[n.kind] || n.kind}</small></span>
+              <span className={`ge-rank-bar ${mode}`}><i style={{ width: `${Math.round(n[key] * 100)}%` }} /></span>
+              <b>{n[key].toFixed(2)}</b>
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+  if (mode === "community") {
+    const groups = {};
+    graph.nodes.filter((n) => !n.critical).forEach((n) => (groups[n.community ?? 0] ||= []).push(n.id));
+    const list = Object.entries(groups).filter(([c]) => c !== "0").sort((a, b) => b[1].length - a[1].length);
+    return (
+      <div className="panel ge-model">
+        {head("Communities", "Louvain", "Louvain groups machines and people by who logs in where. Each colour is a group that normally works together; a login across groups looks like lateral movement. Groups, cloud resources and AI agents have no logins of their own, so they are shown as No activity.")}
+        <ul className="ge-comms">
+          {list.map(([c, ids]) => (
+            <li key={c}>
+              <i style={{ background: COMMUNITY_COLOR[(c - 1) % COMMUNITY_COLOR.length] }} />
+              <span>{ids.slice(0, 4).join(", ")}{ids.length > 4 ? ` +${ids.length - 4}` : ""}</span>
+              <b>{ids.length}</b>
+            </li>
+          ))}
+          {groups[0] && <li className="muted"><i /><span>No activity: {groups[0].length} groups, cloud and agent nodes</span><b>{groups[0].length}</b></li>}
+        </ul>
+      </div>
+    );
+  }
+  const by = (loc) => graph.nodes.filter((n) => n.location === loc);
+  return (
+    <div className="panel ge-model">
+      {head("Where things live", "on-premises, cloud, internet", "Each node's location. Attack steps that cross from one group to another are where on-premises access turns into cloud access.")}
+      <ul className="ge-comms">
+        {[["external", "Internet"], ["onprem", "On-premises"], ["cloud", "Cloud"]].map(([loc, label]) => (
+          <li key={loc}><i style={{ background: LOCATION_COLOR[loc] }} /><span>{label}: {by(loc).slice(0, 4).map((n) => n.id).join(", ")}{by(loc).length > 4 ? "…" : ""}</span><b>{by(loc).length}</b></li>
+        ))}
+      </ul>
     </div>
   );
 }

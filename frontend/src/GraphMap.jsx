@@ -37,6 +37,11 @@ export function distances(data) {
   return dist;
 }
 
+export const COMMUNITY_COLOR = ["#57C7E3", "#F79767", "#C990C0", "#8DCC93", "#FFC454", "#4C8EDA", "#DA7194", "#569480", "#D9C8AE", "#ECB5C9", "#FFE081", "#A5ABB6"];
+export const LOCATION_COLOR = { onprem: "#57C7E3", cloud: "#4C8EDA", external: "#FFC454" };
+// the highest-scoring nodes for an algorithm result, critical assets excluded (they are the targets)
+export const topBy = (nodes, key, k = 6) => nodes.filter((n) => !n.critical && (n[key] ?? 0) > 0).sort((a, b) => b[key] - a[key]).slice(0, k);
+
 export const MODES = [
   { id: "types", label: "Node types", algo: "Labels",
     tip: "Colour = the kind of node (its Neo4j label), as in Neo4j Bloom. Red = critical asset." },
