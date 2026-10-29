@@ -26,7 +26,7 @@ A **Security Operations Centre (SOC)** is the team that watches a company's syst
 
 A real attack usually looks like this:
 
-1. An attacker gets into one unimportant machine, often through a phishing email.
+1. An attacker gets into one unimportant machine, often through an unpatched system that faces the internet, or a phishing email.
 2. They steal passwords saved on it.
 3. They use those passwords to log into the next machine, then the next. This hopping is called **lateral movement**.
 4. They reach something valuable, such as the customer database.
@@ -240,7 +240,7 @@ Several published lateral movement detectors use deep learning on graphs and rep
 
 | Study | What it found |
 |---|---|
-| Larroche, ANUBIS 2026 (workshop at ESORICS 2026) | Under realistic testing on the LANL dataset, Argus's precision fell from 32.27% to 0.09% and Euler's from 5.23% to 0.02%. Conclusion: "lateral movement detection remains an open problem." |
+| Larroche, ANUBIS 2026 (workshop at ESORICS 2026) | Under realistic testing on the LANL dataset, Argus's average precision fell from 32.27% to 0.09% and Euler's from 5.23% to 0.02%, although both kept an AUC of about 98%. Conclusion: "lateral movement detection remains an open problem." |
 | Bouček and Husák, CNSM 2025 | Could not reproduce Jbeil (IEEE S&P 2024). Its test code ignored the true labels. |
 | Zhao and Hassan, ACM CCS 2026 | A deliberately simple model with no graph neural network ranked first on 2 of 4 datasets. |
 
@@ -250,8 +250,8 @@ Our view: simple, explainable graph rules are the right choice, and we can back 
 
 | Study | What it found |
 |---|---|
-| Bowman et al., RAID 2020 | A plain "never seen this login before" rule caught 72% of attacks on LANL but raised 530,082 false alarms. |
-| Hopper, USENIX Security 2021 | Following login paths, filtering out repetitive automated logins and flagging a change of account along a path caught 94.5% of 300+ attack scenarios at under 9 alerts a day. |
+| Bowman et al., RAID 2020 | A plain "never seen this login before" rule caught 72% of the 749 labelled red-team authentication events on LANL (542 of them), but raised 530,082 false alarms. |
+| Hopper, USENIX Security 2021 | Following login paths, filtering out repetitive automated logins and flagging a change of account along a path caught 94.5% of 300+ attack scenarios at under 9 alerts a day, on Dropbox's own private data (326 synthetic attacks plus one red-team exercise), not on LANL. |
 
 Our view: we need the never-taken-path rule plus Hopper-style noise filters, not the rule alone.
 
@@ -308,9 +308,9 @@ Sources: [Neo4j Graph Data Science docs](https://neo4j.com/docs/graph-data-scien
 
 | Dataset | What it is | Good for | Watch out |
 |---|---|---|---|
-| **ADSynth** (DSN 2024, BSD-3 licence) | Generates realistic fake Active Directory networks and exports them to Neo4j or BloodHound format | Attack paths, choke points, granted access | No activity data: no logins over time and no alerts. Pins an old Neo4j driver (4.4.10). |
-| **LANL 2015** (Los Alamos National Laboratory, public domain) | 58 days of real logins, processes, network flows and DNS from a real network, with a file of red-team attack events | Testing never-taken-path detection with real attacks | Must request access with an email form. The login file is 7.2 GB compressed, so we use a slice. Names are anonymised. |
-| **Our own scripted alerts** | Alerts we write onto ADSynth machines that follow a known attack path | The end-to-end flow | Synthetic. We say so on screen. |
+| **ADSynth** (DSN 2024, BSD-3 licence) | Generates realistic fake Active Directory networks as a JSON Lines file. Its own Neo4j import wipes the target database, and its BloodHound zip comes only from a pipeline that makes no computers, permissions or sessions | Attack paths, choke points, granted access | No activity data: no logins over time and no alerts. Pins an old Neo4j driver (4.4.10). |
+| **LANL 2015** (Los Alamos National Laboratory, CC0, in effect public domain) | 58 days of authentication events (logins and ticket requests), processes, network flows and DNS from a real network, with a partly labelled red-team exercise | Testing never-taken-path detection on a controlled red-team exercise | Fill in an on-page form (email address and intended use) to see the download links. The login file is 7.2 GB compressed, so we use a slice. Names are anonymised. |
+| **Our own scripted alerts** | Alerts we write onto our hand-written sample network (`data/sample_org`) that follow a known attack path | The end-to-end flow | Synthetic. We say so on screen. |
 
 Our view: use all three. ADSynth for the network, a slice of LANL for testing detection and scripted alerts for the end-to-end flow.
 
@@ -345,7 +345,7 @@ So attack paths through AI agents are not new.
 - **Never-taken path:** "this agent just reached the finance database by a route it has never used."
 - **Alert ranking:** an alert on an AI agent ranks high when the agent sits close to critical assets.
 
-**How ADSynth represents AI agents** (checked in its source code). An AI agent is an `AZServicePrincipal` node with `isAIAgent = true`, an `agentType` such as Orchestrator and a `privilegeTier`. Three edges connect it: `DELEGATES_TO` (user to agent), `ORCHESTRATES` (agent to sub-agent) and `HAS_TOOL_ACCESS` (agent to key vaults, virtual machines and apps).
+**How ADSynth represents AI agents** (checked in its source code). An AI agent is an `AZServicePrincipal` node with `isAIAgent = true`, an `agentType` such as Orchestrator and a `privilegeTier`. Three edges connect it: `DELEGATES_TO` (user to agent), `ORCHESTRATES` (agent to sub-agent) and `HAS_TOOL_ACCESS` (agent to key vaults, virtual machines and apps). These were added to ADSynth in March 2026, are not in its reviewed paper, and exist only in `generate_hybrid_v2`, where `DELEGATES_TO` starts from a cloud (Entra) user and `HAS_TOOL_ACCESS` points at the tenant node.
 
 Our view: this reuses features we already build. The new work is loading AI agent nodes from ADSynth and scripting their activity, because ADSynth gives permissions but not activity over time.
 

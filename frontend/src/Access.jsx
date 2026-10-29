@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Info } from "./parts.jsx";
 import { getAccess, getAccessOverview } from "./api.js";
 
 const WINDOWS = [7, 30, 90];
@@ -22,18 +23,17 @@ export default function Access({ onError }) {
     try { setDetail(await getAccess(id, days)); } catch (e) { onError(e.message); }
   };
 
-  if (!overview) return <div className="view-loading">Comparing granted access with used access…</div>;
+  if (!overview) return <div className="view-loading">Loading…</div>;
 
   return (
     <div className="access">
       <div className="acc-left panel">
         <div className="panel-head">
-          <h2>Least-privilege gap</h2>
+          <h2>Least-privilege gap<Info text={`Accounts ranked by access they hold but have not used in ${days} days. Unused access is risk with no benefit.`} /></h2>
           <div className="window-switch">
             {WINDOWS.map((d) => <button key={d} className={days === d ? "on" : ""} onClick={() => setDays(d)}>{d}d</button>)}
           </div>
         </div>
-        <p className="muted-p">Every account, ranked by the access it holds but has not used in {days} days. Unused access is risk with no benefit.</p>
         <ul className="acc-list">
           {overview.identities.map((r) => (
             <li key={r.id} className={selected === r.id ? "sel" : ""} onClick={() => pick(r.id)}>
@@ -58,13 +58,13 @@ export default function Access({ onError }) {
           </div>
           {detail.unused.length > 0 && (
             <div className="acc-unused-block">
-              <h3>Unused access — candidates to remove</h3>
+              <h3>Unused access</h3>
               <div className="chips">{detail.unused.map((u) => <span key={u.id} className={`chip ${u.critical ? "crit" : ""}`}>{u.id}</span>)}</div>
             </div>
           )}
           {detail.used_without_grant.length > 0 && (
             <div className="acc-note">
-              Used without a modelled grant: {detail.used_without_grant.map((u) => <code key={u.id}>{u.id}</code>)}. On real data this points at a default right GraphOps has not imported, such as the user's own device.
+              Used without a recorded grant: {detail.used_without_grant.map((u) => <code key={u.id}>{u.id}</code>)}<Info text="Access seen in logs with no matching permission in the graph, often a default right such as the user's own device." />
             </div>
           )}
         </div>

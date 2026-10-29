@@ -7,7 +7,7 @@ TACTIC_ORDER = ["TA0043", "TA0042", "TA0001", "TA0002", "TA0003", "TA0004", "TA0
                 "TA0006", "TA0007", "TA0008", "TA0009", "TA0011", "TA0010", "TA0040"]
 SEVERITY = {"low": 0.25, "medium": 0.5, "high": 0.75, "critical": 1.0}
 
-# hand-set weights (our design choice, documented in docs/schema.md). they sum to 100.
+# hand-set weights (our design choice, not measured; see README 'How alerts are ranked'). they sum to 100.
 WEIGHTS = {"hops": 25, "blast": 15, "linked": 20, "never_taken": 15, "stages": 15, "choke": 5, "severity": 5}
 
 

@@ -1,0 +1,17 @@
+name: Keep hosted services awake
+
+# neo4j auradb free pauses after a few days without queries and deletes databases unused for 30 days.
+# aiven's free kafka powers off when nothing is produced or consumed. one real query a day avoids both.
+on:
+  schedule:
+    - cron: "30 3 * * *"  # every day at 03:30 UTC (09:00 IST)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Query the database through the alert inbox
+        run: curl --fail --silent --show-error --max-time 60 -o /dev/null https://graph-ops.vercel.app/api/alerts
+      - name: Read from kafka through the live endpoint
+        run: curl --fail --silent --show-error --max-time 120 -o /dev/null "https://graph-ops.vercel.app/api/live?since=0"

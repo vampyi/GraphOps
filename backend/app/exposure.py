@@ -19,9 +19,10 @@ def fetch(session):
     """entities and attack edges as plain python, the input to everything below."""
     nodes = {r["id"]: dict(r) for r in session.run(
         """
-        MATCH (n) WHERE n:User OR n:Group OR n:Computer
-        RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone,
-               n.community AS community
+        MATCH (n) WHERE n:Entity
+        RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone,
+               n.community AS community, n.location AS location, coalesce(n.kev, false) AS kev, n.vulns AS vulns,
+               n.name AS name, n.illustrative AS illustrative
         """)}
     rel = "|".join(ATTACK_EDGES)
     edges = [(r["s"], r["t"], r["d"]) for r in session.run(
@@ -51,8 +52,12 @@ def sources_for(g, scope="low_trust"):
     """where an attacker starts. low_trust: machines in the low-trust zone (guest wifi, internet-facing, interns).
     all: every non-critical user and machine, for the question "if anything is compromised, what is exposed?"."""
     if scope == "all":
-        return sorted(n for n, d in g.nodes(data=True) if not d.get("critical") and d.get("kind") in ("User", "Computer"))
-    return sorted(n for n, d in g.nodes(data=True) if d.get("zone") == "low_trust" and not d.get("critical"))
+        # every non-critical user, machine and ai agent, plus the internet
+        return sorted(n for n, d in g.nodes(data=True)
+                      if not d.get("critical") and d.get("kind") in ("User", "Computer", "AIAgent", "Internet"))
+    # low trust: machines in the low-trust zone, and the internet itself
+    return sorted(n for n, d in g.nodes(data=True)
+                  if (d.get("zone") == "low_trust" or d.get("kind") == "Internet") and not d.get("critical"))
 
 
 def targets_for(g):
@@ -226,6 +231,7 @@ def analyse_graph(g, scope="low_trust", max_hops=MAX_HOPS):
     paths, pairs = find_paths(g, sources, targets, max_hops)
     chokes, edge_chokes = choke_points(g, paths, pairs)
     layer = layers(paths, sources)
+    last = max(layer.values(), default=0)
     on_paths = {n for p in paths for n in p["nodes"]}
     path_edges = {(a, t, b) for p in paths for a, b, t in zip(p["nodes"], p["nodes"][1:], p["types"])}
     pair_count = len({(s, t) for s in sources for t in targets if s != t})
@@ -238,7 +244,8 @@ def analyse_graph(g, scope="low_trust", max_hops=MAX_HOPS):
         "recommendations": recommendations(g, sources, targets, chokes, max_hops),
         "nodes": [{"id": n, "kind": g.nodes[n].get("kind"), "critical": bool(g.nodes[n].get("critical")),
                    "zone": g.nodes[n].get("zone"), "community": g.nodes[n].get("community"),
-                   "layer": layer.get(n, 0), "source": n in sources}
+                   # a critical asset nothing reaches still belongs in the asset column, not the start column
+                   "layer": layer.get(n, last if n in targets else 0), "source": n in sources}
                   for n in sorted(on_paths | set(sources) | set(targets))],
         "edges": [{"src": a, "type": t, "dst": b, **{k: v for k, v in tag(t).items() if k != "type"}}
                   for a, t, b in sorted(path_edges)],

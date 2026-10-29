@@ -9,19 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
-from .attack import GRANTED_EDGES, USED_EDGES, tag
+from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
 from .report import incident_report
 from .scoring import WEIGHTS, score_all
 from .story import write_story
+from .llm import LANGUAGES
 
 app = FastAPI(title="GraphOps")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 _driver = driver()
 
 # the edges an attacker follows, as one pipe-separated string for cypher. one source: app/attack.py.
-ATTACK_EDGES = "MemberOf|AdminTo|CanRDP|GenericAll|HasSession|RemoteLogon"
+ATTACK_EDGES = "|".join(attack_edge_list)
+SEVERITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 BLAST_EDGES = {"all": ATTACK_EDGES, "granted": "|".join(GRANTED_EDGES), "used": "|".join(USED_EDGES)}
 
 
@@ -74,11 +76,11 @@ def blast_radius(alert_id: str, mode: str = "all", days: int = access.DEFAULT_DA
             WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
               AND ($win IS NULL OR all(r IN relationships(p) WHERE coalesce(r.last_seen, $win) >= $win))
             WITH n, min(length(p)) AS hop
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, hop
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, hop
             ORDER BY hop, id
             """, id=alert_id, win=window)]
         starts = [dict(r) for r in s.run(
-            "MATCH (:Alert {id: $id})-[:Involves]->(e) RETURN e.id AS id, labels(e)[0] AS kind, coalesce(e.critical, false) AS critical, 0 AS hop",
+            "MATCH (:Alert {id: $id})-[:Involves]->(e) RETURN e.id AS id, [l IN labels(e) WHERE l <> 'Entity'][0] AS kind, coalesce(e.critical, false) AS critical, 0 AS hop",
             id=alert_id)]
         start_ids = {x["id"] for x in starts}
         nodes = starts + [r for r in rings if r["id"] not in start_ids]
@@ -92,7 +94,8 @@ def blast_radius(alert_id: str, mode: str = "all", days: int = access.DEFAULT_DA
         details = {r["id"]: r for r in (dict(x) for x in s.run(
             """
             MATCH (n) WHERE n.id IN $ids
-            RETURN n.id AS id, n.name AS name, n.zone AS zone, n.os AS os, n.owner AS owner,
+            RETURN n.id AS id, n.name AS name, n.zone AS zone, n.os AS os, n.owner AS owner, n.location AS location,
+                   coalesce(n.kev, false) AS kev, n.vulns AS vulns,
                    n.community AS community,
                    n.hops_to_critical AS hops_to_critical, n.critical_within_3 AS critical_within_3,
                    round(coalesce(n.choke_score, 0), 2) AS choke_score
@@ -143,9 +146,11 @@ def incident(incident_id: str):
 
 
 @app.post("/api/incidents/{incident_id}/story")
-def story(incident_id: str):
+def story(incident_id: str, lang: str = "en-IN"):
+    if lang not in LANGUAGES:
+        raise HTTPException(422, f"lang must be one of {', '.join(LANGUAGES)}")
     with _driver.session() as s:
-        result = write_story(s, incident_id)
+        result = write_story(s, incident_id, lang=lang)
         if result is None:
             raise HTTPException(404, "incident not found")
         return result
@@ -274,7 +279,14 @@ def graph_algorithms():
     """the Neo4j / GDS algorithms GraphOps runs, each mapped to the SOC question it answers, with a live number.
     this is the 'why a graph, why Neo4j' roster the dashboard shows."""
     with _driver.session() as s:
-        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s)}
+        return {"summary": graphinfo.summary(s), "algorithms": graphinfo.algorithms(s), "gds": graphinfo.has_gds(s)}
+
+
+@app.get("/api/graph/full")
+def graph_full():
+    """the whole graph with each node's community, pagerank and choke-point score, and the data model counts."""
+    with _driver.session() as s:
+        return graphinfo.full_graph(s)
 
 
 @app.get("/api/evaluation")
@@ -336,9 +348,9 @@ def patch_asset(asset_id: str, body: AssetPatch):
     with _driver.session() as s:
         r = s.run(
             """
-            MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer
+            MATCH (n {id: $id}) WHERE n:Entity
             SET n.critical = coalesce($critical, n.critical), n.zone = coalesce($zone, n.zone)
-            RETURN n.id AS id, labels(n)[0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone
             """, id=asset_id, critical=body.critical, zone=body.zone).single()
         if not r:
             raise HTTPException(404, "asset not found")
@@ -480,6 +492,201 @@ def live(since: int = 0):
         running = bool(_replay["thread"] and _replay["thread"].is_alive())
         return {"seq": seq, "ingested": ingested, "replaying": running,
                 "alerts": _alert_rows(s, since) if seq > since else []}
+
+
+class Question(BaseModel):
+    question: str
+    history: list[dict] = []
+    lang: str = "en-IN"
+
+
+@app.post("/api/ask")
+def ask_question(body: Question):
+    """the ask tab: a plain-language question answered by the llm from graphops' read-only lookups only."""
+    from . import ask, llm
+    if body.lang not in LANGUAGES:
+        raise HTTPException(422, f"lang must be one of {', '.join(LANGUAGES)}")
+    if not llm.available():
+        raise HTTPException(503, "The Ask tab needs a Sarvam AI key (SARVAM_API_KEY) on the server.")
+    try:
+        return ask.answer(body.question, _ask_tools(), body.history, body.lang)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    except llm.LLMError as exc:
+        raise HTTPException(502, f"The AI service failed: {exc}")
+
+
+def _ask_tools():
+    """the read-only lookups the ask tab may use, trimmed so the llm sees the facts, not the drawing data."""
+    def top_alerts(limit=8, severity=None):
+        rows = [r for r in alerts() if not severity or r["severity"] == severity]
+        keep = ("id", "name", "score", "severity", "time", "involves", "reasons", "incident_id", "status")
+        return [{k: r[k] for k in keep} for r in rows[: max(1, min(int(limit), 15))]]
+
+    def alert_details(alert_id):
+        rows = alerts()
+        by_sev = sorted(rows, key=lambda r: (-SEVERITY_ORDER.get(r["severity"], 0), r["time"]))
+        for i, r in enumerate(rows):
+            if r["id"] == alert_id:
+                return {**r, "rank_graphops": i + 1, "rank_by_severity": [x["id"] for x in by_sev].index(alert_id) + 1,
+                        "points_by_question": r.pop("breakdown")}
+        raise ValueError(f"no alert {alert_id}")
+
+    def blast(alert_id=None, entity_id=None):
+        if alert_id:
+            b = blast_radius(alert_id)
+        elif entity_id:
+            b = _entity_reach(entity_id)
+        else:
+            raise ValueError("give alert_id or entity_id")
+        by_hop = {}
+        for n in b["nodes"]:
+            by_hop.setdefault(n["hop"], []).append({"id": n["id"], "kind": n["kind"], "critical": n["critical"]})
+        return {"start": by_hop.pop(0, []), "reachable_by_hop": by_hop,
+                "critical_reachable": [n["id"] for n in b["nodes"] if n["critical"] and n["hop"] > 0],
+                "shortest_path_to_critical": b.get("attack_path")}
+
+    def attack_paths():
+        with _driver.session() as s:
+            x = exposure.analyse(s)
+        return {"pairs": x["pairs"],
+                "paths": [{k: p.get(k) for k in ("source", "target", "nodes", "types", "hops")} for p in x["paths"][:6]],
+                "choke_points": x["chokepoints"][:5],
+                "fixes": [{k: f.get(k) for k in ("title", "edges", "nodes", "pairs_cut", "share_cut") if f.get(k) is not None}
+                          for f in x["recommendations"][:3]]}
+
+    def access_gap(entity_id=None):
+        with _driver.session() as s:
+            if entity_id:
+                c = access.compare(s, entity_id)
+                if c is None:
+                    raise ValueError(f"no identity {entity_id}")
+                return {"identity": entity_id, "summary": c["summary"], "unused": [u["id"] for u in c["unused"]],
+                        "used": [u["id"] for u in c["used"]]}
+            o = access.overview(s)
+        return {"totals": o["totals"], "accounts": [{"id": i["id"], "summary": i["summary"], "unused": i["unused"]}
+                                                    for i in o["identities"][:8]]}
+
+    def find_entities(text):
+        with _driver.session() as s:
+            return [dict(r) for r in s.run(
+                """
+                MATCH (n) WHERE n:Entity
+                  AND (toLower(n.id) CONTAINS toLower($t) OR toLower(coalesce(n.name, '')) CONTAINS toLower($t)
+                       OR toLower(coalesce(n.owner, '')) CONTAINS toLower($t))
+                RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, n.name AS name, n.owner AS owner, coalesce(n.critical, false) AS critical
+                LIMIT 10
+                """, t=str(text)[:60])]
+
+    return {"top_alerts": top_alerts, "alert_details": alert_details, "blast_radius": blast,
+            "incident": incident, "attack_paths": attack_paths, "access_gap": access_gap,
+            "ranking_quality": evaluation, "find_entities": find_entities}
+
+
+def _entity_reach(entity_id):
+    """blast radius from one user, group or machine (the alert version starts from an alert's entities)."""
+    with _driver.session() as s:
+        start = s.run("MATCH (n {id: $id}) WHERE n:Entity "
+                      "RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical", id=entity_id).single()
+        if not start:
+            raise ValueError(f"no user, group or machine {entity_id}")
+        rings = [dict(r) for r in s.run(
+            f"""
+            MATCH p = (start {{id: $id}})-[:{ATTACK_EDGES}*1..3]->(n)
+            WHERE NOT n.id IN [x IN nodes(p)[..-1] | x.id]
+            WITH n, min(length(p)) AS hop
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, hop
+            """, id=entity_id)]
+        path = s.run(
+            f"""
+            MATCH (start {{id: $id}}), (c) WHERE c.critical = true AND c <> start
+            MATCH p = shortestPath((start)-[:{ATTACK_EDGES}*..6]->(c))
+            RETURN [x IN nodes(p) | x.id] AS ids, [r IN relationships(p) | type(r)] AS types
+            ORDER BY length(p) LIMIT 1
+            """, id=entity_id).single()
+    return {"nodes": [{**dict(start), "hop": 0}] + [r for r in rings if r["id"] != entity_id],
+            "attack_path": {"nodes": path["ids"], "types": path["types"]} if path else None}
+
+
+@app.get("/api/learning")
+def learning():
+    """the ranking model learned from analyst verdicts so far, next to the hand-set weights. not applied."""
+    from . import learn
+    with _driver.session() as s:
+        return learn.from_verdicts(s)
+
+
+@app.get("/api/explore/{entity_id}")
+def explore_entity(entity_id: str, max_hops: int = 8):
+    """everything one user, group or machine can reach, and its attack paths to critical assets."""
+    from . import explore
+    if not 1 <= max_hops <= 8:
+        raise HTTPException(422, "max_hops must be between 1 and 8")
+    with _driver.session() as s:
+        result = explore.explore(s, entity_id, max_hops)
+    if result is None:
+        raise HTTPException(404, "no such user, group or machine")
+    return result
+
+
+@app.get("/api/entities")
+def entities():
+    """every user, group and machine, for pickers."""
+    with _driver.session() as s:
+        return [dict(r) for r in s.run(
+            """
+            MATCH (n) WHERE n:Entity
+            RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind, coalesce(n.critical, false) AS critical, n.zone AS zone,
+                   n.location AS location, n.name AS name
+            ORDER BY kind, id
+            """)]
+
+
+class Control(BaseModel):
+    src: str
+    type: str
+    dst: str
+    secured: bool = True
+    note: str | None = None
+
+
+@app.post("/api/controls")
+def set_control(body: Control):
+    """record that one attack step is secured (or no longer secured), with a short note such as "mfa enforced"."""
+    from . import explore
+    try:
+        with _driver.session() as s:
+            n = explore.set_secured(s, body.src, body.type, body.dst, body.secured, body.note)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    if not n:
+        raise HTTPException(404, "no such step")
+    return {"updated": n}
+
+
+@app.get("/api/vulnerabilities")
+def vulnerabilities():
+    """serious cves on the software each machine runs, from nvd, cisa kev and first epss."""
+    from . import vulns
+    with _driver.session() as s:
+        return vulns.summary(s)
+
+
+@app.post("/api/vulnerabilities/refresh")
+def refresh_vulnerabilities():
+    """fetch nvd, cisa kev and epss again, update the graph and re-score."""
+    from . import vulns
+    with _driver.session() as s:
+        result = vulns.refresh(s, live=True)
+        _reanalyse(s)
+    return result
+
+
+@app.get("/api/languages")
+def languages():
+    """languages the story and the ask tab can answer in, and whether the llm is configured."""
+    from . import llm
+    return {"languages": [{"code": k, "name": v} for k, v in LANGUAGES.items()], "llm": llm.available()}
 
 
 @app.get("/api/health")

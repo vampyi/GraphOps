@@ -161,14 +161,29 @@ function renderMarkdown(md) {
 }
 
 export function ReportModal({ report, onClose }) {
-  const copy = () => { try { navigator.clipboard.writeText(report.markdown); } catch { /* clipboard blocked */ } };
+  const name = `graphops-${report.id || "incident"}-report`;
+  const downloadMd = () => {
+    const url = URL.createObjectURL(new Blob([report.markdown], { type: "text/markdown" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${name}.md` });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+  // the browser's print dialog saves a pdf; print styles show only the report
+  const downloadPdf = () => {
+    const title = document.title;
+    document.title = name;
+    document.body.classList.add("printing-report");
+    window.print();
+    document.body.classList.remove("printing-report");
+    document.title = title;
+  };
   return (
     <div className="modal" role="dialog" aria-label="Incident report" onClick={onClose}>
       <div className="modal-card report-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <span>Incident report</span>
           <div>
-            <button className="btn small" onClick={copy}>Copy Markdown</button>
+            <button className="btn small primary" onClick={downloadPdf}>Download PDF</button>
+            <button className="btn small" onClick={downloadMd}>Download .md</button>
             <button className="btn small" onClick={onClose}>Close</button>
           </div>
         </div>
@@ -176,4 +191,23 @@ export function ReportModal({ report, onClose }) {
       </div>
     </div>
   );
+}
+
+// a small "i" that explains a label on hover, keyboard focus or tap, so explanations stay off the screen until asked for
+export function Info({ text, align = "left" }) {
+  return (
+    <span className={`info ${align}`}>
+      <button type="button" className="info-btn" aria-label={text}>i</button>
+      <span className="info-tip" role="tooltip">{text}</span>
+    </span>
+  );
+}
+
+// citation chips. a connection id such as "laptop-42-RemoteLogon-server-7" reads as "laptop-42 → server-7"
+const EDGE_ID = /^(.+)-(RemoteLogon|LoggedInto|HasSession|MemberOf|AdminTo|CanRDP|GenericAll|ConnectedTo)-(.+)$/;
+export function Cites({ ids }) {
+  return ids.map((c) => {
+    const m = c.match(EDGE_ID);
+    return <code key={c} title={m ? `${m[1]} ${m[2]} ${m[3]}` : undefined}>{m ? `${m[1]} → ${m[3]}` : c}</code>;
+  });
 }

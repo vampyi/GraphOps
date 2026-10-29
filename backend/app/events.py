@@ -105,6 +105,7 @@ def apply_batch(tx, events):
                 OPTIONAL MATCH (old:{label} {{id: row.id}})
                 WITH row, old.critical AS was
                 MERGE (n:{label} {{id: row.id}})
+                SET n:Entity, n.location = coalesce(n.location, 'onprem')
                 SET n += row.props
                 RETURN sum(CASE WHEN coalesce(was, false) <> coalesce(n.critical, false) THEN 1 ELSE 0 END) AS c
                 """,

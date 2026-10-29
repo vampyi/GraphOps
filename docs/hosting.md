@@ -34,6 +34,7 @@ How we know where each runs: Vercel's `x-vercel-id` response header shows the fu
 | `KAFKA_USERNAME` | Aiven Kafka user | Config |
 | `KAFKA_PASSWORD` | Aiven Kafka password | Secret |
 | `KAFKA_CA_PEM` | Aiven's CA certificate, the whole text. It lets the app check it is really talking to Aiven. It is public, not a password. | Config |
+| `SARVAM_API_KEY` | Sarvam AI key for the incident story and the Ask tab | Secret |
 
 Aiven signs clients in with a username and password (SASL, SCRAM-SHA-256) over TLS. This works on the free plan: we checked by connecting, creating the five topics and sending and reading back a test message on 13 October 2026.
 
@@ -58,7 +59,7 @@ Both changes were needed. Batching cut a full replay from 629 database queries t
 ## Limits to know
 
 - **Aiven powers off an idle free service.** Its docs do not say after how long. Before a demo, check the service is running in the Aiven console and start it if not. Topic data is lost when it powers off, which does not matter to us because every event ends up in Neo4j.
-- **AuraDB Free pauses after a period without use** and has to be resumed from the Neo4j console. Check it before a demo too.
+- **AuraDB Free pauses after a few days without use and deletes a database left unused for 30 days.** A paused database has to be resumed from the Neo4j console. A daily GitHub Action (`.github/workflows/keep-alive.yml`) queries the site to prevent both. Check it before a demo too.
 - **Vercel Hobby functions stop after 300 seconds.** A replay at the default 60x takes about 4 minutes, close to that limit. For demos use a higher speed.
 - **Replaying wipes the hosted alerts** and refills them. Anyone looking at the site during a replay sees a partly filled inbox.
 

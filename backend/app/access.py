@@ -24,11 +24,11 @@ def granted(session, identity):
     """every machine, account or group the identity holds a right on, with the group chain that grants it."""
     rows = session.run(
         f"""
-        MATCH (u {{id: $id}}) WHERE u:User OR u:Group OR u:Computer
+        MATCH (u {{id: $id}}) WHERE u:Entity
         MATCH (u)-[:MemberOf*0..{MAX_NESTING}]->(p)
         MATCH (p)-[r:{RIGHTS}]->(c)
         WITH u, c, collect(DISTINCT {{right: type(r), via: CASE WHEN p = u THEN null ELSE p.id END}}) AS rights
-        RETURN c.id AS id, labels(c)[0] AS kind, coalesce(c.critical, false) AS critical, rights
+        RETURN c.id AS id, [l IN labels(c) WHERE l <> 'Entity'][0] AS kind, coalesce(c.critical, false) AS critical, rights
         ORDER BY critical DESC, id
         """, id=identity)
     return [dict(r) for r in rows]
@@ -39,11 +39,11 @@ def used(session, identity, window_start):
     rows = session.run(
         """
         MATCH (u {id: $id})-[r:LoggedInto]->(c) WHERE r.last_seen >= $since
-        RETURN c.id AS id, labels(c)[0] AS kind, coalesce(c.critical, false) AS critical,
+        RETURN c.id AS id, [l IN labels(c) WHERE l <> 'Entity'][0] AS kind, coalesce(c.critical, false) AS critical,
                'LoggedInto' AS how, r.last_seen AS last_seen, coalesce(r.count, 1) AS count
         UNION ALL
         MATCH (x)-[r:RemoteLogon]->(c) WHERE r.last_seen >= $since AND $id IN coalesce(r.users, [r.user])
-        RETURN c.id AS id, labels(c)[0] AS kind, coalesce(c.critical, false) AS critical,
+        RETURN c.id AS id, [l IN labels(c) WHERE l <> 'Entity'][0] AS kind, coalesce(c.critical, false) AS critical,
                'RemoteLogon' AS how, r.last_seen AS last_seen, coalesce(r.count, 1) AS count
         """, id=identity, since=window_start)
     out = {}
@@ -62,7 +62,7 @@ def used(session, identity, window_start):
 
 def compare(session, identity, days=DEFAULT_DAYS, asof=None):
     """the two circles for one identity and the gap between them."""
-    kind = session.run("MATCH (n {id: $id}) WHERE n:User OR n:Group OR n:Computer RETURN labels(n)[0] AS k", id=identity).single()
+    kind = session.run("MATCH (n {id: $id}) WHERE n:Entity RETURN [l IN labels(n) WHERE l <> 'Entity'][0] AS k", id=identity).single()
     if not kind:
         return None
     window_start = since(days, asof)

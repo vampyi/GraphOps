@@ -4,7 +4,7 @@ Draft for team review. This is the shared blueprint every program reads and writ
 
 ## Naming rules
 
-- **Node labels and edge types use the same names as BloodHound and ADSynth** (`User`, `Computer`, `MemberOf`, `AdminTo`). ADSynth output then loads without renaming, and anyone who knows BloodHound can read our graph.
+- **Node labels and edge types use the same names as BloodHound and ADSynth** (`User`, `Computer`, `MemberOf`, `AdminTo`). Anyone who knows BloodHound can read our graph.
 - Labels and edge types are written in PascalCase: `Computer`, `LoggedInto`.
 - Properties are written in snake_case: `first_seen`, `hops_to_critical`.
 - Every node has a unique `id` string.
@@ -40,12 +40,12 @@ Cloud and hybrid nodes (cloud users, service principals, sync servers) keep the 
 
 ### Properties written by the background graph analysis
 
-Stored on `User`, `Computer` and `Group` nodes. Refreshed every 5 minutes.
+Stored on `User`, `Computer` and `Group` nodes. Recomputed when data is loaded, after a BloodHound import, when an asset is marked critical, and on the next re-score after the network changes. There is no timer.
 
 | Property | Meaning |
 |---|---|
 | `hops_to_critical` | Fewest steps to the nearest critical node |
-| `choke_score` | How many attack paths pass through this node |
+| `choke_score` | Betweenness centrality on the attack graph: how often the node sits on the shortest path between two other nodes, scaled so the highest is 1 |
 | `community` | The ID of the group of machines it normally works with |
 
 ### Alert properties
@@ -76,19 +76,19 @@ From ADSynth, using BloodHound's names.
 | `(User\|Group)-[:CanRDP]->(Computer)` | Is allowed to log in by Remote Desktop |
 | `(User\|Group)-[:GenericAll]->(User\|Group\|Computer)` | Has full control over the object |
 | `(Computer)-[:HasSession]->(User)` | The user was logged in when the snapshot was taken, so their credentials may be on that computer |
-| `(Domain\|OU)-[:Contains]->(OU\|User\|Computer\|Group)` | Folder structure. Not used for attack paths |
+| `(Domain\|OU)-[:Contains]->(OU\|User\|Computer\|Group)` | Folder structure. BloodHound treats it as an attack step, because rights set on an OU pass down to what it contains. We do not load it yet. |
 
 ADSynth generates more permission edges than these. We keep all of them and decide during week 2 which ones count for attack paths.
 
 ### AI agent edges
 
-Granted edges from ADSynth. ADSynth names these in upper case, and we keep its names so its output loads as-is.
+Granted edges from ADSynth. ADSynth names these in upper case. There is no ADSynth loader yet.
 
 | Edge | Meaning |
 |---|---|
 | `(User)-[:DELEGATES_TO]->(AI agent)` | The user lets the agent act on their behalf |
 | `(AI agent)-[:ORCHESTRATES]->(AI agent)` | One agent directs another |
-| `(AI agent)-[:HAS_TOOL_ACCESS]->(AZKeyVault\|AZVM\|AZApp)` | The agent can use this cloud resource |
+| `(AI agent)-[:HAS_TOOL_ACCESS]->(AZKeyVault\|AZVM\|AZApp)` | The agent can use this cloud resource. In ADSynth's `generate_hybrid_v2`, the only mode that makes agents, it points at the tenant node instead. |
 
 ### Observed edges
 
@@ -104,9 +104,9 @@ From telemetry. Every observed edge has these properties:
 
 | Edge | Meaning | Extra properties | Source |
 |---|---|---|---|
-| `(User)-[:LoggedInto]->(Computer)` | The user logged into the computer | `logon_type`, `auth_type` | LANL `auth`, identity logs |
-| `(Computer)-[:RemoteLogon]->(Computer)` | Someone used an account to log in from one computer to another. This is one hop of lateral movement. | `user`, `logon_type`, `auth_type` | LANL `auth` where source and destination computers differ |
-| `(Computer)-[:ConnectedTo]->(Computer)` | The two computers exchanged network traffic | `port`, `protocol`, `bytes` | LANL `flows`, network flow logs |
+| `(User)-[:LoggedInto]->(Computer)` | The user logged into the computer | `logon_type`, `auth_type` (planned; today edges carry only `first_seen`, `last_seen`, `count` and `user`) | LANL `auth`, identity logs |
+| `(Computer)-[:RemoteLogon]->(Computer)` | Someone used an account to log in from one computer to another. This is one hop of lateral movement. | `user`; `logon_type`, `auth_type` planned | LANL `auth` where source and destination computers differ |
+| `(Computer)-[:ConnectedTo]->(Computer)` | The two computers exchanged network traffic | `port`, `protocol` where `network.json` gives them; `bytes` planned (the stream drops port and bytes today) | LANL `flows`, network flow logs |
 | `(Computer)-[:Ran]->(Process)` | A program ran on the computer | `user` | LANL `proc`, EDR |
 | `(AI agent)-[:Accessed]->(resource)` | The agent actually used the resource | none | Scripted agent activity |
 
@@ -139,14 +139,14 @@ The shrinking circle runs the same blast radius query twice: once over granted e
 
 | Property | Values | How it is set |
 |---|---|---|
-| `critical` | true or false | Copied from ADSynth's `highvalue` flag, plus anything the CMDB marks as critical |
+| `critical` | true or false | Set from the CMDB, the BloodHound import (Tier Zero) or by an analyst. ADSynth's `highvalue` flag is not a good rule for this. |
 | `zone` | `low_trust` or `normal` | Set from the CMDB, for example guest Wi-Fi laptops and internet-facing machines are `low_trust` |
 
 Which assets are critical is a team decision.
 
 ## Edge risk for attack paths
 
-How easy each edge is for an attacker to cross. `p` is our starting guess at the chance an attacker can use the edge. Path search uses the cost `-log(p)`, so the cheapest path is the most likely one.
+How easy each edge is for an attacker to cross. `p` is our starting guess at the chance an attacker can use the edge. The Exposure page's "most likely path" uses the cost `-log(p)`, so the cheapest path is the most likely one. Alert ranking and blast radius count hops and ignore `p`.
 
 **These numbers are our design choice, not measured facts.** We tune them in week 2.
 
@@ -159,7 +159,7 @@ How easy each edge is for an attacker to cross. `p` is our starting guess at the
 | `HasSession` | 0.6 | Credentials may be stolen from memory, but not always. |
 | `RemoteLogon` | 0.8 | This route has already been used, so it works. |
 | `ConnectedTo` | 0.3 | Network access alone does not give control. |
-| `Contains` | not used | Folder structure, not an attack step. |
+| `Contains` | not loaded yet | BloodHound treats it as an attack step, because rights set on an OU pass down to what it contains. |
 
 ## MITRE ATT&CK tags
 
@@ -172,7 +172,7 @@ Our own lookup table. No standard mapping from BloodHound edges to ATT&CK exists
 | `HasSession` used to steal credentials | TA0006 Credential Access | T1003 OS Credential Dumping |
 | `RemoteLogon`, `AdminTo` | TA0008 Lateral Movement | T1021 Remote Services |
 | `CanRDP` | TA0008 Lateral Movement | T1021.001 Remote Desktop Protocol |
-| Login with a stolen password | TA0004 Privilege Escalation | T1078 Valid Accounts |
+| Login with a stolen password | TA0001 Initial Access (our choice; ATT&CK lists T1078 under four tactics) | T1078 Valid Accounts |
 | Login with a stolen password hash | TA0008 Lateral Movement | T1550.002 Pass the Hash |
 | `GenericAll` used to change an account | TA0003 Persistence | T1098 Account Manipulation |
 
@@ -184,16 +184,16 @@ The tactic order (Initial Access, Execution, Credential Access, Lateral Movement
 
 | LANL file | Line format | Becomes |
 |---|---|---|
-| `auth` | `time, source user@domain, destination user@domain, source computer, destination computer, auth type, logon type, orientation, success/failure` | `User` and `Computer` nodes, a `LoggedInto` edge, and a `RemoteLogon` edge when the two computers differ. Failed logins are kept as a property. |
+| `auth` | `time, source user@domain, destination user@domain, source computer, destination computer, auth type, logon type, orientation, success/failure` | `User` and `Computer` nodes, a `LoggedInto` edge, and a `RemoteLogon` edge when the two computers differ. Only LogOn lines make edges; ticket requests do not. Failed logins are kept as a property. |
 | `flows` | `time, duration, source computer, source port, destination computer, destination port, protocol, packets, bytes` | `ConnectedTo` edge |
 | `proc` | `time, user@domain, computer, process name, start/end` | `Process` node and `Ran` edge |
-| `redteam` | `time, user@domain, source computer, destination computer` | Labels on the matching `RemoteLogon` edges, used only to measure detection. Never shown to the ranker. |
+| `redteam` | `time, user@domain, source computer, destination computer` | Kept per event in a separate file, used only to measure detection. Never shown to the ranker. |
 
-Accounts ending in `$`, such as `C625$`, are computer accounts that log in automatically. They are kept but flagged with `is_service_account = true` so noise filters can skip them.
+Accounts ending in `$`, such as `C625$`, are computer accounts that log in automatically. They are kept but should be flagged as computer accounts (for example `is_computer_account = true`) so noise filters can skip them.
 
 ### ADSynth
 
-Loaded as-is from its Neo4j JSONL output. After loading we set `critical` from `highvalue`.
+Not loaded yet. Its JSON Lines output needs an adapter: its labels and most edge types need mapping, and `highvalue` is not a good rule for critical.
 
 ### CMDB
 

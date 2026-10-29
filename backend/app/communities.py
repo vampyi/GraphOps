@@ -67,7 +67,7 @@ def summary(session):
         WITH n, count(r) AS degree
         ORDER BY degree DESC, n.id
         RETURN n.community AS id,
-               collect({id: n.id, kind: labels(n)[0], critical: coalesce(n.critical, false), degree: degree}) AS members
+               collect({id: n.id, kind: [l IN labels(n) WHERE l <> 'Entity'][0], critical: coalesce(n.critical, false), degree: degree}) AS members
         ORDER BY size(members) DESC, id
         """)
     out = []

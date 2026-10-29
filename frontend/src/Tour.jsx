@@ -11,38 +11,41 @@ function markSeen() {
 }
 
 const STEPS = [
-  { target: null, title: "Welcome to GraphOps",
-    text: "This is one day of security alerts from a fictional company, with a scripted, synthetic attack hidden inside the noise. GraphOps sorts the alerts so the attack comes first, and shows you why." },
-  { target: "views", title: "Three views",
-    text: "Triage ranks today's alerts. Exposure maps the attack paths and choke points that exist before any attack. Access compares the access people are granted with the access they actually use." },
-  { target: "live", title: "Watch it happen live",
-    text: "Replay the day as a live stream through Kafka. Alerts arrive one by one, and you can see the attack climb the inbox in real time." },
-  { target: "kpis", title: "The day at a glance",
-    text: "How many alerts came in, how many were linked into incidents, how many sit close to a critical system and how many used a route nobody has used before." },
-  { target: "strip", title: "Every alert on one timeline",
-    text: "Each dot is an alert. Bigger dots scored higher. Orange dots belong to the incident you are looking at. Click any dot to open it." },
-  { target: "inbox", title: "The alert inbox",
-    text: "Every alert, nothing deleted. The number is the GraphOps score. The thin coloured bar shows what pushed it up. Switch to “Severity only” to see the order most tools use: the attack sinks far down." },
-  { target: "modes", title: "Granted vs used",
-    text: "Draw the blast radius over all attack routes, over only granted permissions, or over only the routes actually used. The gap between granted and used is the risk least privilege removes." },
-  { target: "graph", title: "Blast radius",
-    text: "What an attacker could reach from this alert. The alerted machine or account is in the middle. Red shapes are critical systems, and the red dashed line is the shortest attack path. Click any shape for details, or to mark it critical." },
-  { target: "hops", title: "1, 2 or 3 hops",
-    text: "A hop is one step, like a login or a group membership. Use these buttons to see only what is 1, 2 or 3 steps away." },
-  { target: "why", title: "Why it ranks here",
-    text: "The score is the sum of six graph questions plus the tool's own severity. Longer bars added more points." },
-  { target: "side", title: "The incident",
-    text: "Alerts that belong to the same attack, in time order and tagged with the attack stage. Draft the story with AI, open a containment report, set the incident's status, and mark each alert real, benign or a false alarm." },
+  { target: null, title: "GraphOps",
+    text: "One day of alerts at a fictional company, with a scripted attack hidden in the noise. GraphOps ranks the attack first and shows why." },
+  { target: "views", title: "Views",
+    text: "Triage ranks alerts. Exposure maps attack paths before an attack. Access shows unused permissions. Ask answers questions. Evaluation measures the ranking." },
+  { target: "live", title: "Stream live",
+    text: "Replay the selected scenario's telemetry through Kafka and watch alerts arrive, re-rank and link." },
+  { target: "kpis", title: "The day at a glance", text: "Alerts, incidents, alerts near critical assets, new routes, and what is still unreviewed." },
+  { target: "filters", title: "Filters", text: "Search, or filter by severity, verdict, or what the graph found." },
+  { target: "inbox", title: "Ranked inbox",
+    text: "Highest GraphOps score first. Nothing is deleted. Switch to Severity to see the usual order: the attack sinks." },
+  { target: "tabs", tab: "why", title: "Alert details", text: "Record a verdict, then read the tabs left to right." },
+  { target: "why", tab: "why", title: "Why it ranks", text: "Points each graph question added to the score." },
+  { target: "graph", tab: "blast", title: "Blast radius",
+    text: "What an attacker could reach from this alert. Red is critical; the dashed line is the shortest attack path. Click a shape for details." },
+  { target: "modes", tab: "blast", title: "Granted vs used", text: "Follow every route, only permissions held, or only routes used. The gap is what least privilege removes." },
+  { target: "hops", tab: "blast", title: "Hops", text: "Show what is 1, 2 or 3 steps away." },
+  { target: "tabs", tab: "incident", title: "Incident", text: "The linked alerts in time order, with attack stages, status and a report. Story drafts a cited summary." },
 ];
 
 export default function Tour({ onClose }) {
   const [i, setI] = useState(0);
   const [rect, setRect] = useState(null);
+  const [retries, setRetries] = useState(0);
   const step = STEPS[i];
 
   useLayoutEffect(() => {
+    if (step.tab) window.dispatchEvent(new CustomEvent("graphops:tab", { detail: step.tab }));
     if (!step.target) { setRect(null); return; }
-    const el = document.querySelector(`[data-tour="${step.target}"]`);
+    let el = document.querySelector(`[data-tour="${step.target}"]`);
+    if (!el && step.tab && retries < 10) {
+      // the tab's content renders on the next frame; measure once it exists
+      const retry = setTimeout(() => setRetries((n) => n + 1), 60);
+      setRect(null);
+      return () => clearTimeout(retry);
+    }
     if (!el) { setRect(null); return; }
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     const measure = () => setRect(el.getBoundingClientRect());
@@ -54,20 +57,21 @@ export default function Tour({ onClose }) {
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
-  }, [i]); // eslint-disable-line
+  }, [i, retries]); // eslint-disable-line
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") finish();
       if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") setI((x) => Math.max(0, x - 1));
+      if (e.key === "ArrowLeft") go(Math.max(0, i - 1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
   const finish = () => { markSeen(); onClose(); };
-  const next = () => (i < STEPS.length - 1 ? setI(i + 1) : finish());
+  const go = (n) => { setRetries(0); setI(n); };
+  const next = () => (i < STEPS.length - 1 ? go(i + 1) : finish());
 
   const pad = 8;
   const card = { width: 340 };
@@ -94,7 +98,7 @@ export default function Tour({ onClose }) {
         <div className="tour-actions">
           <button className="link" onClick={finish}>Skip tour</button>
           <div>
-            {i > 0 && <button onClick={() => setI(i - 1)}>Back</button>}
+            {i > 0 && <button onClick={() => go(i - 1)}>Back</button>}
             <button className="primary" onClick={next}>{i < STEPS.length - 1 ? "Next" : "Start exploring"}</button>
           </div>
         </div>

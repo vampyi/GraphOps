@@ -51,7 +51,10 @@ A numbered entry point on a computer for a particular service. Port 3389 is Wind
 Anything of value: a laptop, a server, a database, an application.
 
 **Crown jewels / critical assets**
-The most valuable assets, such as the customer database or the admin accounts. Called Tier Zero in BloodHound.
+The most valuable assets, such as the customer database or the admin accounts. In BloodHound, Tier Zero means only the systems that control identity, such as Domain Admins and domain controllers; business systems such as a customer database go in separate privilege zones.
+
+**Benign positive**
+An alert that correctly spotted real activity, but the activity was allowed, such as an admin doing their job. It is neither an attack nor a false alarm.
 
 **Endpoint**
 A device people use directly, such as a laptop or phone. Usually where attackers get in first.

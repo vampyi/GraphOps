@@ -2,6 +2,7 @@
 query behind each panel, and a side-by-side of the same question in Cypher and in SQL.
 
 every number here is read live from the graph, and every query shown is one GraphOps actually runs."""
+import os
 import time
 
 from .attack import ATTACK_EDGES, TACTICS, TECHNIQUES
@@ -141,7 +142,7 @@ def summary(session):
     """headline graph stats for the Neo4j banner: nodes, relationships, labels, and the algorithms in play."""
     counts = session.run(
         """
-        MATCH (n) WHERE n:User OR n:Group OR n:Computer
+        MATCH (n) WHERE n:Entity
         WITH count(n) AS entities
         MATCH ()-[r]->() WHERE type(r) IN $rels
         RETURN entities, count(r) AS attack_edges
@@ -152,3 +153,48 @@ def summary(session):
             "attack_edges": counts["attack_edges"] if counts else 0,
             "nodes_total": total, "relationships_total": rels,
             "cypher": CYPHER}
+
+
+def has_gds(session):
+    """true when this database has neo4j graph data science installed (aura free does not)."""
+    try:
+        session.run("RETURN gds.version() AS v").single()
+        return True
+    except Exception:  # unknown function: no graph data science here
+        return False
+
+
+def full_graph(session):
+    """every entity and connection, with the algorithm results stored on each node, for drawing the whole graph:
+    louvain community, pagerank (danger) and betweenness (choke_score). also the data model: how many of each kind
+    of node, and how many connections of each type between each pair of kinds."""
+    nodes = [dict(r) for r in session.run(
+        """
+        MATCH (n:Entity)
+        RETURN n.id AS id, [l IN labels(n) WHERE l <> 'Entity'][0] AS kind,
+               coalesce(n.location, 'onprem') AS location, coalesce(n.critical, false) AS critical,
+               n.zone AS zone, n.community AS community, n.danger AS pagerank, n.choke_score AS choke,
+               coalesce(n.illustrative, false) AS illustrative, coalesce(n.kev, false) AS kev,
+               n.hops_to_critical AS hops
+        ORDER BY n.id
+        """)]
+    edges = [dict(r) for r in session.run(
+        "MATCH (s:Entity)-[r]->(d:Entity) RETURN s.id AS src, type(r) AS type, d.id AS dst ORDER BY src, dst, type")]
+    kind = {n["id"]: n["kind"] for n in nodes}
+    attack = set(ATTACK_EDGES)
+    for e in edges:
+        e["attack"] = e["type"] in attack
+    counts = {}
+    for e in edges:
+        key = (kind[e["src"]], e["type"], kind[e["dst"]])
+        counts[key] = counts.get(key, 0) + 1
+    schema = [{"src": s, "type": t, "dst": d, "count": c, "attack": t in attack,
+               "tactic": TACTICS.get(_tac(t)), "technique": _tech(t)}
+              for (s, t, d), c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+    kinds = {}
+    for n in nodes:
+        kinds[n["kind"]] = kinds.get(n["kind"], 0) + 1
+    # neo4j's visualization library (nvl) is licensed for use with neo4j aura only, so the dashboard draws with
+    # nvl when this backend talks to aura and falls back to its own drawing on neo4j community
+    aura = ".databases.neo4j.io" in os.environ.get("NEO4J_URI", "")
+    return {"nodes": nodes, "edges": edges, "schema": schema, "kinds": kinds, "gds": has_gds(session), "aura": aura}

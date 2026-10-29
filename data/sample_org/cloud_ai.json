@@ -1,0 +1,209 @@
+{
+  "description": "Cloud tenant, AI agents and an internet-facing web server added to the fictional sample organisation. All names are made up. The AI agents are illustrative: no public dataset of real company AI agents exists, so they follow documented patterns (Microsoft Entra Agent ID: agents as identities with owners; agent tool access through MCP servers; indirect prompt injection through untrusted input). Software versions are real so vulnerability lookups return real CVEs.",
+  "nodes": [
+    {
+      "id": "internet",
+      "label": "Internet",
+      "name": "The internet",
+      "location": "external",
+      "critical": false,
+      "zone": "external"
+    },
+    {
+      "id": "web01",
+      "label": "Computer",
+      "name": "web01",
+      "os": "Ubuntu 24.04",
+      "zone": "dmz",
+      "owner": "it_admin",
+      "critical": false,
+      "location": "onprem"
+    },
+    {
+      "id": "php@web01",
+      "label": "Software",
+      "name": "php",
+      "vendor": "php",
+      "product": "php",
+      "version": "8.3.30",
+      "sapi": "apache2handler",
+      "host": "web01",
+      "location": "onprem"
+    },
+    {
+      "id": "svc_web",
+      "label": "User",
+      "name": "svc_web",
+      "is_service_account": true,
+      "location": "onprem"
+    },
+    {
+      "id": "g_appadmins",
+      "label": "Group",
+      "name": "App Admins",
+      "critical": false,
+      "location": "onprem"
+    },
+    {
+      "id": "app01",
+      "label": "Computer",
+      "name": "app01",
+      "os": "Windows Server 2022",
+      "zone": "normal",
+      "owner": "it_admin",
+      "critical": false,
+      "location": "onprem"
+    },
+    {
+      "id": "fin_1@cloud",
+      "label": "User",
+      "name": "fin_1 (cloud)",
+      "location": "cloud",
+      "tenant": "sample-org.onmicrosoft.com"
+    },
+    {
+      "id": "finance-agent",
+      "label": "AIAgent",
+      "name": "Finance assistant",
+      "platform": "Microsoft Entra Agent ID",
+      "autonomy": "autonomous",
+      "location": "cloud",
+      "illustrative": true
+    },
+    {
+      "id": "sp-finance",
+      "label": "ServiceIdentity",
+      "name": "sp-finance",
+      "kind": "service_principal",
+      "location": "cloud"
+    },
+    {
+      "id": "kv-prod",
+      "label": "CloudResource",
+      "name": "kv-prod",
+      "resourcetype": "keyvault",
+      "note": "holds production database credentials",
+      "location": "cloud",
+      "critical": true
+    },
+    {
+      "id": "support-agent",
+      "label": "AIAgent",
+      "name": "IT support assistant",
+      "platform": "self-hosted",
+      "autonomy": "human_in_loop",
+      "location": "cloud",
+      "illustrative": true
+    },
+    {
+      "id": "ops-mcp",
+      "label": "Tool",
+      "name": "ops PowerShell MCP server",
+      "kind": "mcp_server",
+      "scopes": "exec",
+      "location": "onprem"
+    },
+    {
+      "id": "support-inbox",
+      "label": "CloudResource",
+      "name": "support mailbox",
+      "resourcetype": "mailbox",
+      "note": "receives email from outside the company",
+      "location": "cloud",
+      "critical": false
+    }
+  ],
+  "granted": [
+    {
+      "src": "internet",
+      "type": "ExposedTo",
+      "dst": "web01",
+      "port": 443
+    },
+    {
+      "src": "web01",
+      "type": "Runs",
+      "dst": "php@web01"
+    },
+    {
+      "src": "web01",
+      "type": "HasSession",
+      "dst": "svc_web",
+      "note": "the web app's config file holds svc_web's password"
+    },
+    {
+      "src": "svc_web",
+      "type": "MemberOf",
+      "dst": "g_appadmins"
+    },
+    {
+      "src": "g_appadmins",
+      "type": "AdminTo",
+      "dst": "app01"
+    },
+    {
+      "src": "app01",
+      "type": "HasSession",
+      "dst": "it_admin"
+    },
+    {
+      "src": "fin_1",
+      "type": "SyncedTo",
+      "dst": "fin_1@cloud",
+      "note": "password hash synchronisation"
+    },
+    {
+      "src": "fin_1@cloud",
+      "type": "Owns",
+      "dst": "finance-agent"
+    },
+    {
+      "src": "finance-agent",
+      "type": "RunsAs",
+      "dst": "sp-finance"
+    },
+    {
+      "src": "sp-finance",
+      "type": "RoleOn",
+      "dst": "kv-prod",
+      "role": "Key Vault Secrets User"
+    },
+    {
+      "src": "internet",
+      "type": "CanEmail",
+      "dst": "support-inbox"
+    },
+    {
+      "src": "support-inbox",
+      "type": "FeedsUntrustedInput",
+      "dst": "support-agent"
+    },
+    {
+      "src": "g_helpdesk",
+      "type": "CanPrompt",
+      "dst": "support-agent"
+    },
+    {
+      "src": "support-agent",
+      "type": "HasToolAccess",
+      "dst": "ops-mcp",
+      "scopes": "exec"
+    },
+    {
+      "src": "ops-mcp",
+      "type": "CanAccess",
+      "dst": "jump-01",
+      "action": "exec"
+    }
+  ],
+  "observed": [
+    {
+      "src": "support-agent",
+      "type": "InvokedTool",
+      "dst": "ops-mcp",
+      "first_seen": "2026-10-01T09:00:00",
+      "last_seen": "2026-10-19T16:20:00",
+      "count": 31
+    }
+  ]
+}

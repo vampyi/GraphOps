@@ -43,7 +43,7 @@ def gather(session, incident_id):
     entities = [dict(r) for r in session.run(
         """
         MATCH (e) WHERE e.id IN $ids
-        RETURN e.id AS id, labels(e)[0] AS kind, coalesce(e.critical, false) AS critical, e.zone AS zone,
+        RETURN e.id AS id, [l IN labels(e) WHERE l <> 'Entity'][0] AS kind, coalesce(e.critical, false) AS critical, e.zone AS zone,
                e.hops_to_critical AS hops_to_critical, e.critical_within_3 AS critical_within_3,
                e.community AS community
         ORDER BY critical DESC, id
@@ -107,9 +107,8 @@ def incident_report(session, incident_id):
                      f"{min((e.get('hops_to_critical') for e in entities if e.get('hops_to_critical') is not None), default='an unknown number of')} "
                      f"hop(s) from one, and {reachable} critical asset(s) sit within 3 hops.")
     if path:
-        steps = " → ".join(
-            f"**{path['nodes'][0]}**" if i == 0 else f"{tag(t)['step']} **{path['nodes'][i + 1]}**"
-            for i, t in enumerate(path["types"]))
+        steps = " → ".join([f"**{path['nodes'][0]}**"] +
+                           [f"{tag(t)['step']} **{path['nodes'][i + 1]}**" for i, t in enumerate(path["types"])])
         lines += ["", f"Shortest attack path to a critical asset: {steps}."]
 
     lines += ["", "## Recommended containment", ""]
