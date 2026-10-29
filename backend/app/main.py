@@ -4,11 +4,11 @@ import logging
 import os
 import threading
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
+from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, sources, stream
 from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -687,6 +687,58 @@ def languages():
     """languages the story and the ask tab can answer in, and whether the llm is configured."""
     from . import llm
     return {"languages": [{"code": k, "name": v} for k, v in LANGUAGES.items()], "llm": llm.available()}
+
+
+# real sources reporting from outside, such as an ai agent on a team laptop. writes need the ingest token.
+class SourceInventory(BaseModel):
+    kind: str
+    inventory: dict
+
+
+class SourceEvents(BaseModel):
+    events: list[dict]
+
+
+def _need_token(token):
+    if not os.environ.get("INGEST_TOKEN"):
+        raise HTTPException(503, "ingest is closed: no INGEST_TOKEN set on this server")
+    if not sources.check_token(token):
+        raise HTTPException(401, "wrong or missing X-GraphOps-Token")
+
+
+@app.post("/api/sources/{source_id}/inventory")
+def source_inventory(source_id: str, body: SourceInventory, x_graphops_token: str | None = Header(None)):
+    """what a source can reach. redraws it into the graph and re-runs the analysis so paths through it count."""
+    _need_token(x_graphops_token)
+    if body.kind not in sources.KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(sorted(sources.KINDS))}")
+    with _driver.session() as s:
+        sources.save_inventory(s, source_id[:80], body.kind, body.inventory)
+        _reanalyse(s)
+        return {"status": "ok"}
+
+
+@app.post("/api/sources/{source_id}/events")
+def source_events(source_id: str, body: SourceEvents, x_graphops_token: str | None = Header(None)):
+    """what a source did: one event per action, no contents."""
+    _need_token(x_graphops_token)
+    with _driver.session() as s:
+        return {"stored": sources.save_events(s, source_id[:80], body.events)}
+
+
+@app.get("/api/sources")
+def list_sources():
+    with _driver.session() as s:
+        return sources.list_sources(s)
+
+
+@app.get("/api/agents/{source_id}")
+def agent_view(source_id: str):
+    with _driver.session() as s:
+        view = sources.agent_view(s, source_id)
+        if view is None:
+            raise HTTPException(404, "no such agent source")
+        return view
 
 
 @app.get("/api/health")

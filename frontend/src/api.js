@@ -53,3 +53,7 @@ export const getExplore = (id, maxHops = 8) => call(`/explore/${encodeURICompone
 export const setControl = (body) => post("/controls", body);
 export const getVulnerabilities = () => call("/vulnerabilities");
 export const refreshVulnerabilities = () => post("/vulnerabilities/refresh");
+
+// real sources reporting from outside (ai agents)
+export const getSources = () => call("/sources");
+export const getAgent = (id) => call(`/agents/${id}`);

@@ -11,12 +11,14 @@ import GraphEngine from "./GraphEngine.jsx";
 import Evaluation from "./Evaluation.jsx";
 import Ask from "./Ask.jsx";
 import Explore from "./Explore.jsx";
+import Agents from "./Agents.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
   { id: "exposure", label: "Exposure", hint: "Attack paths and choke points" },
   { id: "explore", label: "Explore", hint: "Everything one system can reach" },
   { id: "access", label: "Access", hint: "Granted vs used access" },
+  { id: "agents", label: "AI agents", hint: "A real AI agent: its access and live activity" },
   { id: "graph", label: "Graph", hint: "Queries and algorithms" },
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
   { id: "evaluation", label: "Evaluation", hint: "Ranking quality" },
@@ -154,6 +156,7 @@ export default function Dashboard() {
       {view === "exposure" && <Exposure key={dataVersion} onError={setError} />}
       {view === "explore" && <Explore key={dataVersion} onError={setError} />}
       {view === "access" && <Access key={dataVersion} onError={setError} />}
+      {view === "agents" && <Agents key={dataVersion} onError={setError} />}
       {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
       {view === "ask" && <Ask />}
       {view === "evaluation" && <Evaluation key={dataVersion} onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
