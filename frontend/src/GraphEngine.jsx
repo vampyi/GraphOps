@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Info } from "./parts.jsx";
 import { getExposure, getGraphAlgorithms, getGraphFull, getReachabilityProof } from "./api.js";
-import GraphMap, { MODES } from "./GraphMap.jsx";
+import GraphMap, { KIND_COLOR, MODES } from "./GraphMap.jsx";
+
+// neo4j's visualization library, loaded only when the backend is on neo4j aura (its licence covers aura only)
+const NvlMap = lazy(() => import("./NvlMap.jsx"));
+
+function useDark() {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme !== "light");
+  useEffect(() => {
+    const el = document.documentElement;
+    const mo = new MutationObserver(() => setDark(el.dataset.theme !== "light"));
+    mo.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return dark;
+}
 import { Shape } from "./RingGraph.jsx";
 
 const KIND = { User: "User", Group: "Group", Computer: "Computer", CloudResource: "Cloud resource", ServiceIdentity: "Service identity",
@@ -18,7 +32,8 @@ export default function GraphEngine({ onError }) {
   const [running, setRunning] = useState(false);
   const [openCypher, setOpenCypher] = useState(null);
   const [graph, setGraph] = useState(null);
-  const [mode, setMode] = useState("community");
+  const [mode, setMode] = useState("types");
+  const dark = useDark();
   const [showPath, setShowPath] = useState(false);
 
   useEffect(() => {
@@ -67,10 +82,16 @@ export default function GraphEngine({ onError }) {
                 {MODES.map((m) => <button key={m.id} className={mode === m.id ? "on" : ""} onClick={() => setMode(m.id)}>{m.label}</button>)}
               </div>
             </div>
-            <div className="ge-map-wrap"><GraphMap data={graph} mode={mode} path={showPath && proof?.reachable ? proof.path : null} /></div>
+            <div className="ge-map-wrap">
+              {graph.aura
+                ? <Suspense fallback={<div className="view-loading">Loading graph…</div>}>
+                    <NvlMap data={graph} mode={mode} dark={dark} path={showPath && proof?.reachable ? proof.path : null} />
+                  </Suspense>
+                : <GraphMap data={graph} mode={mode} path={showPath && proof?.reachable ? proof.path : null} />}
+            </div>
             <div className="ge-map-foot">
-              {mode === "zones"
-                ? <span>Internet · on-premises · cloud, left to right. Red = critical asset.</span>
+              {mode === "types" || mode === "zones"
+                ? <span>{graph.aura ? "Drawn with Neo4j Visualization Library (NVL). Drag, zoom, click a node." : mode === "zones" ? "Internet · on-premises · cloud, left to right." : "Colour = node label."} Red = critical asset.</span>
                 : <span><b>{MODES.find((m) => m.id === mode).algo}</b> · {graph.gds ? "ran on Neo4j Graph Data Science" : "this database has no Graph Data Science (AuraDB Free), so it ran in Python (networkx) on the graph read from Neo4j"}</span>}
               <span className="gm-key"><i className="attack" />attack step <i className="other" />other relationship</span>
             </div>
@@ -85,7 +106,7 @@ export default function GraphEngine({ onError }) {
             <div className="ge-kinds">
               {Object.entries(graph.kinds).sort((a, b) => b[1] - a[1]).map(([k, c]) => (
                 <span key={k} className="ge-kind">
-                  <svg viewBox="0 0 24 24"><Shape kind={k} x={12} y={12} r={6} className="ge-kind-shape" /></svg>
+                  <svg viewBox="0 0 24 24" style={{ fill: KIND_COLOR[k] }}><Shape kind={k} x={12} y={12} r={6} className="ge-kind-shape" /></svg>
                   {KIND[k] || k}<b>{c}</b>
                 </span>
               ))}

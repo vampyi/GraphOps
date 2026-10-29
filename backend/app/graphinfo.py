@@ -2,6 +2,7 @@
 query behind each panel, and a side-by-side of the same question in Cypher and in SQL.
 
 every number here is read live from the graph, and every query shown is one GraphOps actually runs."""
+import os
 import time
 
 from .attack import ATTACK_EDGES, TACTICS, TECHNIQUES
@@ -192,4 +193,7 @@ def full_graph(session):
     kinds = {}
     for n in nodes:
         kinds[n["kind"]] = kinds.get(n["kind"], 0) + 1
-    return {"nodes": nodes, "edges": edges, "schema": schema, "kinds": kinds, "gds": has_gds(session)}
+    # neo4j's visualization library (nvl) is licensed for use with neo4j aura only, so the dashboard draws with
+    # nvl when this backend talks to aura and falls back to its own drawing on neo4j community
+    aura = ".databases.neo4j.io" in os.environ.get("NEO4J_URI", "")
+    return {"nodes": nodes, "edges": edges, "schema": schema, "kinds": kinds, "gds": has_gds(session), "aura": aura}

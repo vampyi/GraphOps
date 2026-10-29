@@ -9,7 +9,16 @@ const ZONE_X = { external: 0.1, onprem: 0.48, cloud: 0.86 };
 const BAND = { external: [0.05, 0.17], onprem: [0.22, 0.72], cloud: [0.78, 0.95] };
 const COMMUNITY = ["#14b8a6", "#6366f1", "#f59e0b", "#ec4899", "#22c55e", "#0ea5e9", "#a855f7", "#ef4444", "#84cc16", "#f97316", "#06b6d4", "#e11d48"];
 
+// node colours from the neo4j browser palette, shared with the nvl view, so the graph reads like neo4j.
+// red stays reserved for critical assets.
+export const KIND_COLOR = {
+  Computer: "#57C7E3", User: "#F79767", Group: "#C990C0", AIAgent: "#8DCC93", Tool: "#FFC454",
+  CloudResource: "#4C8EDA", ServiceIdentity: "#569480", Software: "#D9C8AE", Internet: "#ECB5C9",
+};
+
 export const MODES = [
+  { id: "types", label: "Node types", algo: "Labels",
+    tip: "Colour = the kind of node (its Neo4j label), as in Neo4j Bloom. Red = critical asset." },
   { id: "community", label: "Communities", algo: "Louvain",
     tip: "Colour = activity community found by Louvain. Machines and people that normally work together share a colour, so a login that crosses colours looks like lateral movement." },
   { id: "pagerank", label: "Influence", algo: "PageRank",
@@ -70,6 +79,7 @@ function radius(n, mode) {
 function fill(n, mode) {
   if (n.critical) return "var(--red)";
   if (mode === "community") return n.community ? COMMUNITY[(n.community - 1) % COMMUNITY.length] : "var(--node)";
+  if (mode === "types") return KIND_COLOR[n.kind] || "var(--node)";
   if (mode === "zones") return n.location === "cloud" ? "var(--cloud)" : n.location === "external" ? "var(--amber)" : "var(--teal)";
   return "var(--teal)";
 }
