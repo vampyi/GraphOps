@@ -43,6 +43,8 @@ export default function Dashboard() {
   const [live, setLive] = useState({ on: false, seq: 0, replaying: false, ingested: 0, attack: true });
   const [touring, setTouring] = useState(false);
   const [scenarios, setScenarios] = useState(null);
+  const [switching, setSwitching] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0); // bumped after a scenario loads, so every tab refetches
   const [error, setError] = useState(null);
   const timer = useRef(null);
   const sending = useRef(false); // true while the replay request is still sending the day (it can take minutes on vercel)
@@ -52,15 +54,23 @@ export default function Dashboard() {
   useEffect(() => { load(); }, []);
   useEffect(() => { getScenarios().then(setScenarios).catch(() => {}); }, []);
 
+  // show the chosen scenario straight away, keep the analyst on the tab they are on, and redraw it once the
+  // server has rebuilt the graph for that day
   const switchScenario = async (id) => {
+    const before = scenarios?.active;
     setError(null);
+    setSwitching(true);
+    setScenarios((s) => (s ? { ...s, active: id } : s));
     try {
       await loadScenario(id);
-      setScenarios((s) => (s ? { ...s, active: id } : s));
       setLive((l) => ({ ...l, on: false }));
-      goView("triage");
       load();
-    } catch (e) { setError(`Could not load that day. ${e.message}`); }
+      setDataVersion((v) => v + 1);
+    } catch (e) {
+      setScenarios((s) => (s ? { ...s, active: before } : s));
+      setError(`Could not load that scenario. ${e.message}`);
+    }
+    setSwitching(false);
   };
   useEffect(() => { if (!tourSeen()) setTouring(true); }, []);
 
@@ -129,23 +139,24 @@ export default function Dashboard() {
         <span className="tag">Synthetic data</span>
         {scenarios && scenarios.scenarios.length > 1 && (
           <label className="scenario-pick">Scenario
-            <select value={scenarios.active} onChange={(e) => switchScenario(e.target.value)}>
+            <select value={scenarios.active} disabled={switching} onChange={(e) => switchScenario(e.target.value)}>
               {scenarios.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
             </select>
           </label>
         )}
+        {switching && <span className="subnav-hint loading">Loading scenario…</span>}
         <span className="subnav-hint">{VIEWS.find((v) => v.id === view).hint}</span>
       </div>
       {error && <div className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></div>}
       {touring && <Tour onClose={() => setTouring(false)} />}
 
-      {view === "triage" && <Triage alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
-      {view === "exposure" && <Exposure onError={setError} />}
-      {view === "explore" && <Explore onError={setError} />}
-      {view === "access" && <Access onError={setError} />}
-      {view === "graph" && <GraphEngine onError={setError} />}
+      {view === "triage" && <Triage key={dataVersion} alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
+      {view === "exposure" && <Exposure key={dataVersion} onError={setError} />}
+      {view === "explore" && <Explore key={dataVersion} onError={setError} />}
+      {view === "access" && <Access key={dataVersion} onError={setError} />}
+      {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
       {view === "ask" && <Ask />}
-      {view === "evaluation" && <Evaluation onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
+      {view === "evaluation" && <Evaluation key={dataVersion} onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
 
     </div>
   );
