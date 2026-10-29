@@ -64,7 +64,7 @@ export default function Dashboard() {
     try {
       await loadScenario(id);
       setLive((l) => ({ ...l, on: false }));
-      load();
+      await load(); // the new day's alerts must be in place before the tabs redraw, or triage opens a stale alert
       setDataVersion((v) => v + 1);
     } catch (e) {
       setScenarios((s) => (s ? { ...s, active: before } : s));

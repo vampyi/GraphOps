@@ -64,7 +64,13 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
   useEffect(() => {
     if (!selected) { if (alerts.length) open(alerts[0]); return; }
     const fresh = alerts.find((a) => a.id === selected.id);
-    if (fresh && fresh !== selected) setSelected(fresh);
+    // the selected alert is gone (a new day was loaded or the stream reset): open the top alert instead
+    if (!fresh) { if (alerts.length) open(alerts[0]); else setSelected(null); return; }
+    if (fresh !== selected) {
+      setSelected(fresh);
+      // incident ids follow the earliest alert, so they can change mid-stream: refetch when it does
+      if (fresh.incident_id !== selected.incident_id) open(fresh);
+    }
   }, [alerts]); // eslint-disable-line
 
   const ordered = useMemo(() => (sortBy === "severity" ? [...alerts].sort(bySeverity) : alerts), [alerts, sortBy]);
