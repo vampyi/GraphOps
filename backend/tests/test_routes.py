@@ -30,8 +30,6 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/graph/algorithms"),
     ("GET", "/api/graph/full"),
     ("GET", "/api/proof"),
-    ("GET", "/api/cloud/aws"),
-    ("POST", "/api/cloud/aws/refresh"),
     ("GET", "/api/incidents/{incident_id}/respond"),
     ("POST", "/api/incidents/{incident_id}/confirm"),
     ("POST", "/api/incidents/{incident_id}/steps"),

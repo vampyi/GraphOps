@@ -1,4 +1,3 @@
-import CloudAccess from "./CloudAccess.jsx";
 import { useEffect, useState } from "react";
 import { Info } from "./parts.jsx";
 import { getAccess, getAccessOverview } from "./api.js";
@@ -27,8 +26,6 @@ export default function Access({ onError }) {
   if (!overview) return <div className="view-loading">Loading…</div>;
 
   return (
-    <>
-    <div className="access-cloud"><CloudAccess onError={onError} /></div>
     <div className="access">
       <div className="acc-left panel">
         <div className="panel-head">
@@ -73,7 +70,6 @@ export default function Access({ onError }) {
         </div>
       )}
     </div>
-    </>
   );
 }
 

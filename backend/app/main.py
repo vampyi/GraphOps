@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, cloud_aws, evaluate, exposure, graphinfo, ingest, respond, scenarios, simulate, stream
+from . import access, evaluate, exposure, graphinfo, ingest, respond, scenarios, simulate, stream
 from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -366,34 +366,6 @@ def evaluation():
         result = evaluate.evaluate(s, act["attack_ids"])
         result["scenario"] = act["id"]
         return result
-
-
-@app.get("/api/cloud/aws")
-def cloud_aws_view():
-    """the connected aws account: its identities, their rights and credential use, and what to look at first."""
-    with _driver.session() as s:
-        return cloud_aws.view(s)
-
-
-@app.post("/api/cloud/aws/refresh")
-def cloud_aws_refresh():
-    """read the aws account again with the read-only key, redraw it and re-run the analysis."""
-    if not cloud_aws.configured():
-        raise HTTPException(503, "no AWS key on this server")
-    with _driver.session() as s:
-        if not scenarios.acquire(s, "reading the AWS account"):
-            raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
-        try:
-            try:
-                snap = cloud_aws.fetch()
-            except Exception as exc:
-                log.exception("aws read failed")
-                raise HTTPException(502, f"AWS did not answer: {type(exc).__name__}")
-            cloud_aws.save(s, snap)
-            _reanalyse(s)
-        finally:
-            scenarios.release(s)
-        return cloud_aws.view(s)
 
 
 @app.get("/api/proof")
