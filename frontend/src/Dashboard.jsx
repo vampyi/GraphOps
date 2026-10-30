@@ -5,17 +5,15 @@ import { Info } from "./parts.jsx";
 import ThemeToggle from "./Theme.jsx";
 import Tour, { tourSeen } from "./Tour.jsx";
 import Triage from "./Triage.jsx";
-import Exposure from "./Exposure.jsx";
 import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
 import Evaluation from "./Evaluation.jsx";
 import Ask from "./Ask.jsx";
-import Explore from "./Explore.jsx";
+import AttackPaths from "./AttackPaths.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
-  { id: "exposure", label: "Exposure", hint: "Attack paths and choke points" },
-  { id: "explore", label: "Explore", hint: "Everything one system can reach" },
+  { id: "paths", label: "Attack paths", hint: "Routes to critical assets before any attack, and what one system can reach" },
   { id: "access", label: "Access", hint: "Granted vs used access" },
   { id: "graph", label: "Graph", hint: "Queries and algorithms" },
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
@@ -27,6 +25,7 @@ const VIEW_IDS = VIEWS.map((v) => v.id);
 // the view lives in the url hash (#/console/exposure), so a tab click is shareable and a refresh keeps the view
 function viewFromHash() {
   const seg = (window.location.hash || "").split("/")[2];
+  if (seg === "exposure" || seg === "explore") return "paths";
   return VIEW_IDS.includes(seg) ? seg : "triage";
 }
 
@@ -174,8 +173,7 @@ export default function Dashboard() {
       {touring && <Tour onClose={() => setTouring(false)} />}
 
       {view === "triage" && <Triage key={dataVersion} alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
-      {view === "exposure" && <Exposure key={dataVersion} onError={setError} />}
-      {view === "explore" && <Explore key={dataVersion} onError={setError} />}
+      {view === "paths" && <AttackPaths key={dataVersion} onError={setError} />}
       {view === "access" && <Access key={dataVersion} onError={setError} />}
       {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
       {view === "ask" && <Ask />}
