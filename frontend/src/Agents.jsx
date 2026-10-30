@@ -77,6 +77,24 @@ export default function Agents({ onError }) {
         </div>
       </section>
 
+      {view.history && (
+        <section className="panel ag-hist">
+          <div className="panel-head">
+            <h2>History</h2>
+            <small>{view.history.sessions} sessions · {view.history.tool_calls.toLocaleString()} actions since {new Date(view.history.first).toLocaleDateString()}</small>
+            <Info text="Read from Claude Code's own session logs on this laptop, by the access scan. Only counts are sent: no project names, file contents or commands." />
+          </div>
+          <div className="ag-hist-row">
+            {[["read the open web", "web pages read"], ["AWS command line", "AWS commands run"], ["git push", "git pushes"],
+              ["GitHub CLI", "GitHub CLI calls"], ["read or edited a secret file", "secret files opened"]].map(([k, label]) => (
+              <div key={k} className={k === "read or edited a secret file" ? (view.history.notable[k] ? "crit" : "ok") : ""}>
+                <b>{(view.history.notable[k] || 0).toLocaleString()}</b><span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="ag-grid">
         <section className="panel">
           <div className="panel-head">
@@ -129,20 +147,20 @@ export default function Agents({ onError }) {
           <Info text="Everything the agent can reach, and whether it actually used it. Access it never uses is access you can remove, the same least-privilege idea as the Access tab." />
         </div>
         <table className="ag-table">
-          <thead><tr><th>What</th><th>How</th><th>Opens</th><th>Used</th></tr></thead>
+          <thead><tr><th>What</th><th>How</th><th>Opens</th><th>Last {sm.days} days</th><th>All sessions</th></tr></thead>
           <tbody>
             {view.reach.filter((r) => r.kind !== "Tool").map((r) => (
               <tr key={r.id}><td>{r.name}{r.critical && <span className="ag-crit">critical</span>}</td><td>{HOW[r.how] || r.how}</td>
                 <td>{r.keys.length ? `${r.keys.length} secret file${r.keys.length > 1 ? "s" : ""}` : "–"}</td>
-                <td className={r.used ? "yes" : "no"}>{r.used ? `${r.used}× · ${ago(r.last_used)}` : "not used"}</td></tr>
+                <td className={r.used ? "yes" : "no"}>{r.used ? `${r.used}× · ${ago(r.last_used)}` : "not used"}</td><td>{r.ever ? `${r.ever.toLocaleString()}×` : "never"}</td></tr>
             ))}
             {view.secrets.map((s) => (
               <tr key={s.id}><td><code>{s.name}</code></td><td>secret file</td><td>{s.services.join(", ") || "–"}</td>
-                <td className={s.used ? "warn" : "no"}>{s.used ? `read ${s.used}×` : "not read"}</td></tr>
+                <td className={s.used ? "warn" : "no"}>{s.used ? `read ${s.used}×` : "not read"}</td><td className={s.ever ? "warn" : ""}>{s.ever ? `${s.ever}×` : "never"}</td></tr>
             ))}
             {view.reach.filter((r) => r.kind === "Tool").map((r) => (
               <tr key={r.id}><td>{r.name}</td><td>tool</td><td>–</td>
-                <td className={r.used ? "yes" : "no"}>{r.used ? `${r.used}× · ${ago(r.last_used)}` : "not used"}</td></tr>
+                <td className={r.used ? "yes" : "no"}>{r.used ? `${r.used}× · ${ago(r.last_used)}` : "not used"}</td><td>{r.ever ? `${r.ever.toLocaleString()}×` : "never"}</td></tr>
             ))}
           </tbody>
         </table>

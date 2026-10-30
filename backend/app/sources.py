@@ -212,6 +212,11 @@ def agent_view(session, source_id):
     events = session.run(
         "MATCH (e:SourceEvent {source: $sid}) RETURN e.time AS time, e.tool AS tool, e.target AS target, "
         "e.detail AS detail ORDER BY e.time DESC LIMIT 40", sid=source_id).data()
+    # all past sessions, from the agent's own logs (sent with the access scan): how often each thing was touched
+    hist = inv.get("history") or {}
+    ever = hist.get("targets", {})
+    for row in reach + secrets + services:
+        row["ever"] = ever.get(row["id"], {}).get("count", 0)
     used = sum(1 for r in reach if r["used"]) + sum(1 for s in secrets if s["used"])
     granted = len(reach) + len(secrets)
     return {
@@ -221,4 +226,6 @@ def agent_view(session, source_id):
                     "critical_services": sum(1 for s in services if s["critical"]), "tools": len(inv.get("tools", [])),
                     "granted": granted, "used": used, "days": ACTIVITY_DAYS},
         "attack_paths": paths,
+        "history": {k: hist.get(k) for k in ("sessions", "tool_calls", "first", "last", "notable")} if hist else None,
+        "aws_profiles": inv.get("aws_profiles"),
     }

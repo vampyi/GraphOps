@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from common import config, post
+from hook import target as hook_target
 
 HOME = Path.home()
 SKIP_DIRS = {"node_modules", ".venv", "venv", ".git", "dist", "build", "__pycache__", ".next", "Library"}
@@ -30,7 +31,7 @@ VAR_SERVICE = [("NEO4J", "svc:neo4j"), ("KAFKA", "svc:kafka"), ("SARVAM", "svc:s
                ("RESEND", "svc:resend"), ("GITHUB", "svc:github")]
 SERVICES = {
     "svc:neo4j": ("Neo4j database (GraphOps graph)", True), "svc:kafka": ("Aiven Kafka (event stream)", False),
-    "svc:sarvam": ("Sarvam AI API", False), "svc:aws": ("AWS account", True), "svc:anthropic": ("Anthropic API", False),
+    "svc:sarvam": ("Sarvam AI API", False), "svc:aws": ("AWS", True), "svc:anthropic": ("Anthropic API", False),
     "svc:openai": ("OpenAI API", False), "svc:graphops": ("GraphOps ingest", False), "svc:resend": ("Resend email", False),
     "svc:github": ("GitHub (code; a push to main deploys the live site)", True), "svc:docker": ("Docker registry", False),
     "svc:npm": ("npm registry", False), "svc:kubernetes": ("Kubernetes cluster", True), "svc:ssh": ("SSH servers", True),
@@ -123,13 +124,66 @@ def scan(root):
             tools.append({"id": "tool:mcp:" + re.sub(r"[\W_]+", "-", name.lower()).strip("-"), "name": f"{name} (MCP)", "mcp": True})
     services = [{"id": s, "name": SERVICES.get(s, (s, False))[0], "critical": SERVICES.get(s, (s, False))[1]}
                 for s in sorted(used_services)]
+    # aws profiles configured on this laptop: counted, never named (names can be client companies), never used
+    profiles = [p for p in run(["aws", "configure", "list-profiles"]).split() if p]
+    for svc in services:
+        if svc["id"] == "svc:aws" and profiles:
+            svc["name"] = f"AWS: {len(profiles)} profiles on this laptop (names hidden)"
     return {
         "agent": {"id": agent_id, "name": "Claude Code", "platform": "Anthropic Claude Code", "host": cfg.get("host"),
                   "mode": f"settings default: {perms['defaultMode'] or 'asks before acting'} (a session can start in another mode)",
                   "allow": perms["allow"], "deny": perms["deny"],
                   "home_readable": home_readable},
         "folders": folders, "secrets": secrets, "services": services, "accounts": accounts, "tools": tools,
+        "aws_profiles": len(profiles), "history": history(root),
     }
+
+
+def history(root):
+    """what claude code actually did in past sessions on this laptop, read from its own session logs: counts per
+    thing touched and a few notable kinds of action. no project names, file contents or commands are kept."""
+    logs = list((HOME / ".claude/projects").glob("*/*.jsonl"))
+    targets, notable, calls, first, last = {}, {}, 0, None, None
+    bump = lambda k: notable.__setitem__(k, notable.get(k, 0) + 1)
+    for f in logs:
+        try:
+            lines = f.read_text(errors="ignore").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if '"tool_use"' not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            t = rec.get("timestamp")
+            for c in (rec.get("message") or {}).get("content") or []:
+                if not isinstance(c, dict) or c.get("type") != "tool_use":
+                    continue
+                calls += 1
+                if t:
+                    first, last = min(first or t, t), max(last or t, t)
+                name, inp = c.get("name", ""), c.get("input") or {}
+                cmd = (inp.get("command") or "").strip() if name == "Bash" else ""
+                if re.match(r"^aws\s", cmd):
+                    bump("AWS command line")
+                if re.match(r"^git\s+push", cmd) or " git push" in cmd:
+                    bump("git push")
+                if re.match(r"^gh\s", cmd):
+                    bump("GitHub CLI")
+                if name in ("WebFetch", "WebSearch") or name.startswith("mcp__claude-in-chrome"):
+                    bump("read the open web")
+                tgt, _ = hook_target(name, inp, str(root))
+                if not tgt:
+                    continue
+                if tgt.startswith("secret:"):
+                    bump("read or edited a secret file")
+                row = targets.setdefault(tgt, {"count": 0, "last": None})
+                row["count"] += 1
+                row["last"] = max(row["last"] or t or "", t or "") or None
+    return {"sessions": len(logs), "tool_calls": calls, "first": first, "last": last,
+            "notable": notable, "targets": targets}
 
 
 if __name__ == "__main__":
