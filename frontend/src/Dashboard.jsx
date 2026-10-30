@@ -7,7 +7,6 @@ import Tour, { tourSeen } from "./Tour.jsx";
 import Triage from "./Triage.jsx";
 import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
-import Evaluation from "./Evaluation.jsx";
 import Ask from "./Ask.jsx";
 import AttackPaths from "./AttackPaths.jsx";
 
@@ -15,9 +14,8 @@ const VIEWS = [
   { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
   { id: "paths", label: "Attack paths", hint: "Routes to critical assets before any attack, and what one system can reach" },
   { id: "access", label: "Access", hint: "Granted vs used access" },
-  { id: "graph", label: "Graph", hint: "Queries and algorithms" },
+  { id: "graph", label: "Graph", hint: "The Neo4j graph, its algorithms and the proof that the ranking works" },
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
-  { id: "evaluation", label: "Evaluation", hint: "Ranking quality" },
 ];
 const POLL_MS = 2000;
 const VIEW_IDS = VIEWS.map((v) => v.id);
@@ -26,6 +24,7 @@ const VIEW_IDS = VIEWS.map((v) => v.id);
 function viewFromHash() {
   const seg = (window.location.hash || "").split("/")[2];
   if (seg === "exposure" || seg === "explore") return "paths";
+  if (seg === "evaluation") return "graph";
   return VIEW_IDS.includes(seg) ? seg : "triage";
 }
 
@@ -177,7 +176,6 @@ export default function Dashboard() {
       {view === "access" && <Access key={dataVersion} onError={setError} />}
       {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
       {view === "ask" && <Ask />}
-      {view === "evaluation" && <Evaluation key={dataVersion} onError={setError} dayName={scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.name} />}
 
     </div>
   );

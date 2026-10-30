@@ -1130,3 +1130,11 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .ap-chip.on { background: var(--amber); color: #1a1205; border-style: solid; } .ap-chip.on b { color: inherit; }
 .ap-fixes .recs { flex-direction: row; } .ap-fixes .recs > li { flex: 1; min-width: 0; }
 @media (max-width: 1100px) { .ap-band { grid-template-columns: 1fr; } .ap-fixes .recs { flex-direction: column; } }
+.proof { margin: 12px 0; max-height: none; }
+.proof-head { font-size: 14px; margin: 0 0 10px; } .proof-head b { color: var(--ok); }
+.proof-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.proof-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.proof-table td { padding: 8px; border-bottom: 1px solid var(--border); }
+.proof-table b.go { color: var(--ok); font-weight: 600; } .proof-table .sev { color: var(--red-soft); } .proof-table .vs { color: var(--faint); font-size: 11px; }
+.proof-tag { margin-left: 8px; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
+.proof-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }

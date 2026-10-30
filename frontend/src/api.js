@@ -53,3 +53,4 @@ export const getExplore = (id, maxHops = 8) => call(`/explore/${encodeURICompone
 export const setControl = (body) => post("/controls", body);
 export const getVulnerabilities = () => call("/vulnerabilities");
 export const refreshVulnerabilities = () => post("/vulnerabilities/refresh");
+export const getProof = () => call("/proof");

@@ -300,6 +300,18 @@ def evaluation():
         return result
 
 
+@app.get("/api/proof")
+def proof():
+    """graphops vs severity sorting on every labelled day, measured offline with app.evaluate_all (it reloads the
+    database once per day, so it cannot run on the shared hosted database) and saved in data/proof.json."""
+    import json
+    days = {c["id"]: c["name"] for c in scenarios.catalog()}
+    data = json.loads((ROOT / "data" / "proof.json").read_text())
+    for d in data["days"]:
+        d["name"] = days.get(d["scenario"], d["scenario"])
+    return data
+
+
 @app.get("/api/scenarios")
 def list_scenarios():
     """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""

@@ -29,6 +29,7 @@ FRONTEND_ENDPOINTS = [
     ("GET", "/api/communities"),
     ("GET", "/api/graph/algorithms"),
     ("GET", "/api/graph/full"),
+    ("GET", "/api/proof"),
     ("GET", "/api/graph/reachability-proof"),
     ("GET", "/api/evaluation"),
     ("GET", "/api/learning"),

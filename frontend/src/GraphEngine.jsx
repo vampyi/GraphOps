@@ -17,6 +17,7 @@ function useDark() {
   return dark;
 }
 import { Shape } from "./RingGraph.jsx";
+import Proof from "./Proof.jsx";
 
 const KIND = { User: "User", Group: "Group", Computer: "Computer", CloudResource: "Cloud resource", ServiceIdentity: "Service identity",
   AIAgent: "AI agent", Tool: "Agent tool", Software: "Software", Internet: "Internet" };
@@ -102,6 +103,8 @@ export default function GraphEngine({ onError }) {
           <ViewPanel graph={graph} mode={mode} />
         </div>
       )}
+
+      <Proof />
 
       <div className="ge-proof panel">
         <div className="panel-head">
