@@ -26,14 +26,17 @@ EDGES = {
     "CanPrompt":   {"p": 0.7, "tactic": "AML.TA0005", "technique": "AML.T0051.000", "step": "can prompt"},
     "HasToolAccess": {"p": 0.9, "tactic": None,   "technique": None,        "step": "can call the tool"},
     "CanAccess":   {"p": 0.9, "tactic": "TA0002", "technique": "T1059.001", "step": "can run commands on"},
+    # a real aws account (cloud_aws.py): an identity's rights in it, from its iam policies
+    "AdminOf":     {"p": 0.95, "tactic": "TA0004", "technique": "T1078.004", "step": "is an administrator of"},
+    "CanModify":   {"p": 0.8, "tactic": "TA0003", "technique": "T1078.004", "step": "can change resources in"},
 }
 ATTACK_EDGES = list(EDGES)
 
 # granted = a permission someone holds. observed = something the logs saw happen. a session is an observation
 # (who was signed in when the snapshot was taken), not a right, even though network.json lists it with the grants.
 GRANTED_EDGES = ["MemberOf", "AdminTo", "CanRDP", "GenericAll", "SyncedTo", "Owns", "RunsAs", "RoleOn",
-                 "CanPrompt", "HasToolAccess", "CanAccess"]
-USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool"]
+                 "CanPrompt", "HasToolAccess", "CanAccess", "AdminOf", "CanModify", "HasReadAccess"]
+USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool", "UsedAccess"]
 
 # mitre att&ck enterprise names, checked on attack.mitre.org. the dashboard copy in frontend/src/tactics.js matches.
 TACTICS = {
@@ -98,5 +101,7 @@ def describe_removal(src, edge_type, dst):
         "CanPrompt": f"Limit who in {src} can instruct {dst}",
         "HasToolAccess": f"Remove the tool {dst} from {src}, or require human approval for each call",
         "CanAccess": f"Restrict what the tool {src} can run on {dst}",
+        "AdminOf": f"Replace {src}'s administrator policy with only the permissions it uses",
+        "CanModify": f"Narrow {src}'s write permissions in {dst} to what it uses",
     }
     return fixes.get(edge_type, f"Remove {src} -{edge_type}-> {dst}")

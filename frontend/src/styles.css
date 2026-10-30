@@ -1164,3 +1164,13 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .rs-contacts em { margin-left: auto; font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .rs-sent { margin-left: 10px; font-size: 12px; color: var(--ok); }
 .rs-note { font-size: 12px; color: var(--muted); margin: 6px 0; }
+.access-cloud { padding: 12px 22px 0; }
+.cloud-acc { max-height: none; }
+.cloud-refresh { margin-left: auto; }
+.cloud-findings { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
+.cloud-findings li { display: grid; grid-template-columns: 74px minmax(0, 1fr) minmax(0, 0.8fr); gap: 10px; align-items: center; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.cloud-findings em { font-style: normal; color: var(--muted); font-size: 12px; }
+.sev-pill { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; border-radius: 999px; padding: 1px 8px; text-align: center; border: 1px solid currentColor; }
+.cloud-findings .critical .sev-pill { color: var(--red-soft); } .cloud-findings .high .sev-pill { color: var(--orange); }
+.cloud-findings .medium .sev-pill { color: var(--sev-med); } .cloud-findings .low .sev-pill { color: var(--muted); }
+.cloud-kind { color: var(--faint); font-size: 11px; }
