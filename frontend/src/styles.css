@@ -1,40 +1,41 @@
-/* dark: violet-black with a lavender accent. light: soft grey page, white cards, black primary.
+/* the console wears the landing page's skin: cool graphite paper, one teal signal accent,
+   hairlines instead of boxes, warm colours reserved for actual danger.
    --teal is the accent token (the name predates the palette). */
 :root, :root[data-theme="dark"] {
-  --bg: #08080c; --surface: #111018; --surface2: #18171f; --head: transparent;
-  --border: #1f1d2a; --line: #2b2939; --line-hover: #4b4763; --track: #1d1b27;
-  --text: #f2f1f7; --text-2: #c8c5d6; --muted: #8e8aa3; --faint: #6d6984;
-  --teal: #a99bf7; --teal-dim: #4b3f99; --teal-tint: rgba(169, 155, 247, 0.08);
-  --amber: #f5b14a; --orange: #fb923c; --orange-tint: rgba(251, 146, 60, 0.08); --red: #f0525a; --red-soft: #fda4a8; --red-bg: #2a1015; --rose: #fb7185;
+  --bg: #0a0d10; --surface: #0f1317; --surface2: #151b20; --head: transparent;
+  --border: rgba(255, 255, 255, 0.07); --line: rgba(255, 255, 255, 0.12); --line-hover: rgba(255, 255, 255, 0.26); --track: rgba(255, 255, 255, 0.08);
+  --text: #eef2f5; --text-2: #c3ccd4; --muted: #76828c; --faint: #5a656e;
+  --teal: #2dd4bf; --teal-dim: #1d5e56; --teal-tint: rgba(45, 212, 191, 0.08);
+  --amber: #f0b254; --orange: #f0913c; --orange-tint: rgba(240, 145, 60, 0.08); --red: #f0525a; --red-soft: #fda4a8; --red-bg: #2a1114; --rose: #fb7185;
   --sev-high: #fdba74; --sev-med: #fcd34d;
-  --paper: #b8abfa; --paper-hover: #cbc1ff; --on-paper: #130f24; --muted-on-paper: #40376b;
-  --node: #36324b; --edge: #2a2739; --ring: #1e1c29; --hop2: #7d70d8; --hop3: #534897;
-  --seg-linked: #d2c9ff; --seg-stages: #6ee7b7;
-  --outline: #1f1d2a; --sel: rgba(169, 155, 247, 0.09); --overlay: rgba(4, 3, 9, 0.74);
+  --paper: #e9eef1; --paper-hover: #ffffff; --on-paper: #070b0e; --muted-on-paper: #5d6a72;
+  --node: #37424b; --edge: #222b31; --ring: #1a2126; --hop2: #4ba3cf; --hop3: #2b5a6e;
+  --seg-linked: #99f6e4; --seg-stages: #6ee7b7;
+  --outline: rgba(255, 255, 255, 0.07); --sel: rgba(45, 212, 191, 0.09); --overlay: rgba(5, 8, 10, 0.76);
   --card: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0) 120px), var(--surface);
-  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 10px 30px rgba(0, 0, 0, 0.25);
-  --page-glow: radial-gradient(1100px 520px at 78% -12%, rgba(124, 106, 240, 0.13), transparent 62%);
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 36px -18px rgba(0, 0, 0, 0.8);
+  --page-glow: radial-gradient(1100px 520px at 78% -12%, rgba(45, 212, 191, 0.07), transparent 62%);
   --sans: "Inter", system-ui, -apple-system, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
   --radius: 16px;
-  --ok: #5fd49a; --ok-tint: rgba(95, 212, 154, 0.09);
+  --ok: #34d399; --ok-tint: rgba(52, 211, 153, 0.09);
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #f2f2f3; --surface: #ffffff; --surface2: #f7f7f8; --head: transparent;
-  --border: #ebebee; --line: #dfdfe4; --line-hover: #b6b6c0; --track: #eeeef1;
-  --text: #111114; --text-2: #383841; --muted: #6b6b76; --faint: #8b8b96;
-  --teal: #6a58e6; --teal-dim: #d8d2fb; --teal-tint: rgba(106, 88, 230, 0.06);
-  --amber: #c26a05; --orange: #d4570f; --orange-tint: rgba(212, 87, 15, 0.06); --red: #e0352b; --red-soft: #c22a21; --red-bg: #fdecea; --rose: #e11d48;
+  --bg: #f1f2f0; --surface: #fafbf9; --surface2: #eef0ed; --head: transparent;
+  --border: rgba(17, 21, 24, 0.08); --line: rgba(17, 21, 24, 0.14); --line-hover: rgba(17, 21, 24, 0.32); --track: rgba(17, 21, 24, 0.08);
+  --text: #111518; --text-2: #3f474d; --muted: #717c84; --faint: #97a0a5;
+  --teal: #0f8e82; --teal-dim: #b4dad3; --teal-tint: rgba(15, 142, 130, 0.07);
+  --amber: #b06a08; --orange: #c2570f; --orange-tint: rgba(194, 87, 15, 0.06); --red: #d8352d; --red-soft: #b52a23; --red-bg: #fcecea; --rose: #e11d48;
   --sev-high: #c2410c; --sev-med: #a16207;
-  --paper: #111114; --paper-hover: #2b2b31; --on-paper: #ffffff; --muted-on-paper: #c4c4cc;
-  --node: #c7c7d0; --edge: #dadae0; --ring: #ececf0; --hop2: #8e82ef; --hop3: #bab2f6;
-  --seg-linked: #8e82ef; --seg-stages: #3fa35a;
-  --outline: #e6e6ea; --sel: #f4f2ff; --overlay: rgba(17, 17, 20, 0.32);
+  --paper: #123b3a; --paper-hover: #0d2d2c; --on-paper: #ffffff; --muted-on-paper: #a9c4c0;
+  --node: #c3cbce; --edge: #dde1dd; --ring: #e6e9e5; --hop2: #4594bb; --hop3: #a3c6d6;
+  --seg-linked: #5db9ad; --seg-stages: #2f9e55;
+  --outline: rgba(17, 21, 24, 0.08); --sel: rgba(15, 142, 130, 0.07); --overlay: rgba(17, 21, 24, 0.32);
   --card: var(--surface);
-  --card-shadow: 0 1px 2px rgba(17, 17, 20, 0.04), 0 4px 16px rgba(17, 17, 20, 0.03);
+  --card-shadow: 0 1px 2px rgba(17, 21, 24, 0.05), 0 12px 30px -16px rgba(17, 21, 24, 0.2);
   --ok: #2f9e55; --ok-tint: rgba(47, 158, 85, 0.08);
-  --page-glow: radial-gradient(900px 420px at 88% -14%, rgba(255, 168, 140, 0.20), rgba(214, 170, 255, 0.10) 45%, transparent 70%);
+  --page-glow: radial-gradient(900px 420px at 88% -14%, rgba(45, 212, 191, 0.12), rgba(211, 230, 243, 0.35) 45%, transparent 70%);
   color-scheme: light;
 }
 * { box-sizing: border-box; }

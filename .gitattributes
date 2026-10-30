@@ -1,0 +1,2 @@
+# shell scripts are read inside Linux containers: never let Windows checkouts turn them CRLF
+*.sh text eol=lf
