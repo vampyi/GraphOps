@@ -20,6 +20,7 @@ import json
 import os
 import platform
 import shutil
+import ssl
 import subprocess
 import sys
 import time
@@ -126,11 +127,24 @@ def changes(prev, now):
     return ev
 
 
+def tls():
+    """python from python.org on a mac ships with no root certificates, so https fails until someone runs its
+    Install Certificates script. use the mac's own system roots instead, so the collector works as installed."""
+    ctx = ssl.create_default_context()
+    if ctx.cert_store_stats()["x509_ca"] == 0 and platform.system() == "Darwin":
+        roots = subprocess.run(["security", "find-certificate", "-a", "-p",
+                                "/System/Library/Keychains/SystemRootCertificates.keychain"],
+                               capture_output=True, text=True).stdout
+        if roots:
+            ctx.load_verify_locations(cadata=roots)
+    return ctx
+
+
 def post(cfg, path, body):
     req = urllib.request.Request(cfg["url"].rstrip("/") + path, data=json.dumps(body).encode(), method="POST",
                                  headers={"Content-Type": "application/json", "X-GraphOps-Token": cfg["token"],
                                           "User-Agent": "graphops-osquery"})
-    with urllib.request.urlopen(req, timeout=120) as res:
+    with urllib.request.urlopen(req, timeout=120, context=tls()) as res:
         return json.loads(res.read())
 
 
