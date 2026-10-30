@@ -9,6 +9,7 @@ the alerts and attack come from data/sample_org. the everyday activity around th
 fixed seed, so the same options always give the same stream."""
 import argparse
 import json
+from pathlib import Path
 import random
 import sys
 import time
@@ -28,15 +29,22 @@ ATTACK_PROCESSES = [("2026-10-20T10:01:10", "rundll32.exe", "outlook.exe"),
                     ("2026-10-20T10:11:40", "procdump64.exe", "cmd.exe")]
 
 
-def build(attack=False, seed=7, sample=SAMPLE):
-    """the whole day as a time-ordered list of (topic, key, message)."""
-    network = json.loads((sample / "network.json").read_text())
-    day = json.loads((sample / "alerts.json").read_text())
+def build(attack=False, seed=7, sample=SAMPLE, day_path=None):
+    """the whole day as a time-ordered list of (topic, key, message). day_path picks the labelled day (a scenario
+    file); the default is the sample day."""
+    day_path = Path(day_path) if day_path else sample / "alerts.json"
+    day = json.loads(day_path.read_text())
+    network = day.get("network") or json.loads((sample / "network.json").read_text())
     rng = random.Random(seed)
+    # background activity and inventory follow the chosen day's own date and hours
+    times = sorted(a["time"] for a in day["alerts"])
+    start = min(times[0], DAY_START) if day_path == sample / "alerts.json" else times[0]
+    end = max(times[-1], DAY_END) if day_path == sample / "alerts.json" else times[-1]
+    inventory = (datetime.fromisoformat(start) - timedelta(minutes=5)).isoformat()
     out = []
 
     for n, node in enumerate(x for x in network["nodes"] if x["label"] == "Computer"):
-        msg = {"event_id": f"cm-{n + 1:06d}", "time": INVENTORY_TIME, "source_tool": "CMDB", "kind": "Asset",
+        msg = {"event_id": f"cm-{n + 1:06d}", "time": inventory, "source_tool": "CMDB", "kind": "Asset",
                "id": node["id"], "label": "Computer"}
         msg.update({k: node[k] for k in ("name", "os", "zone", "owner", "critical") if k in node})
         out.append(("cmdb", node["id"], msg))
@@ -53,25 +61,28 @@ def build(attack=False, seed=7, sample=SAMPLE):
             msg = {"event_id": f"id-atk-{n + 1:03d}", "time": ev["time"], "source_tool": "Active Directory",
                    "kind": ev["type"], "src": ev["src"], "dst": ev["dst"], "user": ev.get("user")}
             out.append(("identity", ev["src"], msg))
-        for n, (t, proc, parent) in enumerate(ATTACK_PROCESSES):
+        # the attacker's process starts are scripted for the sample day's laptop only
+        for n, (t, proc, parent) in enumerate(ATTACK_PROCESSES if day_path == sample / "alerts.json" else []):
             out.append(("edr", "laptop-42", {"event_id": f"edr-atk-{n + 1:03d}", "time": t, "source_tool": "EDR",
                                              "kind": "ProcessStart", "host": "laptop-42", "user": "intern_a",
                                              "process": proc, "parent": parent}))
 
-    out.extend(everyday(network, rng))
+    out.extend(everyday(network, rng, start=start, end=end))
     # at the same second, inventory and activity come before the alert they explain
     out.sort(key=lambda x: (x[2]["time"], TOPIC_ORDER.index(x[0]), x[2]["event_id"]))
     return out
 
 
-def everyday(network, rng, count=EVERYDAY_EVENTS):
+def everyday(network, rng, count=EVERYDAY_EVENTS, start=DAY_START, end=DAY_END):
     """normal activity: people logging into their own laptops, programs starting, file share traffic.
     it only repeats routes already seen before the day, so it never creates a new path. remote logons
     are left out because the ranker reads their timing."""
     logins = [e for e in network["observed"] if e["type"] == "LoggedInto"]
     flows = [e for e in network["observed"] if e["type"] == "ConnectedTo"]
-    laptops = [n for n in network["nodes"] if n["label"] == "Computer" and n.get("owner") and n["id"].startswith("laptop-")]
-    start, end = datetime.fromisoformat(DAY_START), datetime.fromisoformat(DAY_END)
+    laptops = [n for n in network["nodes"] if n["label"] == "Computer" and n.get("owner")]
+    if not (logins and flows and laptops):
+        return []  # a day with its own small network (a lab recording) has no everyday background to invent
+    start, end = datetime.fromisoformat(start), datetime.fromisoformat(end)
     span = int((end - start).total_seconds())
     out = []
     for n in range(count):

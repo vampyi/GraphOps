@@ -3,7 +3,9 @@ from app.story import write_story
 
 
 def test_r1_seeds_with_one_command(seeded):
-    assert seeded == {"nodes": 37, "edges": 53, "alerts": 30}
+    # 37 users, groups and machines in network.json plus 13 cloud, ai agent and web server nodes in cloud_ai.json;
+    # 53 network edges plus 16 in cloud_ai.json
+    assert seeded == {"nodes": 50, "edges": 69, "alerts": 30}
 
 
 def test_r2_inbox_shows_every_alert_highest_first(api, seeded):

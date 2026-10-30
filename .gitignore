@@ -41,3 +41,4 @@ data/raw/
 
 # local planning notes
 docs/plan.md
+!backend/tests/fixtures/**/*.zip

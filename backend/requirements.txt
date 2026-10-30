@@ -1,5 +1,5 @@
 neo4j>=5.28
-fastapi>=0.115
+fastapi>=0.143
 uvicorn>=0.32
 anthropic>=0.70
 python-dotenv>=1.0

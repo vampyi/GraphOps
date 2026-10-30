@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neo4j-nvl/base": "^2.0.0",
+    "@neo4j-nvl/react": "^2.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

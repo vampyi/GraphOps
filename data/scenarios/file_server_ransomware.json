@@ -1,0 +1,237 @@
+{
+  "name": "File server ransomware",
+  "description": "Held-out scenario: ransomware that never goes near the critical assets. A sales laptop is compromised and the attacker encrypts the file server, which has no attack path to a critical asset. Meanwhile admins do harmless but unusual-looking work right next to the domain controller. Neutral alert ids; 'scenario' labels are for evaluation only.",
+  "events": [
+    {
+      "src": "laptop-s3",
+      "type": "RemoteLogon",
+      "dst": "server-files",
+      "user": "sales_3",
+      "time": "2026-11-07T13:40:00",
+      "scenario": "attack"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "ALR-9402",
+      "time": "2026-11-07T13:05:00",
+      "name": "Office document dropped an executable",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-9410",
+      "time": "2026-11-07T13:40:00",
+      "name": "First-time logon to file server from this laptop",
+      "severity": "low",
+      "tactic_id": "TA0008",
+      "technique_id": "T1021",
+      "source_tool": "SIEM",
+      "involves": [
+        "server-files",
+        "sales_3"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-9418",
+      "time": "2026-11-07T14:02:00",
+      "name": "Mass file renames with a new extension",
+      "severity": "high",
+      "tactic_id": "TA0040",
+      "technique_id": "T1486",
+      "source_tool": "EDR",
+      "involves": [
+        "server-files",
+        "sales_3"
+      ],
+      "scenario": "attack"
+    },
+    {
+      "id": "ALR-9425",
+      "time": "2026-11-07T10:15:00",
+      "name": "PowerShell remoting to domain controller",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1059",
+      "source_tool": "EDR",
+      "involves": [
+        "dc-01",
+        "it_admin"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9431",
+      "time": "2026-11-07T10:22:00",
+      "name": "Privileged group membership listed",
+      "severity": "low",
+      "tactic_id": "TA0007",
+      "technique_id": "T1069",
+      "source_tool": "SIEM",
+      "involves": [
+        "jump-01",
+        "it_admin"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9437",
+      "time": "2026-11-07T11:30:00",
+      "name": "Scheduled task created on domain controller",
+      "severity": "low",
+      "tactic_id": "TA0002",
+      "technique_id": "T1053",
+      "source_tool": "EDR",
+      "involves": [
+        "dc-01",
+        "it_admin"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9450",
+      "time": "2026-11-07T09:12:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9451",
+      "time": "2026-11-07T09:40:00",
+      "name": "Adware bundle detected",
+      "severity": "high",
+      "tactic_id": "TA0002",
+      "technique_id": "T1204",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-s2",
+        "sales_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9452",
+      "time": "2026-11-07T10:05:00",
+      "name": "Brute force on VPN account",
+      "severity": "high",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s3",
+        "sales_3"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9453",
+      "time": "2026-11-07T10:31:00",
+      "name": "Drive-by download blocked",
+      "severity": "critical",
+      "tactic_id": "TA0001",
+      "technique_id": "T1189",
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9454",
+      "time": "2026-11-07T11:02:00",
+      "name": "Several failed logins",
+      "severity": "low",
+      "tactic_id": "TA0006",
+      "technique_id": "T1110",
+      "source_tool": "SIEM",
+      "involves": [
+        "laptop-hr1",
+        "hr_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9455",
+      "time": "2026-11-07T11:47:00",
+      "name": "PowerShell script ran",
+      "severity": "medium",
+      "tactic_id": "TA0002",
+      "technique_id": "T1059",
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d2",
+        "dev_2"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9456",
+      "time": "2026-11-07T12:20:00",
+      "name": "Known bad IP contacted, blocked",
+      "severity": "high",
+      "tactic_id": "TA0011",
+      "technique_id": "T1105",
+      "source_tool": "Firewall",
+      "involves": [
+        "laptop-s1",
+        "sales_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9457",
+      "time": "2026-11-07T13:15:00",
+      "name": "Large file upload to cloud storage",
+      "severity": "medium",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "Web proxy",
+      "involves": [
+        "laptop-f1",
+        "fin_1"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9458",
+      "time": "2026-11-07T14:05:00",
+      "name": "Port scan from printer",
+      "severity": "high",
+      "tactic_id": "TA0007",
+      "technique_id": "T1046",
+      "source_tool": "EDR",
+      "involves": [
+        "printer-01"
+      ],
+      "scenario": "noise"
+    },
+    {
+      "id": "ALR-9459",
+      "time": "2026-11-07T15:30:00",
+      "name": "Antivirus definitions out of date",
+      "severity": "low",
+      "tactic_id": null,
+      "technique_id": null,
+      "source_tool": "EDR",
+      "involves": [
+        "laptop-d1"
+      ],
+      "scenario": "noise"
+    }
+  ]
+}

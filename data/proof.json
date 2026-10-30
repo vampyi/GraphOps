@@ -1,0 +1,167 @@
+{
+ "measured": "2026-10-30",
+ "how": "python -m app.evaluate_all --json on a local database: each labelled day loaded in turn and ranked; the attack labels are used only to score the ranking",
+ "days": [
+  {
+   "scenario": "sample",
+   "alerts": 30,
+   "attack": 4,
+   "graphops": {
+    "precision_at_5": 0.8,
+    "recall_at_5": 1.0,
+    "first_attack_rank": 1,
+    "last_attack_rank": 4,
+    "false_before_first": 0,
+    "average_precision": 1.0
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 16,
+    "last_attack_rank": 27,
+    "false_before_first": 15,
+    "average_precision": 0.122
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 0
+  },
+  {
+   "scenario": "apt29_day1",
+   "alerts": 38,
+   "attack": 16,
+   "graphops": {
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.312,
+    "first_attack_rank": 1,
+    "last_attack_rank": 38,
+    "false_before_first": 0,
+    "average_precision": 0.711
+   },
+   "severity": {
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.312,
+    "first_attack_rank": 1,
+    "last_attack_rank": 37,
+    "false_before_first": 0,
+    "average_precision": 0.872
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 22
+  },
+  {
+   "scenario": "backup_account_abuse",
+   "alerts": 16,
+   "attack": 4,
+   "graphops": {
+    "precision_at_5": 0.8,
+    "recall_at_5": 1.0,
+    "first_attack_rank": 1,
+    "last_attack_rank": 4,
+    "false_before_first": 0,
+    "average_precision": 1.0
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 10,
+    "last_attack_rank": 15,
+    "false_before_first": 9,
+    "average_precision": 0.2
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 0
+  },
+  {
+   "scenario": "file_server_ransomware",
+   "alerts": 16,
+   "attack": 3,
+   "graphops": {
+    "precision_at_5": 0.4,
+    "recall_at_5": 0.667,
+    "first_attack_rank": 3,
+    "last_attack_rank": 6,
+    "false_before_first": 2,
+    "average_precision": 0.411
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 6,
+    "last_attack_rank": 15,
+    "false_before_first": 5,
+    "average_precision": 0.189
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 0
+  },
+  {
+   "scenario": "finance_breach",
+   "alerts": 17,
+   "attack": 5,
+   "graphops": {
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "first_attack_rank": 1,
+    "last_attack_rank": 5,
+    "false_before_first": 0,
+    "average_precision": 1.0
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 8,
+    "last_attack_rank": 15,
+    "false_before_first": 7,
+    "average_precision": 0.263
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 0
+  },
+  {
+   "scenario": "missed_detections",
+   "alerts": 13,
+   "attack": 3,
+   "graphops": {
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0,
+    "first_attack_rank": 1,
+    "last_attack_rank": 3,
+    "false_before_first": 0,
+    "average_precision": 1.0
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 7,
+    "last_attack_rank": 12,
+    "false_before_first": 6,
+    "average_precision": 0.198
+   },
+   "attack_incidents": 2,
+   "noise_in_attack_incidents": 0
+  },
+  {
+   "scenario": "slow_burn",
+   "alerts": 14,
+   "attack": 4,
+   "graphops": {
+    "precision_at_5": 0.8,
+    "recall_at_5": 1.0,
+    "first_attack_rank": 1,
+    "last_attack_rank": 5,
+    "false_before_first": 0,
+    "average_precision": 0.887
+   },
+   "severity": {
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "first_attack_rank": 7,
+    "last_attack_rank": 14,
+    "false_before_first": 6,
+    "average_precision": 0.245
+   },
+   "attack_incidents": 4,
+   "noise_in_attack_incidents": 1
+  }
+ ]
+}

@@ -1,224 +1,200 @@
-import { useEffect, useMemo, useState } from "react";
-import { getAlerts, getBlastRadius, getIncident, setVerdict, writeStory } from "./api.js";
-import { SEVERITY_RANK } from "./tactics.js";
-import RingGraph from "./RingGraph.jsx";
+import { useEffect, useRef, useState } from "react";
+import { getAlerts, getLive, getScenarios, loadScenario, replayReset, replayStart } from "./api.js";
 import Logo from "./Logo.jsx";
+import { Info } from "./parts.jsx";
 import ThemeToggle from "./Theme.jsx";
 import Tour, { tourSeen } from "./Tour.jsx";
-import { AlertStrip, MiniBar, ReasonBars, StageTimeline } from "./parts.jsx";
+import Triage from "./Triage.jsx";
+import Access from "./Access.jsx";
+import GraphEngine from "./GraphEngine.jsx";
+import Ask from "./Ask.jsx";
+import AttackPaths from "./AttackPaths.jsx";
+
+const VIEWS = [
+  { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
+  { id: "paths", label: "Attack paths", hint: "Routes to critical assets before any attack, and what one system can reach" },
+  { id: "access", label: "Access", hint: "Granted vs used access" },
+  { id: "graph", label: "Graph", hint: "The Neo4j graph, its algorithms and the proof that the ranking works" },
+  { id: "ask", label: "Ask", hint: "Questions in plain language" },
+];
+const POLL_MS = 2000;
+const VIEW_IDS = VIEWS.map((v) => v.id);
+
+// the view lives in the url hash (#/console/exposure), so a tab click is shareable and a refresh keeps the view
+function viewFromHash() {
+  const seg = (window.location.hash || "").split("/")[2];
+  if (seg === "exposure" || seg === "explore") return "paths";
+  if (seg === "evaluation") return "graph";
+  return VIEW_IDS.includes(seg) ? seg : "triage";
+}
 
 export default function Dashboard() {
+  const [view, setView] = useState(viewFromHash);
+  const goView = (id) => { window.location.hash = id === "triage" ? "#/console" : `#/console/${id}`; setView(id); };
+  useEffect(() => {
+    const sync = () => setView(viewFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
   const [alerts, setAlerts] = useState([]);
-  const [sortBy, setSortBy] = useState("score");
-  const [selected, setSelected] = useState(null);
-  const [blast, setBlast] = useState(null);
-  const [incident, setIncident] = useState(null);
-  const [story, setStory] = useState(null);
-  const [node, setNode] = useState(null);
-  const [maxHop, setMaxHop] = useState(3);
+  const [changed, setChanged] = useState(new Set());
+  const [live, setLive] = useState({ on: false, seq: 0, replaying: false, ingested: 0, attack: true });
   const [touring, setTouring] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [scenarios, setScenarios] = useState(null);
+  const [switching, setSwitching] = useState(false);
+  const switchingRef = useRef(false);
+  const [dataVersion, setDataVersion] = useState(0); // bumped after a scenario loads, so every tab refetches
   const [error, setError] = useState(null);
+  const timer = useRef(null);
+  const sending = useRef(false); // true while the replay request is still sending the day (it can take minutes on vercel)
 
-  const load = () => getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
+  const load = () =>
+    getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (!tourSeen()) setTouring(true); }, []);
-  useEffect(() => { if (alerts.length && !selected) open(alerts[0]); }, [alerts]); // eslint-disable-line
+  useEffect(() => { getScenarios().then(setScenarios).catch(() => {}); }, []);
+  // the hosted demo has one shared database: follow a day another visitor loaded, and say when it is mid-reload
+  const [busy, setBusy] = useState(null);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (switchingRef.current || live.on) return;
+      getScenarios().then((s) => {
+        setBusy(s.busy);
+        setScenarios((cur) => {
+          if (cur && !s.busy && s.active !== cur.active) { load(); setDataVersion((v) => v + 1); }
+          return s;
+        });
+      }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(t);
+  }, [live.on]); // eslint-disable-line
 
-  const shown = useMemo(() => {
-    const list = [...alerts];
-    if (sortBy === "severity") list.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.time.localeCompare(b.time));
-    return list;
-  }, [alerts, sortBy]);
-
-  const scoreRank = useMemo(() => Object.fromEntries(alerts.map((a, i) => [a.id, i + 1])), [alerts]);
-  const sevRank = useMemo(() => {
-    const s = [...alerts].sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.time.localeCompare(b.time));
-    return Object.fromEntries(s.map((a, i) => [a.id, i + 1]));
-  }, [alerts]);
-
-  const kpis = useMemo(() => {
-    const incidents = {};
-    alerts.forEach((a) => { (incidents[a.incident_id] ||= []).push(a); });
-    const multi = Object.values(incidents).filter((g) => g.length > 1);
-    const top = Object.entries(incidents).sort((a, b) => Math.max(...b[1].map((x) => x.score)) - Math.max(...a[1].map((x) => x.score)))[0];
-    return {
-      alerts: alerts.length,
-      incidents: multi.length,
-      near: alerts.filter((a) => (a.breakdown?.hops || 0) > 0).length,
-      newRoutes: alerts.filter((a) => (a.breakdown?.never_taken || 0) > 0).length,
-      top: top ? { id: top[0], size: top[1].length } : null,
-    };
-  }, [alerts]);
-
-  async function open(alert) {
-    setSelected(alert); setStory(null); setNode(null); setError(null);
+  // show the chosen scenario straight away, keep the analyst on the tab they are on, and redraw it once the
+  // server has rebuilt the graph for that day
+  const switchScenario = async (id) => {
+    const before = scenarios?.active;
+    setError(null);
+    setSwitching(true);
+    switchingRef.current = true;
+    setScenarios((s) => (s ? { ...s, active: id } : s));
     try {
-      const [b, i] = await Promise.all([getBlastRadius(alert.id), getIncident(alert.incident_id)]);
-      setBlast(b); setIncident(i);
-    } catch (e) { setError(e.message); }
-  }
-
-  const draftStory = async () => {
-    setBusy(true);
-    try { setStory(await writeStory(incident.id)); } catch (e) { setError(e.message); }
-    setBusy(false);
+      await loadScenario(id);
+      setLive((l) => ({ ...l, on: false }));
+      await load(); // the new day's alerts must be in place before the tabs redraw, or triage opens a stale alert
+      setDataVersion((v) => v + 1);
+    } catch (e) {
+      setScenarios((s) => (s ? { ...s, active: before } : s));
+      setError(e.message.startsWith("409") ? "Someone else is reloading the demo data. Try again in a minute."
+        : `Could not load that scenario. ${e.message}`);
+    }
+    setSwitching(false);
+    switchingRef.current = false;
   };
+  useEffect(() => { if (!tourSeen()) setTouring(true); }, []);
 
-  const mark = async (status) => {
-    await setVerdict(selected.id, status);
-    setSelected({ ...selected, status });
-    load();
+  // live replay: poll /api/live, merge new or changed alerts, flag what moved
+  useEffect(() => {
+    if (!live.on) return;
+    let seq = live.seq;
+    let stopped = false;
+    // ask again only after the previous answer arrives, so slow answers never pile up
+    const tick = async () => {
+      try {
+        const data = await getLive(seq);
+        if (stopped) return;
+        seq = data.seq;
+        if (data.alerts.length) {
+          setAlerts((prev) => {
+            const byId = new Map(prev.map((a) => [a.id, a]));
+            data.alerts.forEach((a) => byId.set(a.id, a));
+            return [...byId.values()].sort((x, y) => y.score - x.score || x.time.localeCompare(y.time));
+          });
+          setChanged(new Set(data.alerts.map((a) => a.id)));
+        }
+        setLive((l) => ({ ...l, seq, replaying: sending.current || data.replaying, ingested: l.ingested + data.ingested }));
+      } catch (e) { if (!stopped) setError(e.message); }
+      if (!stopped) timer.current = setTimeout(tick, POLL_MS);
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(timer.current); };
+  }, [live.on]); // eslint-disable-line
+
+  const startReplay = async (attack) => {
+    setError(null);
+    try {
+      setAlerts([]); setChanged(new Set());
+      await replayReset(scenarios?.active);
+      send(attack, 60);
+      setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack });
+    } catch (e) {
+      setError(e.message.startsWith("409") ? "Someone else is reloading the demo data. Try again in a minute."
+        : `Could not start the replay. ${e.message}`);
+    }
   };
-
-  const nodeInfo = node && blast?.nodes.find((n) => n.id === node);
-  const pathEnd = blast?.attack_path?.nodes?.at(-1);
+  // start sending the day without waiting for it to finish; alerts appear through polling as they land
+  const send = (attack, speed) => {
+    sending.current = true;
+    replayStart(attack, speed, scenarios?.active)
+      .catch((e) => setError(`The replay stopped early. ${e.message}`))
+      .finally(() => { sending.current = false; });
+  };
+  const stopLive = () => { setLive((l) => ({ ...l, on: false })); load(); };
 
   return (
     <div className="dash">
       <nav className="dnav">
         <a className="brand" href="#/"><Logo />GraphOps</a>
-        <span className="tag">Sample organisation · synthetic data</span>
-        <button className="tour-btn" onClick={() => setTouring(true)}>Take the tour</button>
-        <ThemeToggle />
-        <div className="sort" data-tour="sort">
-          <span>Rank alerts by</span>
-          <button className={sortBy === "score" ? "on" : ""} onClick={() => setSortBy("score")}>GraphOps score</button>
-          <button className={sortBy === "severity" ? "on" : ""} onClick={() => setSortBy("severity")}>Severity only</button>
+        <div className="views" role="tablist" data-tour="views">
+          {VIEWS.map((v) => (
+            <button key={v.id} role="tab" aria-selected={view === v.id} title={v.hint}
+              className={view === v.id ? "on" : ""} onClick={() => goView(v.id)}>{v.label}</button>
+          ))}
+        </div>
+        <div className="dnav-right">
+          <LiveControls live={live} onStart={() => startReplay(true)} onStop={stopLive} />
+          <button className="tour-btn" onClick={() => setTouring(true)}>Help</button>
+          <ThemeToggle />
         </div>
       </nav>
-      {error && <div className="error">{error}</div>}
+      <div className="subnav">
+        <span className="tag">Synthetic data</span>
+        {scenarios && scenarios.scenarios.length > 1 && (
+          <label className="scenario-pick">Scenario
+            <select value={scenarios.active} disabled={switching} onChange={(e) => switchScenario(e.target.value)}>
+              {scenarios.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+            </select>
+          </label>
+        )}
+        {switching && <span className="subnav-hint loading">Loading scenario…</span>}
+        {!switching && busy && <span className="subnav-hint loading">Another visitor is reloading the demo data…</span>}
+        <span className="subnav-hint">{VIEWS.find((v) => v.id === view).hint}</span>
+      </div>
+      {error && <div className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></div>}
       {touring && <Tour onClose={() => setTouring(false)} />}
 
-      <section className="kpis" data-tour="kpis">
-        <div className="kpi"><div className="kpi-k"><i />Alerts</div><div className="kpi-v">{kpis.alerts}</div><div className="kpi-l">today, none hidden</div></div>
-        <div className="kpi"><div className="kpi-k"><i />Incidents</div><div className="kpi-v">{kpis.incidents}</div><div className="kpi-l">groups of linked alerts</div></div>
-        <div className="kpi tint"><div className="kpi-k"><i />Near critical assets</div><div className="kpi-v">{kpis.near}</div><div className="kpi-l">alerts within 3 steps of a critical asset</div></div>
-        <div className="kpi warn"><div className="kpi-k"><i />New routes</div><div className="kpi-v">{kpis.newRoutes}</div><div className="kpi-l">{kpis.newRoutes === 1 ? "alert" : "alerts"} on a route never used before</div></div>
-      </section>
+      {view === "triage" && <Triage key={dataVersion} alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
+      {view === "paths" && <AttackPaths key={dataVersion} onError={setError} />}
+      {view === "access" && <Access key={dataVersion} onError={setError} />}
+      {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
+      {view === "ask" && <Ask />}
 
-      <div data-tour="strip"><AlertStrip alerts={alerts} incidentId={incident?.id} selectedId={selected?.id} onPick={open} /></div>
+    </div>
+  );
+}
 
-      <main className="dmain">
-        <section className="panel inbox" data-tour="inbox">
-          <div className="panel-head">
-            <h2>Alert inbox</h2>
-            <small>{sortBy === "score" ? "sorted by graph position" : "sorted by the tools' severity"}</small>
-          </div>
-          <ol>
-            {shown.map((a, i) => {
-              const moved = sortBy === "severity" ? scoreRank[a.id] : sevRank[a.id];
-              return (
-                <li key={a.id} className={`${selected?.id === a.id ? "sel" : ""} ${incident && a.incident_id === incident.id ? "inc" : ""}`} onClick={() => open(a)}>
-                  <div className="row1">
-                    <span className="rank">{incident && a.incident_id === incident.id && <i className="inc-dot" title="part of the selected incident" />}#{i + 1}</span>
-                    <span className="score">{Math.round(a.score)}</span>
-                    <span className="name">{a.name}</span>
-                  </div>
-                  <div className="row2">
-                    <span className={`sev ${a.severity}`}>{a.severity}</span>
-                    <span className="who">{a.involves.join(" · ")}</span>
-                    <span className="time">{a.time.slice(11, 16)}</span>
-                    {a.status !== "new" && <span className={`verdict ${a.status}`}>{a.status === "real" ? "real" : "false alarm"}</span>}
-                  </div>
-                  <MiniBar breakdown={a.breakdown} />
-                  {moved !== i + 1 && <div className="moved">{sortBy === "score" ? `#${moved} when sorted by severity` : `#${moved} in GraphOps`}</div>}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-
-        <section className="panel graph-panel" data-tour="graph">
-          <div className="panel-head">
-            <h2>Blast radius</h2>
-            <small>what an attacker on this alert's machine or account could reach</small>
-          </div>
-          <div className="hops" data-tour="hops">
-              {[1, 2, 3].map((h) => {
-                const within = blast ? blast.nodes.filter((n) => n.hop > 0 && n.hop <= h) : [];
-                return (
-                  <button key={h} className={maxHop === h ? "on" : ""} onClick={() => setMaxHop(h)}>
-                    {h} hop{h > 1 ? "s" : ""}
-                    <span>{within.length} reachable{within.some((n) => n.critical) ? `, ${within.filter((n) => n.critical).length} critical` : ""}</span>
-                  </button>
-                );
-              })}
-            </div>
-          {blast?.attack_path && (
-            <div className="path-banner">
-              <span className="path-dot" />
-              Shortest attack path to <b>{pathEnd}</b>:{" "}
-              {blast.attack_path.nodes.map((id, i) => (
-                <span key={id}>{i > 0 && <em> {blast.attack_path.types[i - 1]} </em>}<code>{id}</code></span>
-              ))}
-            </div>
-          )}
-          <div className="graph-wrap">
-            <RingGraph data={blast} selectedNode={node} onSelectNode={setNode} maxHop={maxHop} />
-            {nodeInfo && (
-              <div className="inspector">
-                <button className="x" onClick={() => setNode(null)}>×</button>
-                <div className="insp-kind">{nodeInfo.kind}{nodeInfo.critical ? " · critical asset" : ""}</div>
-                <div className="insp-name">{nodeInfo.id}</div>
-                <dl>
-                  <dt>Hops from this alert</dt><dd>{nodeInfo.hop}</dd>
-                  <dt>Steps to nearest critical asset</dt><dd>{nodeInfo.hops_to_critical ?? "none reachable"}</dd>
-                  <dt>Critical assets within 3 hops</dt><dd>{nodeInfo.critical_within_3 ?? 0}</dd>
-                  <dt>Choke point score</dt><dd>{nodeInfo.choke_score}</dd>
-                  {nodeInfo.zone && <><dt>Zone</dt><dd>{nodeInfo.zone.replace("_", " ")}</dd></>}
-                  {nodeInfo.owner && <><dt>Owner</dt><dd>{nodeInfo.owner}</dd></>}
-                </dl>
-              </div>
-            )}
-          </div>
-          <div className="legend">
-            <span><i className="lg alerted" />on the alert</span>
-            <span><i className="lg hop" />reachable</span>
-            <span><i className="lg critical" />critical asset</span>
-            <span><i className="lg path" />attack path</span>
-            <span className="shapes">● user ■ group ◆ computer</span>
-          </div>
-        </section>
-
-        <section className="panel side" data-tour="side">
-          {selected && (
-            <>
-              <div className="sel-head">
-                <div className="sel-score">{Math.round(selected.score)}</div>
-                <div>
-                  <h2>{selected.name}</h2>
-                  <small>{selected.involves.join(" · ")} · {selected.time.slice(11, 16)} · {selected.source_tool}</small>
-                </div>
-              </div>
-              <div className="verdicts">
-                <button className={selected.status === "real" ? "on real" : ""} onClick={() => mark("real")}>Real attack</button>
-                <button className={selected.status === "false" ? "on false" : ""} onClick={() => mark("false")}>False alarm</button>
-              </div>
-
-              <div data-tour="why">
-                <h3>Why it ranks here</h3>
-                <ReasonBars breakdown={selected.breakdown} />
-              </div>
-
-              {incident && (
-                <>
-                  <h3>Incident {incident.id} <small>{incident.alerts.length} linked alert{incident.alerts.length > 1 ? "s" : ""}</small></h3>
-                  <StageTimeline alerts={incident.alerts} selectedId={selected.id} />
-                  <button className="btn primary block" disabled={busy} onClick={draftStory}>{busy ? "Writing the story..." : "Draft the incident story with AI"}</button>
-                  {story && (
-                    <div className="story">
-                      <div className="story-head">{story.source === "llm" ? "Drafted by AI. Needs analyst approval." : "AI is not available right now, so these are the incident's facts."}</div>
-                      {story.sentences.map((s, i) => <p key={i}>{s.text} {s.cites.map((c) => <code key={c}>{c}</code>)}</p>)}
-                      {story.dropped?.length > 0 && <div className="dropped">{story.dropped.length} sentence(s) removed for citing facts outside this incident.</div>}
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </section>
-      </main>
+function LiveControls({ live, onStart, onStop }) {
+  if (live.on) {
+    return (
+      <div className="live-controls on" data-tour="live">
+        <span className={`live-dot ${live.replaying ? "pulse" : "done"}`} />
+        <span className="live-label">{live.replaying ? "Live" : "Stream complete"} · {live.ingested} events</span>
+        <button onClick={onStop}>Stop</button>
+      </div>
+    );
+  }
+  return (
+    <div className="live-controls" data-tour="live">
+      <button onClick={onStart}><span className="live-dot" />Stream live</button>
+      <Info align="right" text="Replays the selected scenario's telemetry through Kafka as if it were happening now. Alerts are scored and linked as they arrive." />
     </div>
   );
 }
