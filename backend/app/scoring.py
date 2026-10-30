@@ -188,10 +188,10 @@ def score_all(session):
     comm = {r["id"]: r["c"] for r in session.run(
         "MATCH (n) WHERE n.community IS NOT NULL RETURN n.id AS id, n.community AS c")}
     previous = [{"id": r["id"], "members": set(r["members"]), "status": r["status"],
-                 "notes": r["notes"], "opened_at": r["opened_at"]}
+                 "notes": r["notes"], "opened_at": r["opened_at"], "response": r["response"]}
                 for r in session.run(
                     "MATCH (i:Incident) OPTIONAL MATCH (i)<-[:PartOf]-(a:Alert) "
-                    "RETURN i.id AS id, collect(a.id) AS members, i.status AS status, i.notes AS notes, i.opened_at AS opened_at")]
+                    "RETURN i.id AS id, collect(a.id) AS members, i.status AS status, i.notes AS notes, i.opened_at AS opened_at, i.response AS response")]
     incidents, rows = [], []
     for group in sorted(groups, key=lambda g: min(a["time"] for a in g)):
         gid = incident_key(group)
@@ -203,6 +203,7 @@ def score_all(session):
             "id": gid, "size": len(group), "score": max(sc for _, sc, _, _ in scored),
             "opened_at": carried.get("opened_at") or min(a["time"] for a in group),
             "status": carried.get("status") or "open", "notes": carried.get("notes"),
+            "response": carried.get("response"),
             "communities": communities, "lateral": len(communities) > 1, "stages": stages_in_order(group),
         })
         rows += [{"id": a["id"], "inc": gid, "score": sc, "reasons": reasons, "f": f} for a, sc, reasons, f in scored]
@@ -213,7 +214,7 @@ def score_all(session):
         WITH count(*) AS _
         UNWIND $incidents AS i
         CREATE (:Incident {id: i.id, size: i.size, score: i.score, opened_at: i.opened_at,
-                           status: i.status, notes: i.notes, communities: i.communities,
+                           status: i.status, notes: i.notes, response: i.response, communities: i.communities,
                            lateral: i.lateral, stages: i.stages})
         WITH count(*) AS _
         UNWIND $rows AS row

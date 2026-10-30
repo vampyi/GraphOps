@@ -3,6 +3,7 @@ import { getBlastRadius, getIncident, getLanguages, getReport, patchAsset, patch
 import { SEVERITY_RANK } from "./tactics.js";
 import RingGraph from "./RingGraph.jsx";
 import { Cites, Info, MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
+import Respond from "./Respond.jsx";
 
 const BLAST_MODES = [
   { id: "all", label: "All attack edges", hint: "Every route an attacker could follow" },
@@ -26,6 +27,7 @@ export const TRIAGE_TABS = [
   { id: "why", label: "Why it ranks" },
   { id: "blast", label: "Blast radius" },
   { id: "incident", label: "Incident" },
+  { id: "respond", label: "Respond" },
   { id: "story", label: "Story" },
 ];
 const VERDICT_LABEL = { real: "real", benign: "benign", false: "false alarm" };
@@ -258,6 +260,7 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
                 {tab === "incident" && (
                   <IncidentTab incident={incident} selectedId={selected.id} onStatus={setStatus} onReport={openReport} />
                 )}
+                {tab === "respond" && <Respond incident={incident} onError={onError} onDraft={setReport} />}
                 {tab === "story" && <StoryTab incident={incident} story={story} busy={busy} onDraft={draftStory} lang={lang} onLang={setLang} languages={languages} />}
               </div>
             </>

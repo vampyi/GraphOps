@@ -1141,3 +1141,26 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .inc-entry { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 12px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); border-left: 3px solid var(--red); background: var(--red-bg); font-size: 13px; }
 .inc-entry.unseen { border-left-color: var(--amber); background: var(--orange-tint); }
 .inc-entry-l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+
+/* ===== respond ===== */
+.rs-confirm, .rs-clock { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
+.rs-confirm div, .rs-clock div { display: flex; flex-direction: column; gap: 2px; }
+.rs-confirm span { font-size: 12px; color: var(--muted); }
+.rs-clock { border-left: 3px solid var(--amber); background: var(--orange-tint); }
+.rs-clock.late { border-left-color: var(--red); background: var(--red-bg); }
+.rs-clock b { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+.rs-l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; display: flex; gap: 4px; align-items: center; }
+.rs-list, .rs-steps { list-style: none; margin: 0 0 6px; padding: 0; }
+.rs-list li { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.rs-list li span { color: var(--muted); }
+.rs-steps li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.rs-steps label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.rs-steps li.done span { color: var(--muted); text-decoration: line-through; }
+.rs-steps small { margin-left: 24px; color: var(--ok); font-size: 11px; }
+.rs-contacts { display: grid; gap: 4px; margin-bottom: 8px; }
+.rs-contacts label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+.rs-contacts label.on { border-color: var(--teal); background: var(--teal-tint); }
+.rs-contacts small { margin-left: 6px; color: var(--muted); }
+.rs-contacts em { margin-left: auto; font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.rs-sent { margin-left: 10px; font-size: 12px; color: var(--ok); }
+.rs-note { font-size: 12px; color: var(--muted); margin: 6px 0; }

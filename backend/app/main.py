@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
+from . import access, evaluate, exposure, graphinfo, ingest, respond, scenarios, simulate, stream
 from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -194,6 +194,70 @@ def patch_incident(incident_id: str, body: IncidentPatch):
         if not r:
             raise HTTPException(404, "incident not found")
         return {"id": incident_id, "status": r["status"], "notes": r["notes"]}
+
+
+# respond to a confirmed incident: who to tell, containment steps, the CERT-In clock and a real email
+@app.get("/api/incidents/{incident_id}/respond")
+def respond_plan(incident_id: str):
+    with _driver.session() as s:
+        p = respond.plan(s, incident_id)
+        if p is None:
+            raise HTTPException(404, "incident not found")
+        return p
+
+
+@app.post("/api/incidents/{incident_id}/confirm")
+def respond_confirm(incident_id: str):
+    """mark the incident confirmed: this starts the 6-hour CERT-In clock."""
+    with _driver.session() as s:
+        if respond.confirm(s, incident_id) is None:
+            raise HTTPException(404, "incident not found")
+        return respond.plan(s, incident_id)
+
+
+class StepRequest(BaseModel):
+    step: str
+    requested: bool = True
+
+
+@app.post("/api/incidents/{incident_id}/steps")
+def respond_step(incident_id: str, body: StepRequest):
+    with _driver.session() as s:
+        if respond.request_step(s, incident_id, body.step[:200], body.requested) is None:
+            raise HTTPException(404, "incident not found")
+        return respond.plan(s, incident_id)
+
+
+@app.get("/api/incidents/{incident_id}/cert-in")
+def respond_cert_in(incident_id: str):
+    with _driver.session() as s:
+        d = respond.cert_in_draft(s, incident_id)
+        if d is None:
+            raise HTTPException(404, "incident not found")
+        return d
+
+
+class Notify(BaseModel):
+    to: list[str]
+    site_url: str = ""
+
+
+@app.post("/api/incidents/{incident_id}/notify")
+def respond_notify(incident_id: str, body: Notify):
+    """email the chosen people from NOTIFY_CONTACTS. only listed contacts can be reached, a few per incident."""
+    if not (os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD") and respond.contacts()):
+        raise HTTPException(503, "email is not set up on this server")
+    with _driver.session() as s:
+        try:
+            sent = respond.send_email(s, incident_id, body.to, body.site_url[:200])
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except Exception:
+            log.exception("email failed")
+            raise HTTPException(502, "the email service did not accept the message")
+        if sent is None:
+            raise HTTPException(404, "incident not found")
+        return {"sent": sent, "plan": respond.plan(s, incident_id)}
 
 
 class Verdict(BaseModel):
