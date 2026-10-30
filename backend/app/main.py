@@ -1,8 +1,10 @@
 """backend server: the api the dashboard calls."""
 import datetime as dt
+import json
 import logging
 import os
 import threading
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -509,19 +511,26 @@ class Replay(BaseModel):
     scenario: str | None = None  # which labelled day to stream; the dashboard sends the one selected
 
 
+class ReplayReset(BaseModel):
+    scenario: str | None = None
+
+
 @app.post("/api/replay/reset")
-def replay_reset():
-    """stop any replay and start a fresh day: the network only, no alerts yet."""
+def replay_reset(body: ReplayReset | None = None):
+    """stop any replay and start a fresh day: the network only, no alerts yet. a scenario that brings its own network
+    (a real lab recording) starts from that network."""
     _stop_replay()
+    path = scenarios._path_for(body.scenario) if body and body.scenario else None
+    own = json.loads(Path(path).read_text()).get("network") if path else None
     with _driver.session() as s:
         if not scenarios.acquire(s, "starting a live stream"):
             raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
         try:
             if _KAFKA:
                 with _consumer_lock:
-                    stream.reset(s, _get_consumer())
+                    stream.reset(s, _get_consumer(), network=own)
             else:
-                stream.reset(s)
+                stream.reset(s, network=own)
         except Exception:
             scenarios.release(s)
             raise

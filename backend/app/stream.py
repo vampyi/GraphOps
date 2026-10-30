@@ -183,10 +183,11 @@ def skip_to_end(session, cons, timeout=5.0):
     session.run("UNWIND $rows AS row CREATE (:StreamOffset {topic: row.t, partition: row.p, offset: row.o})", rows=rows)
 
 
-def reset(session, cons=None):
-    """start a fresh live day: the network only, no alerts, and read positions at the end of every topic."""
+def reset(session, cons=None, network=None):
+    """start a fresh live day: the network only, no alerts, and read positions at the end of every topic. network is
+    the day's own network when it brings one (a real lab recording); otherwise the sample organisation."""
     from .seed import load_network
-    load_network(session)
+    load_network(session, network=network)
     run_all(session)
     session.run("CREATE (:StreamState {id: 'live', seq: 0, rescore: false, network: false})")
     if cons is not None:

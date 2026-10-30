@@ -39,7 +39,7 @@ USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool"]
 TACTICS = {
     "TA0043": "Reconnaissance", "TA0042": "Resource Development", "TA0001": "Initial Access",
     "TA0002": "Execution", "TA0003": "Persistence", "TA0004": "Privilege Escalation",
-    "TA0005": "Defense Evasion", "TA0112": "Defense Impairment", "TA0006": "Credential Access",
+    "TA0005": "Stealth", "TA0112": "Defense Impairment", "TA0006": "Credential Access",
     "TA0007": "Discovery", "TA0008": "Lateral Movement", "TA0009": "Collection",
     "TA0011": "Command and Control", "TA0010": "Exfiltration", "TA0040": "Impact",
     # mitre atlas (ai systems), checked in atlas-data 5.6.0

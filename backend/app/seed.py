@@ -16,8 +16,9 @@ EXTENSIONS = [SAMPLE / "cloud_ai.json"]
 
 
 def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "alerts.json"):
-    load_network(session, network_path)
     alerts = json.loads(alerts_path.read_text())
+    # a day may bring its own network (a real lab recording has its own machines); otherwise the sample organisation
+    load_network(session, network_path, network=alerts.get("network"))
     # new activity on the sample day: an edge seen for the first time keeps first_seen = time
     for event in alerts["events"]:
         _check_type(event["type"])
@@ -42,11 +43,13 @@ def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "al
     return counts(session)
 
 
-def load_network(session, network_path=SAMPLE / "network.json"):
+def load_network(session, network_path=SAMPLE / "network.json", network=None):
     """wipe the database and load the network only: users, machines, groups, permissions and past activity.
     this is the starting point of the live replay, before any of the day's events arrive."""
-    network = json.loads(network_path.read_text())
-    if network_path == SAMPLE / "network.json":
+    own = network is not None
+    network = dict(network) if own else json.loads(network_path.read_text())
+    # the cloud and ai agent extension belongs to the sample organisation, not to a day that brings its own network
+    if not own and network_path == SAMPLE / "network.json":
         for ext in EXTENSIONS:
             if ext.exists():
                 extra = json.loads(ext.read_text())

@@ -13,7 +13,7 @@ export default function Proof() {
       <div className="panel-head">
         <h2>Proof</h2>
         <small>GraphOps vs sorting by severity, on every labelled day</small>
-        <Info text="Each day hides an attack among noise. The ranking never sees the labels; they are only used to score it. The first day is the one the weights were set on; the other five are held-out tests built around known weaknesses. Synthetic data written by us." />
+        <Info text="Each day hides an attack among noise. The ranking never sees the labels; they are only used to score it. The tuning day is the one the weights were set on. Five held-out days are synthetic, written by us around known weaknesses. The APT29 day is MITRE's real lab recording (OTRF Security Datasets); its alerts come from our rules on the real events and the attack labels are ours, from the published emulation plan." />
       </div>
       <p className="proof-head">GraphOps ranked the attack higher than severity sorting on <b>{won} of {data.days.length}</b> days.</p>
       <table className="proof-table">
@@ -26,7 +26,7 @@ export default function Proof() {
         <tbody>
           {data.days.map((d) => (
             <tr key={d.scenario}>
-              <td>{d.name}{d.scenario === "sample" && <span className="proof-tag">tuning day</span>}</td>
+              <td>{d.name}{d.scenario === "sample" && <span className="proof-tag">tuning day</span>}{d.scenario.startsWith("apt29") && <span className="proof-tag real">real lab logs</span>}</td>
               <td>{d.alerts}</td><td>{d.attack}</td>
               <td><b className="go">{d.graphops.last_attack_rank}</b> <span className="vs">vs</span> <span className="sev">{d.severity.last_attack_rank}</span></td>
               <td><b className="go">{d.graphops.false_before_first}</b> <span className="vs">vs</span> <span className="sev">{d.severity.false_before_first}</span></td>
@@ -35,7 +35,7 @@ export default function Proof() {
           ))}
         </tbody>
       </table>
-      <p className="proof-note">GraphOps first, severity second. Measured {data.measured}. Weakest day: file server ransomware, an attack that never goes near a critical asset.</p>
+      <p className="proof-note">GraphOps first, severity second. Measured {data.measured}. On the real APT29 recording the attack and the noise sit on the same two machines within 33 minutes, so the graph cannot separate them and ranks like severity; the file server ransomware day shows the same limit.</p>
     </section>
   );
 }

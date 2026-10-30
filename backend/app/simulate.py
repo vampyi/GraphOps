@@ -32,9 +32,9 @@ ATTACK_PROCESSES = [("2026-10-20T10:01:10", "rundll32.exe", "outlook.exe"),
 def build(attack=False, seed=7, sample=SAMPLE, day_path=None):
     """the whole day as a time-ordered list of (topic, key, message). day_path picks the labelled day (a scenario
     file); the default is the sample day."""
-    network = json.loads((sample / "network.json").read_text())
     day_path = Path(day_path) if day_path else sample / "alerts.json"
     day = json.loads(day_path.read_text())
+    network = day.get("network") or json.loads((sample / "network.json").read_text())
     rng = random.Random(seed)
     # background activity and inventory follow the chosen day's own date and hours
     times = sorted(a["time"] for a in day["alerts"])
@@ -79,7 +79,9 @@ def everyday(network, rng, count=EVERYDAY_EVENTS, start=DAY_START, end=DAY_END):
     are left out because the ranker reads their timing."""
     logins = [e for e in network["observed"] if e["type"] == "LoggedInto"]
     flows = [e for e in network["observed"] if e["type"] == "ConnectedTo"]
-    laptops = [n for n in network["nodes"] if n["label"] == "Computer" and n.get("owner") and n["id"].startswith("laptop-")]
+    laptops = [n for n in network["nodes"] if n["label"] == "Computer" and n.get("owner")]
+    if not (logins and flows and laptops):
+        return []  # a day with its own small network (a lab recording) has no everyday background to invent
     start, end = datetime.fromisoformat(start), datetime.fromisoformat(end)
     span = int((end - start).total_seconds())
     out = []

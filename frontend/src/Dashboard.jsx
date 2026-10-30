@@ -122,7 +122,7 @@ export default function Dashboard() {
     setError(null);
     try {
       setAlerts([]); setChanged(new Set());
-      await replayReset();
+      await replayReset(scenarios?.active);
       send(attack, 60);
       setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack });
     } catch (e) {

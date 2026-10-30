@@ -26,6 +26,29 @@
    "noise_in_attack_incidents": 0
   },
   {
+   "scenario": "apt29_day1",
+   "alerts": 38,
+   "attack": 16,
+   "graphops": {
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.312,
+    "first_attack_rank": 1,
+    "last_attack_rank": 38,
+    "false_before_first": 0,
+    "average_precision": 0.711
+   },
+   "severity": {
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.312,
+    "first_attack_rank": 1,
+    "last_attack_rank": 37,
+    "false_before_first": 0,
+    "average_precision": 0.872
+   },
+   "attack_incidents": 1,
+   "noise_in_attack_incidents": 22
+  },
+  {
    "scenario": "backup_account_abuse",
    "alerts": 16,
    "attack": 4,

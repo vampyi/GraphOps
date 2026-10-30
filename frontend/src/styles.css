@@ -1168,3 +1168,4 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .sources .live-dot { display: inline-block; vertical-align: middle; margin-right: 4px; }
 .src-ok { color: var(--ok); } .src-bad { color: var(--red-soft); font-weight: 600; } .src-na { color: var(--faint); }
 .real-tag { margin-left: 6px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ok); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
+.proof-tag.real { color: var(--ok); border-color: var(--ok); }

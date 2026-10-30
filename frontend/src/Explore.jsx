@@ -44,7 +44,13 @@ export default function Explore({ onError, focus, onFocus }) {
 
   useEffect(() => { getEntities().then(setEntities).catch((e) => onError(e.message)); }, []); // eslint-disable-line
   const load = (eid = id) => getExplore(eid).then((d) => { setData(d); setPicked(null); }).catch((e) => onError(e.message));
-  useEffect(() => { load(id); }, [id]); // eslint-disable-line
+  // a day can bring its own machines (a real lab recording): if the chosen system is not in this graph, start from
+  // its first machine instead
+  useEffect(() => {
+    if (!entities.length) return;
+    if (entities.some((e) => e.id === id)) load(id);
+    else setId((entities.find((e) => e.kind === "Computer") || entities[0]).id);
+  }, [id, entities]); // eslint-disable-line
 
   const list = useMemo(() => {
     if (!data) return [];

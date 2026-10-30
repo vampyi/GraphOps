@@ -1,0 +1,693 @@
+{
+ "name": "APT29 day 1 (real lab recording)",
+ "description": "Real Windows, Sysmon and PowerShell logs of MITRE's APT29 emulation, from OTRF Security Datasets (MIT licence). Alerts are GraphOps detection rules applied to the real events; attack or noise labels are ours, from the published emulation plan.",
+ "source": "https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1",
+ "network": {
+  "nodes": [
+   {
+    "id": "scranton",
+    "label": "Computer",
+    "name": "SCRANTON",
+    "os": "Windows 10",
+    "zone": "normal",
+    "owner": "pbeesly",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "nashua",
+    "label": "Computer",
+    "name": "NASHUA",
+    "os": "Windows 10",
+    "zone": "normal",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "utica",
+    "label": "Computer",
+    "name": "UTICA",
+    "os": "Windows 10",
+    "zone": "normal",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "newyork",
+    "label": "Computer",
+    "name": "NEWYORK",
+    "os": "Windows Server",
+    "zone": "server",
+    "critical": true,
+    "location": "onprem",
+    "note": "domain controller: the only machine issuing Kerberos tickets in the recording"
+   },
+   {
+    "id": "pbeesly",
+    "label": "User",
+    "name": "pbeesly",
+    "location": "onprem"
+   }
+  ],
+  "granted": [
+   {
+    "src": "pbeesly",
+    "type": "AdminTo",
+    "dst": "scranton",
+    "note": "UAC bypass and service install as pbeesly"
+   },
+   {
+    "src": "pbeesly",
+    "type": "AdminTo",
+    "dst": "nashua",
+    "note": "PsExec service installed on NASHUA as pbeesly"
+   },
+   {
+    "src": "scranton",
+    "type": "HasSession",
+    "dst": "pbeesly"
+   }
+  ],
+  "observed": [
+   {
+    "src": "pbeesly",
+    "type": "LoggedInto",
+    "dst": "scranton",
+    "first_seen": "2020-05-02T02:40:00",
+    "last_seen": "2020-05-02T03:20:49",
+    "count": 3
+   },
+   {
+    "src": "pbeesly",
+    "type": "LoggedInto",
+    "dst": "nashua",
+    "first_seen": "2020-05-02T03:09:24",
+    "last_seen": "2020-05-02T03:15:00",
+    "count": 8
+   },
+   {
+    "src": "scranton",
+    "type": "RemoteLogon",
+    "dst": "newyork",
+    "first_seen": "2020-05-02T02:40:00",
+    "last_seen": "2020-05-02T03:20:48",
+    "count": 6
+   }
+  ]
+ },
+ "events": [
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:09:24",
+   "scenario": "attack"
+  }
+ ],
+ "alerts": [
+  {
+   "time": "2020-05-02T02:55:56",
+   "name": "File with a hidden right-to-left character in its name started",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0002",
+   "technique_id": "T1204.002",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "rlo",
+   "evidence": "the file shows as rcs.3aka3.doc but is cod.3aka3.scr",
+   "id": "apt-01"
+  },
+  {
+   "time": "2020-05-02T02:55:59",
+   "name": "cod.3aka3.scr connected out to an unusual port",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0011",
+   "technique_id": "T1571",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "odd_port",
+   "evidence": "192.168.0.5:1234",
+   "id": "apt-02"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "name": "User Account Control bypassed through sdclt.exe",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0004",
+   "technique_id": "T1548.002",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "uac",
+   "evidence": "sdclt.exe started control.exe with a hijacked registry key",
+   "id": "apt-03"
+  },
+  {
+   "time": "2020-05-02T02:58:44",
+   "name": "Hidden PowerShell that bypasses execution policy",
+   "severity": "medium",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "ps_hidden",
+   "evidence": "powershell with -ep bypass / -nop -w hidden",
+   "id": "apt-04"
+  },
+  {
+   "time": "2020-05-02T03:01:03",
+   "name": "LSASS memory opened by a non-system process",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "lsass",
+   "evidence": "powershell.exe opened lsass.exe",
+   "id": "apt-05"
+  },
+  {
+   "time": "2020-05-02T03:02:04",
+   "name": "Secure-delete tool wiped files",
+   "severity": "medium",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0005",
+   "technique_id": "T1070.004",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "sdelete",
+   "evidence": "sdelete64.exe removed the dropped files",
+   "id": "apt-06"
+  },
+  {
+   "time": "2020-05-02T03:04:05",
+   "name": "Network logon from another workstation",
+   "severity": "low",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "newyork",
+    "pbeesly"
+   ],
+   "scenario": "noise",
+   "rule": "netlogon",
+   "evidence": "pbeesly from 10.0.1.4: routine sign-in traffic to the domain controller",
+   "id": "apt-07"
+  },
+  {
+   "time": "2020-05-02T03:04:16",
+   "name": "New Windows service installed: javamtsup",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "service",
+   "evidence": "C:\\Windows\\System32\\javamtsup.exe",
+   "id": "apt-08"
+  },
+  {
+   "time": "2020-05-02T03:04:23",
+   "name": "Program added to the Startup folder",
+   "severity": "medium",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0003",
+   "technique_id": "T1547.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "startup",
+   "evidence": "hostui.lnk",
+   "id": "apt-09"
+  },
+  {
+   "time": "2020-05-02T03:08:47",
+   "name": "PowerShell sent data to an outside web server",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0010",
+   "technique_id": "T1048.003",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "webdav",
+   "evidence": "192.168.0.4:80, the attacker's WebDAV share",
+   "id": "apt-10"
+  },
+  {
+   "time": "2020-05-02T03:09:29",
+   "name": "LSASS memory opened by a non-system process",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "lsass",
+   "evidence": "wsmprovhost.exe opened lsass.exe",
+   "id": "apt-11"
+  },
+  {
+   "time": "2020-05-02T03:10:24",
+   "name": "Network logon from another workstation",
+   "severity": "low",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "netlogon",
+   "evidence": "pbeesly from 10.0.1.4",
+   "id": "apt-12"
+  },
+  {
+   "time": "2020-05-02T03:11:18",
+   "name": "PsExec run with a password on the command line",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "scranton",
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "psexec",
+   "evidence": "PsExec to NASHUA as pbeesly (password removed)",
+   "id": "apt-13"
+  },
+  {
+   "time": "2020-05-02T03:11:41",
+   "name": "New Windows service installed: PSEXESVC",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "service",
+   "evidence": "%SystemRoot%\\PSEXESVC.exe",
+   "id": "apt-14"
+  },
+  {
+   "time": "2020-05-02T03:15:05",
+   "name": "python.exe connected out to an unusual port",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0011",
+   "technique_id": "T1571",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "odd_port",
+   "evidence": "192.168.0.4:8443",
+   "id": "apt-15"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "name": "Secure-delete tool wiped files",
+   "severity": "medium",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0005",
+   "technique_id": "T1070.004",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "sdelete",
+   "evidence": "sdelete64.exe removed the dropped files",
+   "id": "apt-16"
+  },
+  {
+   "time": "2020-05-02T03:19:42",
+   "name": "LSASS memory opened by a non-system process",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "lsass",
+   "evidence": "WindowsAzureTelemetryService.exe opened lsass.exe (Azure's own agent)",
+   "id": "apt-17"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "name": "LSASS memory opened by a non-system process",
+   "severity": "high",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "lsass",
+   "evidence": "AntimalwareConfig.exe opened lsass.exe (Azure's own agent)",
+   "id": "apt-18"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "name": "Remote desktop logon",
+   "severity": "low",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "noise",
+   "rule": "rdp",
+   "evidence": "pbeesly signed back in over remote desktop after the reboot",
+   "id": "apt-19"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "name": "New Windows service installed: AarSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k AarSvcGroup -p",
+   "id": "apt-20"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "name": "New Windows service installed: BcastDVRUserService_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k BcastDVRUserService",
+   "id": "apt-21"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "name": "New Windows service installed: BluetoothUserService_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k BthAppGroup -p",
+   "id": "apt-22"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: CaptureService_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k LocalService -p",
+   "id": "apt-23"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: cbdhsvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k ClipboardSvcGroup -p",
+   "id": "apt-24"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: CDPUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-25"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: ConsentUxUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k DevicesFlow",
+   "id": "apt-26"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: CredentialEnrollmentManagerUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\CredentialEnrollmentManager.exe",
+   "id": "apt-27"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: DeviceAssociationBrokerSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k DevicesFlow -p",
+   "id": "apt-28"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: DevicePickerUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k DevicesFlow",
+   "id": "apt-29"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: DevicesFlowUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k DevicesFlow",
+   "id": "apt-30"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: MessagingService_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-31"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: OneSyncSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-32"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: PimIndexMaintenanceSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-33"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: PrintWorkflowUserSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k PrintWorkflow",
+   "id": "apt-34"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: UnistoreSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\System32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-35"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: UserDataSvc_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-36"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "name": "New Windows service installed: WpnUserService_13619b",
+   "severity": "medium",
+   "source_tool": "Windows Security",
+   "tactic_id": "TA0003",
+   "technique_id": "T1543.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "service",
+   "evidence": "C:\\windows\\system32\\svchost.exe -k UnistackSvcGroup",
+   "id": "apt-37"
+  },
+  {
+   "time": "2020-05-02T03:21:28",
+   "name": "Hidden PowerShell that bypasses execution policy",
+   "severity": "medium",
+   "source_tool": "Sysmon",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "ps_hidden",
+   "evidence": "powershell with -ep bypass / -nop -w hidden",
+   "id": "apt-38"
+  }
+ ]
+}
