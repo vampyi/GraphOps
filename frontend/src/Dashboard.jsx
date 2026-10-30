@@ -113,7 +113,7 @@ export default function Dashboard() {
   // start sending the day without waiting for it to finish; alerts appear through polling as they land
   const send = (attack, speed) => {
     sending.current = true;
-    replayStart(attack, speed)
+    replayStart(attack, speed, scenarios?.active)
       .catch((e) => setError(`The replay stopped early. ${e.message}`))
       .finally(() => { sending.current = false; });
   };

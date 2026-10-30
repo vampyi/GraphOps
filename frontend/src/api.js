@@ -45,7 +45,7 @@ export const getReachabilityProof = (src, dst) =>
 // live replay
 export const getLive = (since = 0) => call(`/live?since=${since}`);
 export const replayReset = () => post("/replay/reset");
-export const replayStart = (attack, speed) => post("/replay/start", { attack, speed });
+export const replayStart = (attack, speed, scenario) => post("/replay/start", { attack, speed, scenario });
 
 // explore
 export const getEntities = () => call("/entities");

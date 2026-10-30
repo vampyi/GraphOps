@@ -422,6 +422,7 @@ def _get_consumer():
 class Replay(BaseModel):
     attack: bool = False
     speed: float = 60
+    scenario: str | None = None  # which labelled day to stream; the dashboard sends the one selected
 
 
 @app.post("/api/replay/reset")
@@ -443,7 +444,14 @@ def replay_start(body: Replay):
         raise HTTPException(422, "speed must be between 0 and 10000")
     if _replay["thread"] and _replay["thread"].is_alive():
         raise HTTPException(409, "a replay is already running")
-    day = simulate.build(attack=body.attack)
+    with _driver.session() as s:
+        sid = body.scenario or scenarios.active(s)["id"]
+        path = scenarios._path_for(sid)
+        if path is None:
+            raise HTTPException(404, "unknown scenario")
+        # the reset before a stream wipes the graph, so record again which day is playing and its attack labels
+        scenarios.mark_active(s, sid, scenarios._attack_ids(path))
+    day = simulate.build(attack=body.attack, day_path=path)
     _replay["stop"] = stop = threading.Event()
 
     def run():
