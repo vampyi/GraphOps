@@ -193,11 +193,16 @@ export function ReportModal({ report, onClose }) {
   );
 }
 
-// a small "i" that explains a label on hover, keyboard focus or tap, so explanations stay off the screen until asked for
+// a small "i" that explains a label: hover peeks, click or keyboard focus pins it open
 export function Info({ text, align = "left" }) {
+  const [open, setOpen] = useState(false);
   return (
-    <span className={`info ${align}`}>
-      <button type="button" className="info-btn" aria-label={text}>i</button>
+    <span className={`info ${align} ${open ? "open" : ""}`} onMouseLeave={() => setOpen(false)}>
+      <button type="button" className="info-btn" aria-label={text} aria-expanded={open}
+        onClick={() => setOpen((o) => !o)} onBlur={() => setOpen(false)}
+        onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5.4" r="2.4" fill="currentColor" /><rect x="9.8" y="9.6" width="4.4" height="12" rx="2.2" fill="currentColor" /></svg>
+      </button>
       <span className="info-tip" role="tooltip">{text}</span>
     </span>
   );
