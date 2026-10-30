@@ -58,3 +58,30 @@ def load_scenario(session, scenario_id):
     ids = _attack_ids(path)
     mark_active(session, scenario_id, ids)
     return {"id": scenario_id, "attack_ids": ids, "counts": counts}
+
+
+# the hosted demo has one shared database, so only one visitor at a time may reload it (a scenario load or a live
+# stream). the lock lives in neo4j, not in memory, because each vercel function instance has its own memory. a
+# lock older than LOCK_SECONDS is treated as abandoned, so a crashed load never blocks the demo for good.
+LOCK_SECONDS = 300
+
+
+def acquire(session, what):
+    row = session.run(
+        """
+        MERGE (l:Lock {id: 'demo'})
+        WITH l, l.until IS NULL OR l.until < datetime() AS free
+        FOREACH (_ IN CASE WHEN free THEN [1] ELSE [] END |
+          SET l.until = datetime() + duration({seconds: $ttl}), l.what = $what)
+        RETURN free
+        """, ttl=LOCK_SECONDS, what=what).single()
+    return bool(row and row["free"])
+
+
+def release(session):
+    session.run("MATCH (l:Lock {id: 'demo'}) SET l.until = null, l.what = null")
+
+
+def busy(session):
+    row = session.run("MATCH (l:Lock {id: 'demo'}) WHERE l.until >= datetime() RETURN l.what AS what").single()
+    return row["what"] if row else None

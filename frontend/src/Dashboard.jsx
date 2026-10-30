@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [touring, setTouring] = useState(false);
   const [scenarios, setScenarios] = useState(null);
   const [switching, setSwitching] = useState(false);
+  const switchingRef = useRef(false);
   const [dataVersion, setDataVersion] = useState(0); // bumped after a scenario loads, so every tab refetches
   const [error, setError] = useState(null);
   const timer = useRef(null);
@@ -53,6 +54,21 @@ export default function Dashboard() {
     getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
   useEffect(() => { load(); }, []);
   useEffect(() => { getScenarios().then(setScenarios).catch(() => {}); }, []);
+  // the hosted demo has one shared database: follow a day another visitor loaded, and say when it is mid-reload
+  const [busy, setBusy] = useState(null);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (switchingRef.current || live.on) return;
+      getScenarios().then((s) => {
+        setBusy(s.busy);
+        setScenarios((cur) => {
+          if (cur && !s.busy && s.active !== cur.active) { load(); setDataVersion((v) => v + 1); }
+          return s;
+        });
+      }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(t);
+  }, [live.on]); // eslint-disable-line
 
   // show the chosen scenario straight away, keep the analyst on the tab they are on, and redraw it once the
   // server has rebuilt the graph for that day
@@ -60,6 +76,7 @@ export default function Dashboard() {
     const before = scenarios?.active;
     setError(null);
     setSwitching(true);
+    switchingRef.current = true;
     setScenarios((s) => (s ? { ...s, active: id } : s));
     try {
       await loadScenario(id);
@@ -68,9 +85,11 @@ export default function Dashboard() {
       setDataVersion((v) => v + 1);
     } catch (e) {
       setScenarios((s) => (s ? { ...s, active: before } : s));
-      setError(`Could not load that scenario. ${e.message}`);
+      setError(e.message.startsWith("409") ? "Someone else is reloading the demo data. Try again in a minute."
+        : `Could not load that scenario. ${e.message}`);
     }
     setSwitching(false);
+    switchingRef.current = false;
   };
   useEffect(() => { if (!tourSeen()) setTouring(true); }, []);
 
@@ -108,7 +127,10 @@ export default function Dashboard() {
       await replayReset();
       send(attack, 60);
       setLive({ on: true, seq: 0, replaying: true, ingested: 0, attack });
-    } catch (e) { setError(`Could not start the replay. ${e.message}`); }
+    } catch (e) {
+      setError(e.message.startsWith("409") ? "Someone else is reloading the demo data. Try again in a minute."
+        : `Could not start the replay. ${e.message}`);
+    }
   };
   // start sending the day without waiting for it to finish; alerts appear through polling as they land
   const send = (attack, speed) => {
@@ -145,6 +167,7 @@ export default function Dashboard() {
           </label>
         )}
         {switching && <span className="subnav-hint loading">Loading scenario…</span>}
+        {!switching && busy && <span className="subnav-hint loading">Another visitor is reloading the demo data…</span>}
         <span className="subnav-hint">{VIEWS.find((v) => v.id === view).hint}</span>
       </div>
       {error && <div className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></div>}

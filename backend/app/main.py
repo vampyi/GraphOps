@@ -304,18 +304,22 @@ def evaluation():
 def list_scenarios():
     """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
     with _driver.session() as s:
-        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog()}
+        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog(), "busy": scenarios.busy(s)}
 
 
 @app.post("/api/scenarios/{scenario_id}/load")
 def load_scenario(scenario_id: str):
     """swap the whole console to a different labelled day, score it, and record its attack labels. this is how
     we show the ranking holds on a day it was never tuned on."""
+    if scenarios._path_for(scenario_id) is None:
+        raise HTTPException(404, "unknown scenario")
     with _driver.session() as s:
-        result = scenarios.load_scenario(s, scenario_id)
-        if result is None:
-            raise HTTPException(404, "unknown scenario")
-        return result
+        if not scenarios.acquire(s, f"loading {scenario_id}"):
+            raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
+        try:
+            return scenarios.load_scenario(s, scenario_id)
+        finally:
+            scenarios.release(s)
 
 
 @app.get("/api/graph/reachability-proof")
@@ -430,11 +434,17 @@ def replay_reset():
     """stop any replay and start a fresh day: the network only, no alerts yet."""
     _stop_replay()
     with _driver.session() as s:
-        if _KAFKA:
-            with _consumer_lock:
-                stream.reset(s, _get_consumer())
-        else:
-            stream.reset(s)
+        if not scenarios.acquire(s, "starting a live stream"):
+            raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
+        try:
+            if _KAFKA:
+                with _consumer_lock:
+                    stream.reset(s, _get_consumer())
+            else:
+                stream.reset(s)
+        except Exception:
+            scenarios.release(s)
+            raise
     return {"status": "reset", "mode": "kafka" if _KAFKA else "direct"}
 
 
@@ -466,6 +476,9 @@ def replay_start(body: Replay):
                     simulate.play(day, lambda topic, key, msg: stream.write_direct(s, topic, msg), speed=body.speed, stop=stop)
         except Exception:
             log.exception("replay failed")
+        finally:
+            with _driver.session() as s2:
+                scenarios.release(s2)
 
     # vercel freezes a function once it has answered, so there the replay runs inside the request
     if os.environ.get("VERCEL"):
