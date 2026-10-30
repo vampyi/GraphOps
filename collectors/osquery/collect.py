@@ -45,6 +45,8 @@ QUERIES = {
     "mac_firewall": "SELECT global_state FROM alf",
     "win_security": "SELECT firewall FROM windows_security_center",
     "encryption": "SELECT encrypted FROM disk_encryption",
+    # macos only. apple silicon encrypts every disk in hardware, so "encrypted" is 1 even with filevault off
+    "filevault": "SELECT filevault_status FROM disk_encryption",
     "bitlocker": "SELECT protection_status FROM bitlocker_info",
 }
 
@@ -88,6 +90,8 @@ def snapshot(cfg):
     enc = None
     if q["encryption"]:
         enc = any(r.get("encrypted") in ("1", 1) for r in q["encryption"])
+    if q["filevault"]:
+        enc = any(r.get("filevault_status") == "on" for r in q["filevault"])
     if q["bitlocker"]:
         enc = any(r.get("protection_status") in ("1", 1) for r in q["bitlocker"])
     os_row = (q["os"] or [{}])[0]
