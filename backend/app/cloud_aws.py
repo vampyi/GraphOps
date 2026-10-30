@@ -10,7 +10,9 @@ two read-only calls, signed with AWS signature version 4 using the standard libr
   (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_getting-report.html)
 - IAM GetAccountAuthorizationDetails: the policies of every user, group and role
 the result is stored on a CloudSnapshot node that reloading a scenario does not wipe, and drawn back after every load.
-keys used: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY."""
+keys used: GRAPHOPS_AWS_ACCESS_KEY_ID and GRAPHOPS_AWS_SECRET_ACCESS_KEY. not the plain AWS_* names: vercel runs
+functions on aws lambda and may set those itself with values that are not usable credentials. no region is needed:
+IAM is a global service, signed for us-east-1."""
 import base64
 import csv
 import datetime as dt
@@ -30,13 +32,16 @@ READ = {"ReadOnlyAccess", "SecurityAudit", "ViewOnlyAccess"}
 STALE_DAYS = 90
 
 
+KEY_VAR, SECRET_VAR = "GRAPHOPS_AWS_ACCESS_KEY_ID", "GRAPHOPS_AWS_SECRET_ACCESS_KEY"
+
+
 def configured():
-    return bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+    return bool(os.environ.get(KEY_VAR) and os.environ.get(SECRET_VAR))
 
 
 def _signed_get(service, host, params, region="us-east-1"):
     """an AWS query-API GET, signed with signature version 4."""
-    key, secret = os.environ["AWS_ACCESS_KEY_ID"], os.environ["AWS_SECRET_ACCESS_KEY"]
+    key, secret = os.environ[KEY_VAR], os.environ[SECRET_VAR]
     now = dt.datetime.now(dt.timezone.utc)
     amz_date, day = now.strftime("%Y%m%dT%H%M%SZ"), now.strftime("%Y%m%d")
     query = "&".join(f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(str(v), safe='-_.~')}"
