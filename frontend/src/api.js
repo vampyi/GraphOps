@@ -60,3 +60,4 @@ export const confirmIncident = (id) => post(`/incidents/${id}/confirm`);
 export const requestStep = (id, step, requested) => post(`/incidents/${id}/steps`, { step, requested });
 export const getCertIn = (id) => call(`/incidents/${id}/cert-in`);
 export const notifyIncident = (id, to, site_url) => post(`/incidents/${id}/notify`, { to, site_url });
+export const getSources = () => call("/sources");

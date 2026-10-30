@@ -203,7 +203,7 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
                         <span className="rank">#{rank}</span>
                         <span className="score">{Math.round(a.score)}</span>
                         <div className="row-main">
-                          <div className="name">{inInc && <i className="inc-dot" title="part of the selected incident" />}{a.name}</div>
+                          <div className="name">{inInc && <i className="inc-dot" title="part of the selected incident" />}{a.name}{a.source_tool === "osquery" && <span className="real-tag" title="From a real team laptop, reported by osquery">real</span>}</div>
                           <div className="row-meta">
                             <span className={`sev ${a.severity}`}>{a.severity}</span>
                             <span>{a.time.slice(11, 16)}</span>

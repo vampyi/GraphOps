@@ -56,13 +56,16 @@ def load_network(session, network_path=SAMPLE / "network.json"):
     # vulnerabilities for the software in the network, from the saved snapshot of the public sources
     from .vulns import refresh
     refresh(session, live=False)
+    # real sources reporting from outside (team laptops) are drawn back into the fresh graph
+    from .sources import apply_all
+    apply_all(session)
 
 
 def load_network_data(session, network):
     """load a network given as a dict with nodes, granted and observed. used by load_network (from a file) and
     by the importers (from BloodHound or CSV), so every entry point builds the same graph the same way."""
     # the demo lock (scenarios.py) survives a reload, so a second visitor cannot start one mid-way
-    session.run("MATCH (n) WHERE NOT n:Lock DETACH DELETE n")
+    session.run("MATCH (n) WHERE NOT n:Lock AND NOT n:SourceRecord AND NOT n:SourceEvent DETACH DELETE n")
     for label in NODE_LABELS:
         session.run(f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.id IS UNIQUE")
     session.run("CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (n:Entity) REQUIRE n.id IS UNIQUE")

@@ -18,6 +18,7 @@ function useDark() {
 }
 import { Shape } from "./RingGraph.jsx";
 import Proof from "./Proof.jsx";
+import Sources from "./Sources.jsx";
 
 const KIND = { User: "User", Group: "Group", Computer: "Computer", CloudResource: "Cloud resource", ServiceIdentity: "Service identity",
   AIAgent: "AI agent", Tool: "Agent tool", Software: "Software", Internet: "Internet" };
@@ -71,6 +72,8 @@ export default function GraphEngine({ onError }) {
           <div><b>{sm.relationships_total}</b><span>relationships in all</span></div>
         </div>
       </div>
+
+      <Sources />
 
       {graph && <Facts graph={graph} mode={mode} />}
 
