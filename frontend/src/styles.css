@@ -1042,6 +1042,15 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .ge-modes button.on { background: var(--paper); color: var(--on-paper); border-color: var(--paper); }
 .ge-map-wrap { flex: 1; min-height: 460px; }
 .gmap { width: 100%; height: 100%; display: block; }
+/* cluster islands: the same hull drawn three times - a wide soft halo, a rim in the cluster's colour, and a
+   near-surface body. the huge round-joined strokes are what pad and round the hull. */
+.gm-hull-halo { stroke-width: 86; stroke-linejoin: round; stroke-linecap: round; opacity: 0.05; }
+.gm-hull-rim { stroke-width: 59; stroke-linejoin: round; stroke-linecap: round; opacity: 0.4; }
+.gm-hull-body { stroke-width: 56; stroke-linejoin: round; stroke-linecap: round; }
+.gm-pill rect { fill: var(--surface); stroke: var(--border); }
+.gm-pill text { fill: var(--text-2); font-size: 12px; font-weight: 600; text-anchor: middle; font-family: var(--sans); }
+.gm-pill.crit rect { stroke: var(--red); }
+.gm-pill.crit text { fill: var(--red-soft); }
 .gm-edge { stroke-width: 1; transition: opacity 0.2s; }
 .gm-edge.attack { stroke: var(--line-hover); }
 .gm-edge.other { stroke: var(--edge); stroke-dasharray: 3 4; }
@@ -1049,12 +1058,13 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .gm-edge.dim { opacity: 0.12; }
 .gm-node { cursor: default; transition: opacity 0.2s; }
 .gm-node.dim { opacity: 0.2; }
+.gm-glow { opacity: 0.3; pointer-events: none; }
 .gm-shape { stroke: var(--surface); stroke-width: 1.5; }
 .gm-node.loc-cloud .gm-shape { stroke: var(--cloud); stroke-width: 2; }
 .gm-node.on .gm-shape { stroke: var(--red); stroke-width: 2.5; }
 .gm-node text { fill: var(--text-2); font-size: 12px; text-anchor: middle; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; font-family: var(--mono); }
 .gm-ring { fill: none; stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 3 3; }
-.gm-zone { fill: var(--faint); font-size: 13px; text-anchor: middle; text-transform: uppercase; letter-spacing: 0.08em; }
+.gm-ring.pagerank { stroke: var(--teal); }
 .ge-map-foot { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border); }
 .gm-key { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
 .gm-key i { display: inline-block; width: 16px; border-top: 1.5px solid var(--line-hover); margin-left: 6px; }
@@ -1073,9 +1083,14 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .ge-tech { font-family: var(--mono); font-size: 10px; color: var(--red-soft); }
 .ge-schema b { font-family: var(--mono); font-weight: 500; color: var(--muted); min-width: 22px; text-align: right; }
 @media (max-width: 1100px) { .ge-main { grid-template-columns: 1fr; } .ge-modes { margin-left: 0; } }
-.nvl-wrap { position: relative; width: 100%; height: 100%; min-height: 520px; }
+.nvl-wrap { position: relative; width: 100%; height: 100%; min-height: 520px;
+  background:
+    radial-gradient(900px 480px at 70% 0%, var(--teal-tint), transparent 62%),
+    radial-gradient(circle, var(--line) 1px, transparent 1px) 0 0 / 26px 26px,
+    var(--bg);
+}
 .nvl-wrap > div:first-child { position: absolute; inset: 0; }
-.nvl-card { position: absolute; top: 10px; right: 10px; width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.nvl-card { position: absolute; top: 10px; right: 10px; width: 230px; background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 12px; box-shadow: var(--card-shadow); }
 .nvl-card .x { position: absolute; top: 6px; right: 8px; background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; }
 .nvl-card-kind { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .nvl-card-kind i { width: 9px; height: 9px; border-radius: 50%; }
@@ -1086,8 +1101,8 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .ge-map-wrap:has(.nvl-wrap) { min-height: 700px; }
 .nvl-wrap { min-height: 700px; }
 .nvl-zoom { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
-.nvl-zoom button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; font-size: 15px; line-height: 1; }
-.nvl-zoom button:hover { border-color: var(--line-hover); }
+.nvl-zoom button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); color: var(--text); cursor: pointer; font-size: 15px; line-height: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.25); transition: border-color 0.15s, transform 0.15s; }
+.nvl-zoom button:hover { border-color: var(--line-hover); transform: translateY(-1px); }
 .nvl-col { position: absolute; transform: translate(-50%, -50%); pointer-events: none; white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
 .nvl-col.crit { color: var(--red-soft); border-color: var(--red); }
 .ge-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
@@ -1097,9 +1112,15 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .ge-fact span { font-size: 12px; color: var(--muted); }
 .ge-line { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--text-2); }
 @media (max-width: 900px) { .ge-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.nvl-group { position: absolute; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+.nvl-group { position: absolute; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+.nvl-group i { width: 6.5px; height: 6.5px; border-radius: 50%; }
 .nvl-group.crit { color: var(--red-soft); border-color: var(--red); }
-.nvl-hover { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 12px; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+.nvl-label { position: absolute; transform: translate(-50%, 0); pointer-events: none; white-space: nowrap; font-family: var(--mono); font-size: 12px; color: var(--text-2); text-shadow: 0 1px 0 var(--bg), 0 -1px 0 var(--bg), 1px 0 0 var(--bg), -1px 0 0 var(--bg), 0 2px 6px var(--bg); }
+.nvl-label.crit { color: var(--red-soft); font-weight: 600; }
+.nvl-hover { position: absolute; pointer-events: none; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); white-space: nowrap; }
+.nvl-hover i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.nvl-hover b { font-family: var(--mono); font-weight: 600; }
+.nvl-hover small { color: var(--muted); }
 .nvl-ring { position: absolute; transform: translate(-50%, -50%); border: 2px dashed var(--amber); border-radius: 50%; pointer-events: none; }
 .nvl-ring.pagerank { border-color: var(--teal); }
 .nvl-ring span { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px); font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text); background: var(--surface); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
