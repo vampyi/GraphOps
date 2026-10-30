@@ -51,6 +51,7 @@ TECHNIQUES = {
     "T1078": "Valid Accounts", "T1098": "Account Manipulation", "T1105": "Ingress Tool Transfer",
     "T1110": "Brute Force", "T1189": "Drive-by Compromise", "T1204": "User Execution",
     "T1550.002": "Pass the Hash", "T1566": "Phishing",
+    "T1176": "Browser Extensions", "T1133": "External Remote Services", "T1195": "Supply Chain Compromise",
     "T1190": "Exploit Public-Facing Application", "T1078.004": "Valid Accounts: Cloud Accounts",
     "T1098.001": "Additional Cloud Credentials", "T1555.006": "Cloud Secrets Management Stores",
     "T1059.001": "PowerShell",

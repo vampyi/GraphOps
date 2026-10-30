@@ -3,7 +3,7 @@
 its sections follow what an on-call analyst needs and what CERT-In's 6-hour report asks for: what happened, in
 attack-stage order; which assets are affected; what the compromise can still reach; and what to do about it.
 every fact comes from the graph, so the report is evidence, not prose."""
-from .attack import ATTACK_EDGES, describe_removal, tag
+from .attack import ATTACK_EDGES, TECHNIQUES, describe_removal, tag
 from .scoring import TACTIC_ORDER
 
 TACTIC_NAMES = {
@@ -60,6 +60,28 @@ def gather(session, incident_id):
     return {"meta": dict(meta) if meta else {}, "alerts": alerts, "entities": entities, "attack_path": attack_path}
 
 
+def entry_point(alerts):
+    """how the attack got in: the earliest alert tagged Initial Access (TA0001). when none of the incident's alerts
+    is, the way in was not seen, which is itself worth saying: the first alert is already a later stage."""
+    alerts = sorted(alerts, key=lambda a: a["time"])
+    first = next((a for a in alerts if a.get("tactic_id") == "TA0001"), None)
+    if first:
+        tech = first.get("technique_id")
+        return {"seen": True, "alert": first["id"], "name": first["name"], "time": first["time"],
+                "on": first.get("involves", []), "technique": tech, "how": TECHNIQUES.get(tech, first["name"])}
+    a = alerts[0]
+    return {"seen": False, "alert": a["id"], "name": a["name"], "time": a["time"], "on": a.get("involves", []),
+            "stage": TACTIC_NAMES.get(a.get("tactic_id"), "an unknown stage")}
+
+
+def entry_line(e):
+    on = ", ".join(e["on"])
+    if e["seen"]:
+        return f"{e['how']} ({e['technique']}) on {on} at {e['time'][11:16]}: {e['name']}"
+    return (f"Entry point not seen. The first alert is already {e['stage']}: {e['name']} on {on} at "
+            f"{e['time'][11:16]}. Look further back on {on} for how the attacker got in.")
+
+
 def incident_report(session, incident_id):
     data = gather(session, incident_id)
     if data is None:
@@ -74,6 +96,7 @@ def incident_report(session, incident_id):
     lines.append(f"- **Status:** {meta.get('status', 'open')}")
     lines.append(f"- **Opened:** {meta.get('opened_at', times[0])[:16].replace('T', ' ')}")
     lines.append(f"- **Alerts:** {len(alerts)} between {times[0][11:16]} and {times[-1][11:16]}")
+    lines.append(f"- **How it started:** {entry_line(entry_point(alerts))}")
     lines.append(f"- **Highest score:** {round(meta.get('score') or max(a['score'] or 0 for a in alerts))}")
     if meta.get("lateral"):
         lines.append(f"- **Lateral movement:** yes, the alerts span {len(meta.get('communities') or [])} activity communities")

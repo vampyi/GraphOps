@@ -45,7 +45,7 @@ export const getReachabilityProof = (src, dst) =>
 // live replay
 export const getLive = (since = 0) => call(`/live?since=${since}`);
 export const replayReset = () => post("/replay/reset");
-export const replayStart = (attack, speed) => post("/replay/start", { attack, speed });
+export const replayStart = (attack, speed, scenario) => post("/replay/start", { attack, speed, scenario });
 
 // explore
 export const getEntities = () => call("/entities");
@@ -53,3 +53,10 @@ export const getExplore = (id, maxHops = 8) => call(`/explore/${encodeURICompone
 export const setControl = (body) => post("/controls", body);
 export const getVulnerabilities = () => call("/vulnerabilities");
 export const refreshVulnerabilities = () => post("/vulnerabilities/refresh");
+export const getProof = () => call("/proof");
+// responding to a confirmed incident
+export const getRespond = (id) => call(`/incidents/${id}/respond`);
+export const confirmIncident = (id) => post(`/incidents/${id}/confirm`);
+export const requestStep = (id, step, requested) => post(`/incidents/${id}/steps`, { step, requested });
+export const getCertIn = (id) => call(`/incidents/${id}/cert-in`);
+export const notifyIncident = (id, to, site_url) => post(`/incidents/${id}/notify`, { to, site_url });

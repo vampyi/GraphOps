@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import access, evaluate, exposure, graphinfo, ingest, scenarios, simulate, stream
+from . import access, evaluate, exposure, graphinfo, ingest, respond, scenarios, simulate, stream
 from .attack import ATTACK_EDGES as attack_edge_list, GRANTED_EDGES, USED_EDGES, tag
 from .communities import summary as community_summary
 from .db import ROOT, driver
@@ -133,13 +133,17 @@ def incident(incident_id: str):
         rows = [dict(r) for r in s.run(
             """
             MATCH (a:Alert {incident_id: $id})
+            OPTIONAL MATCH (a)-[:Involves]->(e)
+            WITH a, collect(e.id) AS involves
             RETURN a.id AS id, a.time AS time, a.name AS name, a.tactic_id AS tactic_id,
-                   a.technique_id AS technique_id, a.score AS score, a.status AS status
+                   a.technique_id AS technique_id, a.score AS score, a.status AS status, involves
             ORDER BY a.time
             """, id=incident_id)]
         if not rows:
             raise HTTPException(404, "incident not found")
-        out = {"id": incident_id, "alerts": rows}
+        from .report import entry_line, entry_point
+        entry = entry_point(rows)
+        out = {"id": incident_id, "alerts": rows, "entry": {**entry, "text": entry_line(entry)}}
         if meta:
             out.update({k: meta[k] for k in ("status", "notes", "opened_at", "communities", "lateral", "stages", "score")})
         return out
@@ -190,6 +194,70 @@ def patch_incident(incident_id: str, body: IncidentPatch):
         if not r:
             raise HTTPException(404, "incident not found")
         return {"id": incident_id, "status": r["status"], "notes": r["notes"]}
+
+
+# respond to a confirmed incident: who to tell, containment steps, the CERT-In clock and a real email
+@app.get("/api/incidents/{incident_id}/respond")
+def respond_plan(incident_id: str):
+    with _driver.session() as s:
+        p = respond.plan(s, incident_id)
+        if p is None:
+            raise HTTPException(404, "incident not found")
+        return p
+
+
+@app.post("/api/incidents/{incident_id}/confirm")
+def respond_confirm(incident_id: str):
+    """mark the incident confirmed: this starts the 6-hour CERT-In clock."""
+    with _driver.session() as s:
+        if respond.confirm(s, incident_id) is None:
+            raise HTTPException(404, "incident not found")
+        return respond.plan(s, incident_id)
+
+
+class StepRequest(BaseModel):
+    step: str
+    requested: bool = True
+
+
+@app.post("/api/incidents/{incident_id}/steps")
+def respond_step(incident_id: str, body: StepRequest):
+    with _driver.session() as s:
+        if respond.request_step(s, incident_id, body.step[:200], body.requested) is None:
+            raise HTTPException(404, "incident not found")
+        return respond.plan(s, incident_id)
+
+
+@app.get("/api/incidents/{incident_id}/cert-in")
+def respond_cert_in(incident_id: str):
+    with _driver.session() as s:
+        d = respond.cert_in_draft(s, incident_id)
+        if d is None:
+            raise HTTPException(404, "incident not found")
+        return d
+
+
+class Notify(BaseModel):
+    to: list[str]
+    site_url: str = ""
+
+
+@app.post("/api/incidents/{incident_id}/notify")
+def respond_notify(incident_id: str, body: Notify):
+    """email the chosen people from NOTIFY_CONTACTS. only listed contacts can be reached, a few per incident."""
+    if not (os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD") and respond.contacts()):
+        raise HTTPException(503, "email is not set up on this server")
+    with _driver.session() as s:
+        try:
+            sent = respond.send_email(s, incident_id, body.to, body.site_url[:200])
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        except Exception:
+            log.exception("email failed")
+            raise HTTPException(502, "the email service did not accept the message")
+        if sent is None:
+            raise HTTPException(404, "incident not found")
+        return {"sent": sent, "plan": respond.plan(s, incident_id)}
 
 
 class Verdict(BaseModel):
@@ -300,22 +368,38 @@ def evaluation():
         return result
 
 
+@app.get("/api/proof")
+def proof():
+    """graphops vs severity sorting on every labelled day, measured offline with app.evaluate_all (it reloads the
+    database once per day, so it cannot run on the shared hosted database) and saved in data/proof.json."""
+    import json
+    days = {c["id"]: c["name"] for c in scenarios.catalog()}
+    data = json.loads((ROOT / "data" / "proof.json").read_text())
+    for d in data["days"]:
+        d["name"] = days.get(d["scenario"], d["scenario"])
+    return data
+
+
 @app.get("/api/scenarios")
 def list_scenarios():
     """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
     with _driver.session() as s:
-        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog()}
+        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog(), "busy": scenarios.busy(s)}
 
 
 @app.post("/api/scenarios/{scenario_id}/load")
 def load_scenario(scenario_id: str):
     """swap the whole console to a different labelled day, score it, and record its attack labels. this is how
     we show the ranking holds on a day it was never tuned on."""
+    if scenarios._path_for(scenario_id) is None:
+        raise HTTPException(404, "unknown scenario")
     with _driver.session() as s:
-        result = scenarios.load_scenario(s, scenario_id)
-        if result is None:
-            raise HTTPException(404, "unknown scenario")
-        return result
+        if not scenarios.acquire(s, f"loading {scenario_id}"):
+            raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
+        try:
+            return scenarios.load_scenario(s, scenario_id)
+        finally:
+            scenarios.release(s)
 
 
 @app.get("/api/graph/reachability-proof")
@@ -422,6 +506,7 @@ def _get_consumer():
 class Replay(BaseModel):
     attack: bool = False
     speed: float = 60
+    scenario: str | None = None  # which labelled day to stream; the dashboard sends the one selected
 
 
 @app.post("/api/replay/reset")
@@ -429,11 +514,17 @@ def replay_reset():
     """stop any replay and start a fresh day: the network only, no alerts yet."""
     _stop_replay()
     with _driver.session() as s:
-        if _KAFKA:
-            with _consumer_lock:
-                stream.reset(s, _get_consumer())
-        else:
-            stream.reset(s)
+        if not scenarios.acquire(s, "starting a live stream"):
+            raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
+        try:
+            if _KAFKA:
+                with _consumer_lock:
+                    stream.reset(s, _get_consumer())
+            else:
+                stream.reset(s)
+        except Exception:
+            scenarios.release(s)
+            raise
     return {"status": "reset", "mode": "kafka" if _KAFKA else "direct"}
 
 
@@ -443,7 +534,14 @@ def replay_start(body: Replay):
         raise HTTPException(422, "speed must be between 0 and 10000")
     if _replay["thread"] and _replay["thread"].is_alive():
         raise HTTPException(409, "a replay is already running")
-    day = simulate.build(attack=body.attack)
+    with _driver.session() as s:
+        sid = body.scenario or scenarios.active(s)["id"]
+        path = scenarios._path_for(sid)
+        if path is None:
+            raise HTTPException(404, "unknown scenario")
+        # the reset before a stream wipes the graph, so record again which day is playing and its attack labels
+        scenarios.mark_active(s, sid, scenarios._attack_ids(path))
+    day = simulate.build(attack=body.attack, day_path=path)
     _replay["stop"] = stop = threading.Event()
 
     def run():
@@ -458,6 +556,9 @@ def replay_start(body: Replay):
                     simulate.play(day, lambda topic, key, msg: stream.write_direct(s, topic, msg), speed=body.speed, stop=stop)
         except Exception:
             log.exception("replay failed")
+        finally:
+            with _driver.session() as s2:
+                scenarios.release(s2)
 
     # vercel freezes a function once it has answered, so there the replay runs inside the request
     if os.environ.get("VERCEL"):

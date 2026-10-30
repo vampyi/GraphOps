@@ -14,7 +14,7 @@ const STEPS = [
   { target: null, title: "GraphOps",
     text: "One day of alerts at a fictional company, with a scripted attack hidden in the noise. GraphOps ranks the attack first and shows why." },
   { target: "views", title: "Views",
-    text: "Triage ranks alerts. Exposure maps attack paths before an attack. Access shows unused permissions. Ask answers questions. Evaluation measures the ranking." },
+    text: "Triage ranks alerts. Attack paths maps routes to critical assets before an attack. Access shows unused permissions. Graph shows the Neo4j graph and the proof. Ask answers questions." },
   { target: "live", title: "Stream live",
     text: "Replay the selected scenario's telemetry through Kafka and watch alerts arrive, re-rank and link." },
   { target: "kpis", title: "The day at a glance", text: "Alerts, incidents, alerts near critical assets, new routes, and what is still unreviewed." },

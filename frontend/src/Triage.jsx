@@ -3,6 +3,7 @@ import { getBlastRadius, getIncident, getLanguages, getReport, patchAsset, patch
 import { SEVERITY_RANK } from "./tactics.js";
 import RingGraph from "./RingGraph.jsx";
 import { Cites, Info, MiniBar, ReasonBars, StageTimeline, ReportModal } from "./parts.jsx";
+import Respond from "./Respond.jsx";
 
 const BLAST_MODES = [
   { id: "all", label: "All attack edges", hint: "Every route an attacker could follow" },
@@ -26,6 +27,7 @@ export const TRIAGE_TABS = [
   { id: "why", label: "Why it ranks" },
   { id: "blast", label: "Blast radius" },
   { id: "incident", label: "Incident" },
+  { id: "respond", label: "Respond" },
   { id: "story", label: "Story" },
 ];
 const VERDICT_LABEL = { real: "real", benign: "benign", false: "false alarm" };
@@ -64,7 +66,13 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
   useEffect(() => {
     if (!selected) { if (alerts.length) open(alerts[0]); return; }
     const fresh = alerts.find((a) => a.id === selected.id);
-    if (fresh && fresh !== selected) setSelected(fresh);
+    // the selected alert is gone (a new day was loaded or the stream reset): open the top alert instead
+    if (!fresh) { if (alerts.length) open(alerts[0]); else setSelected(null); return; }
+    if (fresh !== selected) {
+      setSelected(fresh);
+      // incident ids follow the earliest alert, so they can change mid-stream: refetch when it does
+      if (fresh.incident_id !== selected.incident_id) open(fresh);
+    }
   }, [alerts]); // eslint-disable-line
 
   const ordered = useMemo(() => (sortBy === "severity" ? [...alerts].sort(bySeverity) : alerts), [alerts, sortBy]);
@@ -252,6 +260,7 @@ export default function Triage({ alerts, changed, live, onReload, onError }) {
                 {tab === "incident" && (
                   <IncidentTab incident={incident} selectedId={selected.id} onStatus={setStatus} onReport={openReport} />
                 )}
+                {tab === "respond" && <Respond incident={incident} onError={onError} onDraft={setReport} />}
                 {tab === "story" && <StoryTab incident={incident} story={story} busy={busy} onDraft={draftStory} lang={lang} onLang={setLang} languages={languages} />}
               </div>
             </>
@@ -369,6 +378,14 @@ function IncidentTab({ incident, selectedId, onStatus, onReport }) {
           </select>
         </label>
       </div>
+      {incident.entry && (
+        <div className={`inc-entry ${incident.entry.seen ? "" : "unseen"}`}>
+          <span className="inc-entry-l">How it started<Info text="The earliest alert tagged Initial Access in this incident. If none is, the way in was not seen: the first alert is already a later stage, so look further back on that machine." /></span>
+          {incident.entry.seen
+            ? <span><b>{incident.entry.how}</b> on <code>{incident.entry.on.join(", ")}</code> at {incident.entry.time.slice(11, 16)} · {incident.entry.name}</span>
+            : <span><b>Entry point not seen.</b> First alert is already {incident.entry.stage}: {incident.entry.name} on <code>{incident.entry.on.join(", ")}</code></span>}
+        </div>
+      )}
       <StageTimeline alerts={incident.alerts} selectedId={selectedId} />
       <div className="inc-actions"><button className="btn" onClick={onReport}>Incident report</button></div>
     </div>

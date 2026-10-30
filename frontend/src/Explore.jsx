@@ -21,9 +21,12 @@ const PICK_ORDER = ["Internet", "Computer", "User", "Group", "AIAgent", "Service
 const LOCATION_LABEL = { onprem: "on-premises", cloud: "cloud", external: "external" };
 
 // explore: pick any user, group or machine and see everything it can reach, with its attack paths to critical assets
-export default function Explore({ onError }) {
+// focus/onFocus let the attack paths tab open a system here (for example a choke point clicked above)
+export default function Explore({ onError, focus, onFocus }) {
   const [entities, setEntities] = useState([]);
-  const [id, setId] = useState("laptop-42");
+  const [ownId, setOwnId] = useState("laptop-42");
+  const id = focus ?? ownId;
+  const setId = onFocus ?? setOwnId;
   const [data, setData] = useState(null);
   const [mode, setMode] = useState("shortest");
   const [picked, setPicked] = useState(null);

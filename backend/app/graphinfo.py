@@ -87,7 +87,7 @@ def algorithms(session):
          "result": f"{incidents} incidents, {lateral} crossing communities"},
         {"algorithm": "Max-flow / minimum cut", "engine": "GDS / networkx", "gds": False,
          "question": "What is the fewest permissions to cut every attack path?",
-         "result": "see the Exposure view's top fix"},
+         "result": "see the Attack paths tab's top fix"},
     ]
 
 
