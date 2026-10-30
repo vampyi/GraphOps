@@ -133,13 +133,17 @@ def incident(incident_id: str):
         rows = [dict(r) for r in s.run(
             """
             MATCH (a:Alert {incident_id: $id})
+            OPTIONAL MATCH (a)-[:Involves]->(e)
+            WITH a, collect(e.id) AS involves
             RETURN a.id AS id, a.time AS time, a.name AS name, a.tactic_id AS tactic_id,
-                   a.technique_id AS technique_id, a.score AS score, a.status AS status
+                   a.technique_id AS technique_id, a.score AS score, a.status AS status, involves
             ORDER BY a.time
             """, id=incident_id)]
         if not rows:
             raise HTTPException(404, "incident not found")
-        out = {"id": incident_id, "alerts": rows}
+        from .report import entry_line, entry_point
+        entry = entry_point(rows)
+        out = {"id": incident_id, "alerts": rows, "entry": {**entry, "text": entry_line(entry)}}
         if meta:
             out.update({k: meta[k] for k in ("status", "notes", "opened_at", "communities", "lateral", "stages", "score")})
         return out

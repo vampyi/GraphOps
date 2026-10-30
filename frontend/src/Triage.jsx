@@ -375,6 +375,14 @@ function IncidentTab({ incident, selectedId, onStatus, onReport }) {
           </select>
         </label>
       </div>
+      {incident.entry && (
+        <div className={`inc-entry ${incident.entry.seen ? "" : "unseen"}`}>
+          <span className="inc-entry-l">How it started<Info text="The earliest alert tagged Initial Access in this incident. If none is, the way in was not seen: the first alert is already a later stage, so look further back on that machine." /></span>
+          {incident.entry.seen
+            ? <span><b>{incident.entry.how}</b> on <code>{incident.entry.on.join(", ")}</code> at {incident.entry.time.slice(11, 16)} · {incident.entry.name}</span>
+            : <span><b>Entry point not seen.</b> First alert is already {incident.entry.stage}: {incident.entry.name} on <code>{incident.entry.on.join(", ")}</code></span>}
+        </div>
+      )}
       <StageTimeline alerts={incident.alerts} selectedId={selectedId} />
       <div className="inc-actions"><button className="btn" onClick={onReport}>Incident report</button></div>
     </div>

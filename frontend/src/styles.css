@@ -1138,3 +1138,6 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .proof-table b.go { color: var(--ok); font-weight: 600; } .proof-table .sev { color: var(--red-soft); } .proof-table .vs { color: var(--faint); font-size: 11px; }
 .proof-tag { margin-left: 8px; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
 .proof-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+.inc-entry { display: flex; flex-direction: column; gap: 3px; margin: 8px 0 12px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); border-left: 3px solid var(--red); background: var(--red-bg); font-size: 13px; }
+.inc-entry.unseen { border-left-color: var(--amber); background: var(--orange-tint); }
+.inc-entry-l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 4px; }
