@@ -137,7 +137,7 @@ What changed after flow 2, all on `main`. Each part has tests in `backend/tests`
 | Part | Where |
 |---|---|
 | Tabs merged to Triage, Attack paths (Exposure + Explore), Access, AI agents, Graph (with the Proof table) and Ask | `frontend/src/Dashboard.jsx` |
-| Real data: the APT29 lab recording with public SigmaHQ rules as the default day; the demo company kept as a second, labelled synthetic day; the other days used only for the Proof table | [docs/data-sources.md](docs/data-sources.md), [docs/evaluation.md](docs/evaluation.md) |
+| Real data: two choices in the picker, the APT29 lab recording with public SigmaHQ rules and "Real data" (only the team's live laptops and agents); the demo company and the other days used only for the Proof table | [docs/data-sources.md](docs/data-sources.md), [docs/evaluation.md](docs/evaluation.md) |
 | Live real sources: team laptops through osquery, a Claude Code agent's access and activity, behind `INGEST_TOKEN` | `backend/app/sources.py`, `collectors/` |
 | Cloud resources, AI agents and real CVEs (NVD, CISA KEV, EPSS) in the attack graph | `data/sample_org/cloud_ai.json`, `backend/app/vulns.py` |
 | Respond panel: who to tell, containment steps recorded as requested, the CERT-In 6-hour clock and report draft; email built but off on the public demo | `backend/app/respond.py`, `frontend/src/Respond.jsx` |

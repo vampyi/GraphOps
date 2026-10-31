@@ -24,7 +24,7 @@ Every platform ranks alerts. Wiz uses graph context to rank threats, but only in
 
 We keep every alert and delete none. GraphOps works like a smart inbox: dangerous alerts float to the top and each one shows why.
 
-Each alert is scored on six questions:
+Each alert is scored on six graph questions, plus the tool's own severity (5 of 100 points):
 
 | # | Question | Idea comes from |
 |---|---|---|
@@ -35,7 +35,7 @@ Each alert is scored on six questions:
 | 5 | Do the linked alerts follow attack stages in order? | RapSheet (IEEE S&P 2020) and MITRE ATT&CK |
 | 6 | Does it sit on a choke point? | Betweenness and min cut |
 
-How much each question counts is our design choice. We tune it on test data.
+How much each question counts is our design choice, set by hand on the demo company's day and never changed for the test days.
 
 ### 4. AI in three safe places
 

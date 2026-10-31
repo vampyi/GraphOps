@@ -4,12 +4,12 @@ GraphOps for the person on shift. The console has six tabs, switched from the to
 
 ## What data you are looking at
 
-The **Scenario** picker under the top bar chooses the labelled day:
+The **Scenario** picker under the top bar has two choices:
 
-- **APT29 lab day (real logs).** The default. Real Windows, Sysmon and PowerShell logs of MITRE's APT29 emulation, recorded on four lab machines by OTRF, with alerts from the public SigmaHQ rules.
-- **Demo company (synthetic).** A company of 37 users, groups and machines that we wrote, with cloud resources, AI agents and one scripted attack. Bigger than the lab, so attack paths and access gaps have more to show.
+- **APT29 attack (real lab logs).** Real Windows, Sysmon and PowerShell logs of MITRE's APT29 emulation, recorded on four lab machines by OTRF, with alerts from the public SigmaHQ rules. The team's live laptops and agents are in the graph too.
+- **Real data (live laptops & AI agents).** Only what reports in live: the team's laptops through osquery and their Claude Code agents. Nothing recorded or written by us.
 
-On top of either day, **real sources report live**: team laptops through osquery and a Claude Code agent. They stay in the graph whichever day is loaded, and their alerts carry a **REAL** tag. The badge next to the picker says which mix you are seeing.
+Real sources' alerts carry a **REAL** tag. The badge next to the picker says which you are seeing.
 
 Switching the day reloads the data for everyone looking at the site. Only one reload runs at a time.
 
@@ -36,7 +36,7 @@ The default tab. Every alert of the day, ranked by where it sits on the attacker
 
 ## Live: watch it happen
 
-**Stream live** in the top bar replays the selected day through Kafka as if it were happening now. Alerts arrive one by one and the inbox re-ranks as they land. On the APT29 day the lab's real logons, connections and process starts stream too. **Stop** returns to the full day.
+**Stream live** in the top bar: on the APT29 day it replays the day through Kafka as if it were happening now, and alerts arrive one by one as the inbox re-ranks; the lab's real logons, connections and process starts stream too. On **Real data** it follows the team's laptops and agents, and new alerts appear every few seconds as they report. **Stop** returns to the full view. Switching the day stops a running stream first.
 
 ## Attack paths: fix it before it is used
 

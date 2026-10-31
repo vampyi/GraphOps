@@ -13,9 +13,11 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 **Live at [graph-ops.vercel.app](https://graph-ops.vercel.app).**
 
 What the site shows:
-- **A real attack.** The default day is MITRE's APT29 emulation, recorded on four lab machines by OTRF (real Windows, Sysmon and PowerShell logs), with alerts from the public SigmaHQ detection rules.
-- **A demo company.** A second day, written by us and labelled synthetic on screen: 37 users, groups and machines plus cloud resources and AI agents, so attack paths and access gaps have more to show.
-- **Real sources, live.** Team laptops report through osquery and a Claude Code agent reports its access and every action. They sit in the same graph and their alerts are tagged REAL.
+The **Scenario** picker has two choices:
+- **APT29 attack (real lab logs).** MITRE's APT29 emulation, recorded on four lab machines by OTRF (real Windows, Sysmon and PowerShell logs), with alerts from the public SigmaHQ detection rules. Our team's live laptops and agents sit in the same graph on top of it.
+- **Real data (live laptops & AI agents).** Only what reports in live: the team's laptops through osquery (Mac and Windows) and their Claude Code agents. Press **Stream live** and new activity arrives every few seconds, ranked like everything else.
+
+Real sources' alerts are tagged **REAL**. A demo company we wrote (synthetic) and five more synthetic days are kept as labelled test days for the Proof table; they are not in the picker.
 
 The console has six tabs: **Triage**, **Attack paths**, **Access**, **AI agents**, **Graph** and **Ask**. The [analyst guide](docs/analyst-guide.md) walks through them.
 
@@ -23,7 +25,7 @@ The console has six tabs: **Triage**, **Attack paths**, **Access**, **AI agents*
 |---|---|
 | Triage: ranked alert inbox with filters, why it ranks, blast radius, linked incident with "How it started", incident story, verdicts | Built. First-flow requirements R1 to R8 in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
 | Respond: who to tell, containment steps recorded as requested, the CERT-In 6-hour clock and a report draft in CERT-In's form order | Built. Email to a fixed contact list is built (Gmail app password) but not enabled on the public demo. |
-| Live stream: **Stream live** replays the selected day through Kafka; alerts arrive one by one and re-rank as they land | Built. The APT29 day streams its real logons, connections and process starts too. |
+| Live stream: on the APT29 day, **Stream live** replays it through Kafka; alerts arrive one by one and re-rank as they land. On **Real data** it follows the team's laptops and agents as they report | Built. A replay streams only into the day it was started on; loading a day closes it. |
 | Attack paths: routes from low-trust machines (or from anything) to critical assets, ATT&CK-tagged, choke points, fixes whose effect is recomputed on the graph, and what any one system can reach (shortest and most likely path) | Built. `GET /api/exposure`, `POST /api/exposure/simulate`, `GET /api/explore/{id}`. |
 | Access: granted vs used access per identity, the unused-access ranking, and blast radius over granted vs used routes | Built. `GET /api/entities/{id}/access`, `/api/access/overview`. |
 | AI agents: a real Claude Code agent's access (folders, secret files by name, the services their keys open, signed-in accounts, tools), its history, live activity and the routes from the open web through it to critical services | Built. `GET /api/agents/{id}`, [collectors/claude_code](collectors/claude_code/README.md). |
@@ -84,7 +86,7 @@ IBM found that 13% of organisations reported breaches of AI models or applicatio
 
 ## How alerts are ranked
 
-Each alert is scored on six questions answered from the graph:
+Each alert gets a score out of 100 from six questions answered from the graph, plus the alert tool's own severity:
 
 1. Is it linked to other alerts through the same user or machine within a short time?
 2. How many steps is it from a critical asset?
@@ -92,6 +94,7 @@ Each alert is scored on six questions answered from the graph:
 4. Is it unusual, such as a first-time action or a never-used path?
 5. Do the linked alerts follow attack stages in order?
 6. Does it sit on a choke point?
+7. What severity did the tool give it? (5 points of 100: the signal GraphOps improves on)
 
 The weight of each question is our design choice, set by hand in `backend/app/scoring.py`, and was not changed after the test days were written. A model that learns the weights from analyst verdicts is built but off: on our labelled days it did no better.
 
@@ -176,7 +179,7 @@ This Python code does the slow calculations ahead of time, so nothing slow happe
 
 This Python program scores each new alert the moment it arrives.
 
-1. It answers the six ranking questions. Most answers are already saved on the nodes by step 3, so this takes milliseconds. For example: "server-7 is 2 steps from the customer database" and "server-7 is a choke point".
+1. It answers the six graph questions and adds the tool's own severity. Most answers are already saved on the nodes by step 3, so this takes milliseconds. For example: "server-7 is 2 steps from the customer database" and "server-7 is a choke point".
 2. It combines the answers into one score with hand-set weights. A small logistic regression can learn weights from analysts marking alerts real, benign or false (AI 1); it is not switched on.
 3. It links alerts that share a user or machine within 2 hours, or that are joined by a login from one alert's machine to the next within 45 minutes, into one incident.
 4. It saves the score, the reasons and the incident in Neo4j and passes the ranked alert on to the backend server.
@@ -248,12 +251,12 @@ The React web app the analyst uses, in six tabs:
 
 | Source | What it gives us | Real or synthetic |
 |---|---|---|
-| APT29 day 1, [OTRF Security Datasets](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1) (MIT) | 196,081 Windows, Sysmon and PowerShell events from MITRE's APT29 emulation on four lab machines; the default day | Real logs of a real attack run on purpose in a lab |
+| APT29 day 1, [OTRF Security Datasets](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1) (MIT) | 196,081 Windows, Sysmon and PowerShell events from MITRE's APT29 emulation on four lab machines; the "APT29 attack" day | Real logs of a real attack run on purpose in a lab |
 | [SigmaHQ](https://github.com/SigmaHQ/sigma) rules, release `r2026-07-01` (Detection Rule License 1.1) | The alerts on the APT29 day: 73 matches, each keeping its rule's id, author and link | Real public rules |
 | Team laptops through [osquery](https://osquery.io) | Accounts, admins, signed-in users, listening ports, disk encryption and firewall, and each change as an alert | Real, live, with the owner's consent |
 | A Claude Code agent on a team laptop | What the agent can reach and every tool call, names only | Real, live, with the owner's consent |
 | [NIST NVD](https://nvd.nist.gov/developers), [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog), [FIRST EPSS](https://www.first.org/epss/) | CVEs on the software each machine runs, whether they are exploited now and how likely they are to be | Real public data, a saved snapshot from 28 October 2026 |
-| Demo company | 37 users, groups and machines, cloud resources, AI agents and one scripted attack day | Synthetic, written by us, labelled on screen |
+| Demo company | 37 users, groups and machines, cloud resources, AI agents and one scripted attack day; the day the weights were tuned on, used in the Proof table | Synthetic, written by us |
 | Five test days and an own-rules APT29 build | Labelled days for the Proof table only | Synthetic (the five days); real logs with our own rules (the APT29 build) |
 
 The attack or noise label on every alert is ours and is used only to score the ranking, never by the ranker. Every source, its licence and its limits: [docs/data-sources.md](docs/data-sources.md). We tried LANL's 58-day dataset and a team AWS account and dropped both; the reasons are there too.
@@ -347,11 +350,11 @@ cd backend
 
 ## Team
 
-Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mohamad and SK MD Mahasin.
+Team Pingu Haters: Deepthi Dubasi, Vatanesh Sharma, Bhanu Sai Teja H, Raja Mohamad and SK MD Mahasin.
 
 ## Disclosure
 
-As the hackFront India rules require, we list every AI tool, service, framework and dataset used in this project. This list is updated as we go and will be checked again before submission.
+As the hackFront India rules require, we list every AI tool, service, framework and dataset used in this project. Checked at submission, 31 October 2026.
 
 - **AI tools used to build it:** Claude Code (Anthropic) wrote and reviewed code, documents and research with us. Every claim we use was checked at its original source. Claude Code is also one of the real sources shown in the AI agents tab.
 - **AI inside the product:** Sarvam AI (`sarvam-105b` and `sarvam-translate:v1`) drafts incident stories, answers questions in the Ask tab and translates both into Indian languages. Claude through the Anthropic API is a fallback for the story when no Sarvam key is set.
