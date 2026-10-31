@@ -411,6 +411,9 @@ def load_scenario(scenario_id: str):
                     if attempt == 2:
                         raise HTTPException(503, "the demo data is busy; try again in a few seconds")
                     time.sleep(1 + attempt)
+                except Exception as e:  # say what failed instead of a bare 500
+                    log.exception("loading %s failed", scenario_id)
+                    raise HTTPException(500, f"loading failed: {type(e).__name__}: {str(e)[:300]}")
         finally:
             scenarios.release(s)
 

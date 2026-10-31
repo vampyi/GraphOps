@@ -19,27 +19,32 @@ def load(session, network_path=SAMPLE / "network.json", alerts_path=SAMPLE / "al
     alerts = json.loads(alerts_path.read_text())
     # a day may bring its own network (a real lab recording has its own machines); otherwise the sample organisation
     load_network(session, network_path, network=alerts.get("network"))
-    # new activity on the sample day: an edge seen for the first time keeps first_seen = time
+    # new activity on the day: an edge seen for the first time keeps first_seen = time. one query per edge type, not
+    # one per event: on the hosted database every query is a network round trip
+    by_type = {}
     for event in alerts["events"]:
         _check_type(event["type"])
+        by_type.setdefault(event["type"], []).append(
+            {"src": event["src"], "dst": event["dst"], "time": event["time"], "user": event.get("user")})
+    for edge_type, rows in by_type.items():
         session.run(
             f"""
-            MATCH (s {{id: $src}}), (d {{id: $dst}})
-            MERGE (s)-[r:{event['type']}]->(d)
-            ON CREATE SET r.first_seen = $time, r.count = 0, r.family = 'observed', r.user = $user
-            SET r.last_seen = $time, r.count = r.count + 1
-            """,
-            src=event["src"], dst=event["dst"], time=event["time"], user=event.get("user"),
-        )
+            UNWIND $rows AS row
+            MATCH (s:Entity {{id: row.src}}), (d:Entity {{id: row.dst}})
+            MERGE (s)-[r:{edge_type}]->(d)
+            ON CREATE SET r.first_seen = row.time, r.count = 0, r.family = 'observed', r.user = row.user
+            SET r.last_seen = row.time, r.count = r.count + 1
+            """, rows=rows)
 
-    for alert in alerts["alerts"]:
-        props = {k: v for k, v in alert.items() if k not in ("involves", "scenario")}
-        session.run("CREATE (a:Alert) SET a = $props, a.status = 'new'", props=props)
-        for entity in alert["involves"]:
-            session.run(
-                "MATCH (a:Alert {id: $a}), (e {id: $e}) WHERE NOT e:Alert CREATE (a)-[:Involves]->(e)",
-                a=alert["id"], e=entity,
-            )
+    session.run(
+        """
+        UNWIND $rows AS row
+        CREATE (a:Alert) SET a = row.props, a.status = 'new'
+        WITH a, row UNWIND row.involves AS eid
+        MATCH (e:Entity {id: eid})
+        CREATE (a)-[:Involves]->(e)
+        """, rows=[{"props": {k: v for k, v in alert.items() if k not in ("involves", "scenario")}, "involves": alert["involves"]}
+                   for alert in alerts["alerts"]])
     return counts(session)
 
 
@@ -68,7 +73,8 @@ def load_network_data(session, network):
     """load a network given as a dict with nodes, granted and observed. used by load_network (from a file) and
     by the importers (from BloodHound or CSV), so every entry point builds the same graph the same way."""
     # the demo lock (scenarios.py) survives a reload, so a second visitor cannot start one mid-way
-    session.run("MATCH (n) WHERE NOT n:Lock AND NOT n:SourceRecord AND NOT n:SourceEvent DETACH DELETE n")
+    # the stream's read positions survive too: wiping them would make the next read start again at the first message
+    session.run("MATCH (n) WHERE NOT n:Lock AND NOT n:SourceRecord AND NOT n:SourceEvent AND NOT n:StreamOffset DETACH DELETE n")
     for label in NODE_LABELS:
         session.run(f"CREATE CONSTRAINT {label.lower()}_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.id IS UNIQUE")
     session.run("CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (n:Entity) REQUIRE n.id IS UNIQUE")
@@ -111,7 +117,7 @@ def _edges(session, edges, family):
         by_type.setdefault(edge["type"], []).append({"src": edge["src"], "dst": edge["dst"], "props": props})
     for edge_type, rows in by_type.items():
         session.run(
-            f"UNWIND $rows AS row MATCH (s {{id: row.src}}), (d {{id: row.dst}}) CREATE (s)-[r:{edge_type}]->(d) SET r = row.props",
+            f"UNWIND $rows AS row MATCH (s:Entity {{id: row.src}}), (d:Entity {{id: row.dst}}) CREATE (s)-[r:{edge_type}]->(d) SET r = row.props",
             rows=rows)
 
 
