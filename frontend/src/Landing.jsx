@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Logo from "./Logo.jsx";
 import ThemeToggle from "./Theme.jsx";
 import StippleOrb from "./StippleOrb.jsx";
+import LiveStory from "./LiveStory.jsx";
 
 const STATS = [
   { value: "73%", label: "of SANS 2025 survey respondents cited false positives as a main detection challenge", source: "SANS Institute" },
@@ -24,18 +25,20 @@ const STEPS = [
   { n: "01", title: "Collect", text: "Logins, permissions, machines and alerts stream in from a company's existing tools." },
   { n: "02", title: "Connect", text: "Everything becomes one Neo4j graph: users, machines and groups as dots, logins and permissions as lines." },
   { n: "03", title: "Rank", text: "Each alert is scored on six graph questions and linked to the alerts on the same attack path." },
-  { n: "04", title: "Explain", text: "The analyst sees the blast radius, the attack step by step and a cited incident story, in English or an Indian language." },
+  { n: "04", title: "Respond", text: "The analyst sees the blast radius and how the attack started, who to tell, what to contain and the CERT-In 6-hour clock, with a cited story in English or an Indian language." },
 ];
 
 const WINS = [
   { tint: "mint", title: "Built on the graph", text: "Attack paths, blast radius, choke points and unused access are all graph queries on Neo4j." },
   { tint: "cream", title: "Granted vs used", text: "Each identity's blast radius is drawn twice: over the access it holds and the access it uses. The gap is the risk least privilege removes." },
   { tint: "sky", title: "Ask in plain language", text: "Questions are answered from GraphOps' own lookups, every sentence cited, in English or ten Indian languages, with Sarvam AI." },
-  { tint: "mint", title: "Measured", text: "On five held-out attack days, GraphOps ranked the attack above severity sorting every time. Every number is published." },
+  { tint: "cream", title: "Real machines, live", text: "Team laptops report through osquery and Claude Code reports as an AI agent. Each lands in the same graph, so its access and its attack paths are visible." },
+  { tint: "mint", title: "Measured on real logs", text: "On MITRE's real APT29 lab recording with public Sigma rules, and on 7 of 8 labelled days, GraphOps ranks attacks above noise better than severity sorting. Every number is in the Proof table." },
 ];
 
 const NAV = [
   { label: "Problem", href: "problem" },
+  { label: "Watch it work", href: "watch" },
   { label: "How it works", href: "how" },
   { label: "What sets it apart", href: "wins" },
 ];
@@ -182,6 +185,14 @@ export default function Landing() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section className="lp-sec lp-pad" id="watch" data-reveal>
+          <div className="lp-wrap">
+            <p className="lp-mono">Watch it work</p>
+            <h2 className="lp-h2">Same alerts. Different order.</h2>
+            <LiveStory />
           </div>
         </section>
 
