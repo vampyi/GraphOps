@@ -15,11 +15,21 @@ export default function AttackPaths({ onError }) {
   const [scope, setScope] = useState("low_trust");
   const [data, setData] = useState(null);
   const [sim, setSim] = useState(null);
-  const [focus, setFocus] = useState("laptop-42");
+  const [focus, setFocus] = useState(null);
 
   useEffect(() => {
     setSim(null);
-    getExposure(scope).then(setData).catch((e) => onError(e.message));
+    getExposure(scope).then((d) => {
+      // a day with no low-trust machines (the APT29 lab) has nothing to start from: ask "from anything" instead
+      if (scope === "low_trust" && !d.sources.some((s) => s !== "internet" && d.nodes.find((n) => n.id === s)?.kind === "Computer")) {
+        setScope("all");
+        return;
+      }
+      setData(d);
+      // open the explorer on a machine that has a route, preferring one from the loaded day over a live laptop
+      setFocus((f) => f ?? (d.paths.map((p) => p.source).find((s) => d.nodes.find((n) => n.id === s)?.kind === "Computer")
+        || d.paths[0]?.source || null));
+    }).catch((e) => onError(e.message));
   }, [scope]); // eslint-disable-line
 
   const runSim = async (rec) => {
@@ -52,7 +62,7 @@ export default function AttackPaths({ onError }) {
             <div className="ap-chokes">
               <span className="ap-label">Choke points<Info text="Systems that many attack paths pass through. Click one to see what it reaches." /></span>
               {data.chokepoints.slice(0, 6).map((c) => (
-                <button key={c.id} className={`ap-chip ${focus === c.id ? "on" : ""}`} onClick={() => setFocus(c.id)}>{c.id}<b>{c.paths_through}</b></button>
+                <button key={c.id} className={`ap-chip ${focus === c.id ? "on" : ""}`} onClick={() => setFocus(c.id)}>{c.name || c.id}<b>{c.paths_through}</b></button>
               ))}
             </div>
           )}

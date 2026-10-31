@@ -125,7 +125,7 @@ def choke_points(g, paths, pairs):
             edge_paths[(a, t, b)] += 1
             edge_pairs[(a, t, b)].add(pair)
     total = max(len(pairs), 1)
-    nodes = [{"id": n, "kind": g.nodes[n].get("kind"), "critical": bool(g.nodes[n].get("critical")),
+    nodes = [{"id": n, "name": g.nodes[n].get("name") or n, "kind": g.nodes[n].get("kind"), "critical": bool(g.nodes[n].get("critical")),
               "paths_through": c, "pairs_through": len(node_pairs[n]), "share": round(len(node_pairs[n]) / total, 3)}
              for n, c in node_paths.items()]
     nodes.sort(key=lambda x: (-x["pairs_through"], -x["paths_through"], x["id"]))
@@ -205,7 +205,7 @@ def recommendations(g, sources, targets, chokes, max_hops=MAX_HOPS, top=5):
         sim = simulate(g, sources, targets, remove_nodes=[c["id"]], max_hops=max_hops, with_paths=False)
         verb = {"User": "Tier and reset the account", "Group": "Review every right held by the group",
                 "Computer": "Isolate or harden the machine"}.get(c["kind"], "Harden")
-        out.append({"kind": "node", "id": c["id"], "node_kind": c["kind"], "title": f"{verb} {c['id']}",
+        out.append({"kind": "node", "id": c["id"], "node_kind": c["kind"], "title": f"{verb} {c.get('name') or c['id']}",
                     "paths_through": c["paths_through"], "pairs_through": c["pairs_through"],
                     **{k: sim[k] for k in ("pairs_before", "pairs_after", "pairs_cut", "share_cut")}})
     return out
