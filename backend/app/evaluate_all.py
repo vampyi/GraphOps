@@ -25,7 +25,7 @@ def grouping(session, attack_ids):
 
 def run(session):
     results = []
-    for item in scenarios.catalog():
+    for item in [c for c in scenarios.catalog() if scenarios._attack_ids(c["path"])]:
         loaded = scenarios.load_scenario(session, item["id"])
         ev = evaluate(session, loaded["attack_ids"])
         results.append({"scenario": item["id"], "alerts": ev["total"], "attack": ev["attack"],
@@ -51,7 +51,7 @@ def learning_experiment(session):
     and compare with the hand-set weights. labels stand in for analyst verdicts; they are never seen by the
     hand-set ranker."""
     days = {}
-    for item in scenarios.catalog():
+    for item in [c for c in scenarios.catalog() if scenarios._attack_ids(c["path"])]:
         loaded = scenarios.load_scenario(session, item["id"])
         days[item["id"]] = (day_rows(session, loaded["attack_ids"]), set(loaded["attack_ids"]))
     out = []

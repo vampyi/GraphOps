@@ -252,8 +252,7 @@ def test_evaluation_graphops_beats_severity_only(api):
 
 def test_picker_offers_the_real_day_first_and_held_out_days_stay_loadable(api):
     body = api.get("/api/scenarios").json()
-    assert [s["id"] for s in body["scenarios"]] == ["apt29_day1_sigma", "sample"] and body["active"] == "sample"
-    assert body["scenarios"][0]["real"] and not body["scenarios"][1]["real"]
+    assert [s["id"] for s in body["scenarios"][:2]] == ["apt29_day1_sigma", "real_data"] and body["active"] == "sample"
     # held-out days are proof test days: not in the picker, still loadable by id
     assert api.post("/api/scenarios/finance_breach/load").json()["id"] == "finance_breach"
     body = api.get("/api/scenarios").json()

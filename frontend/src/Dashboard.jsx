@@ -20,6 +20,7 @@ const VIEWS = [
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
 ];
 const POLL_MS = 2000;
+const REAL_POLL_MS = 4000; // real data: laptops report once a minute, agents on every action
 const VIEW_IDS = VIEWS.map((v) => v.id);
 
 // the view lives in the url hash (#/console/exposure), so a tab click is shareable and a refresh keeps the view
@@ -78,9 +79,11 @@ export default function Dashboard() {
     setSwitching(true);
     switchingRef.current = true;
     setScenarios((s) => (s ? { ...s, active: id } : s));
+    // a running stream keeps writing to the database: stop it first, so it never collides with the reload
+    clearTimeout(timer.current);
+    setLive((l) => ({ ...l, on: false }));
     try {
       await loadScenario(id);
-      setLive((l) => ({ ...l, on: false }));
       await load(); // the new day's alerts must be in place before the tabs redraw, or triage opens a stale alert
       setDataVersion((v) => v + 1);
     } catch (e) {
@@ -95,7 +98,27 @@ export default function Dashboard() {
 
   // live replay: poll /api/live, merge new or changed alerts, flag what moved
   useEffect(() => {
-    if (!live.on) return;
+    if (!live.on || !live.real) return;
+    let stopped = false;
+    let known = new Set(alerts.map((a) => a.id));
+    const tick = async () => {
+      try {
+        const next = await getAlerts();
+        if (stopped) return;
+        const fresh = next.filter((a) => !known.has(a.id)).map((a) => a.id);
+        known = new Set(next.map((a) => a.id));
+        setAlerts(next);
+        if (fresh.length) setChanged(new Set(fresh));
+        setLive((l) => ({ ...l, ingested: l.ingested + fresh.length }));
+      } catch (e) { if (!stopped) setError(e.message); }
+      if (!stopped) timer.current = setTimeout(tick, REAL_POLL_MS);
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(timer.current); };
+  }, [live.on, live.real]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!live.on || live.real) return;
     let seq = live.seq;
     let stopped = false;
     // ask again only after the previous answer arrives, so slow answers never pile up
@@ -122,6 +145,10 @@ export default function Dashboard() {
 
   const startReplay = async (attack) => {
     setError(null);
+    if (scenarios?.active === "real_data") {
+      setLive({ on: true, real: true, seq: 0, replaying: false, ingested: 0, attack });
+      return;
+    }
     try {
       setAlerts([]); setChanged(new Set());
       await replayReset(scenarios?.active);
@@ -160,6 +187,8 @@ export default function Dashboard() {
       <div className="subnav">
         {(() => {
           const real = scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.real;
+          if (scenarios?.active === "real_data")
+            return <span className="tag real" title="Only what team laptops and Claude Code agents report, live">Real data <em>live laptops & AI agents only</em></span>;
           return <span className={`tag ${real ? "real" : ""}`} title="Team laptops and AI agents report live on top of every day">
             {real ? "Real lab logs" : "Synthetic company"} <em>+ live laptops & AI agents</em></span>;
         })()}
@@ -192,8 +221,9 @@ function LiveControls({ live, onStart, onStop }) {
   if (live.on) {
     return (
       <div className="live-controls on" data-tour="live">
-        <span className={`live-dot ${live.replaying ? "pulse" : "done"}`} />
-        <span className="live-label">{live.replaying ? "Live" : "Stream complete"} · {live.ingested} events</span>
+        <span className={`live-dot ${live.replaying || live.real ? "pulse" : "done"}`} />
+        <span className="live-label">{live.real ? `Live · ${live.ingested} new from laptops & agents`
+          : `${live.replaying ? "Live" : "Stream complete"} · ${live.ingested} events`}</span>
         <button onClick={onStop}>Stop</button>
       </div>
     );

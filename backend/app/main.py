@@ -4,9 +4,11 @@ import json
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
+from neo4j.exceptions import TransientError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -402,7 +404,13 @@ def load_scenario(scenario_id: str):
         if not scenarios.acquire(s, f"loading {scenario_id}"):
             raise HTTPException(409, "someone else is reloading the demo data; try again in a minute")
         try:
-            return scenarios.load_scenario(s, scenario_id)
+            for attempt in range(3):
+                try:
+                    return scenarios.load_scenario(s, scenario_id)
+                except TransientError:
+                    if attempt == 2:
+                        raise HTTPException(503, "the demo data is busy; try again in a few seconds")
+                    time.sleep(1 + attempt)
         finally:
             scenarios.release(s)
 

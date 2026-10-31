@@ -1,0 +1,12 @@
+{
+  "name": "Real data (live laptops & AI agents)",
+  "description": "Only what reports in live: team laptops through osquery and Claude Code agents. No recorded or written alerts.",
+  "source": "collectors/osquery and collectors/claude_code",
+  "network": {
+    "nodes": [],
+    "granted": [],
+    "observed": []
+  },
+  "events": [],
+  "alerts": []
+}

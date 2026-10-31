@@ -19,9 +19,9 @@ def _attack_ids(alerts_path):
     return sorted(a["id"] for a in doc["alerts"] if a.get("scenario") == "attack")
 
 
-# the days a visitor can pick, in order: the real lab recording first, then the synthetic company. the other days
-# stay in data/scenarios/ as test days for the proof table (app.evaluate_all), not in the picker
-LISTED = {"apt29_day1_sigma": ("APT29 lab day (real logs)", True), "sample": ("Demo company (synthetic)", False)}
+# the days a visitor can pick: the real lab recording, and "real data", which holds only what reports in live (team
+# laptops and claude code agents). the other days stay in data/scenarios/ as test days for the proof table
+LISTED = {"apt29_day1_sigma": ("APT29 attack (real lab logs)", True), "real_data": ("Real data (live laptops & AI agents)", True)}
 
 
 def catalog():

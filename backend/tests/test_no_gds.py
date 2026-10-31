@@ -33,6 +33,6 @@ def test_analysis_runs_without_gds(plain_driver, attack_ids):
 def test_every_scenario_evaluates_without_gds(plain_driver):
     with plain_driver.session() as s:
         results = evaluate_all.run(s)
-    assert [r["scenario"] for r in results] == [c["id"] for c in scenarios.catalog()]
+    assert [r["scenario"] for r in results] == [c["id"] for c in scenarios.catalog() if scenarios._attack_ids(c["path"])]
     for r in results:
         assert r["attack"] > 0 and r["graphops"]["last_attack_rank"] is not None
