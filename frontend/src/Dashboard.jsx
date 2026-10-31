@@ -54,7 +54,18 @@ export default function Dashboard() {
   const load = () =>
     getAlerts().then(setAlerts).catch((e) => setError(`Could not reach the backend server. ${e.message}`));
   useEffect(() => { load(); }, []);
-  useEffect(() => { getScenarios().then(setScenarios).catch(() => {}); }, []);
+  // only the picker's days are shown; if an old test day is still loaded, move to the first real one
+  const autoSwitched = useRef(false);
+  useEffect(() => {
+    getScenarios().then((s) => {
+      setScenarios(s);
+      const cur = s.scenarios.find((sc) => sc.id === s.active);
+      if (cur && cur.listed === false && s.scenarios[0] && !s.busy && !autoSwitched.current) {
+        autoSwitched.current = true;
+        switchScenario(s.scenarios[0].id);
+      }
+    }).catch(() => {});
+  }, []); // eslint-disable-line
   // the hosted demo has one shared database: follow a day another visitor loaded, and say when it is mid-reload
   const [busy, setBusy] = useState(null);
   useEffect(() => {
@@ -85,6 +96,7 @@ export default function Dashboard() {
     try {
       await loadScenario(id);
       await load(); // the new day's alerts must be in place before the tabs redraw, or triage opens a stale alert
+      setScenarios(await getScenarios()); // the server's list, now without any old day that was loaded before
       setDataVersion((v) => v + 1);
     } catch (e) {
       setScenarios((s) => (s ? { ...s, active: before } : s));
@@ -195,7 +207,8 @@ export default function Dashboard() {
         {scenarios && scenarios.scenarios.length > 1 && (
           <label className="scenario-pick">Scenario
             <select value={scenarios.active} disabled={switching} onChange={(e) => switchScenario(e.target.value)}>
-              {scenarios.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+              {scenarios.scenarios.filter((sc) => sc.listed !== false || sc.id === scenarios.active)
+                .map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
             </select>
           </label>
         )}
