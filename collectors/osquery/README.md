@@ -1,5 +1,7 @@
 # Connect your laptop to GraphOps
 
+The team guide covering this and the Claude Code collector together is [docs/connect-your-laptop.md](../../docs/connect-your-laptop.md).
+
 Your laptop reports to GraphOps once a minute through **osquery**, the open-source endpoint agent. It then shows up in the live graph, and changes on it show up as alerts in Triage.
 
 ## What it sends, and what it never sends

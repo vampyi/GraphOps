@@ -30,12 +30,14 @@ function ago(iso) {
 export default function Agents({ onError }) {
   const [sources, setSources] = useState(null);
   const [view, setView] = useState(null);
+  const [pick, setPick] = useState(null);
 
   useEffect(() => {
     getSources().then((all) => setSources(all.filter((s) => s.kind === "ai_agent"))).catch((e) => onError(e.message));
   }, []); // eslint-disable-line
 
-  const id = sources?.[0]?.id;
+  // several team members can connect their agents; the most recently active one shows first
+  const id = pick || sources?.[0]?.id;
   useEffect(() => {
     if (!id) return;
     let stop = false, timer;
@@ -59,6 +61,14 @@ export default function Agents({ onError }) {
 
   return (
     <main className="agents">
+      {sources.length > 1 && (
+        <div className="ag-pick" role="tablist" aria-label="AI agents reporting">
+          {sources.map((s) => (
+            <button key={s.id} role="tab" aria-selected={s.id === id} className={s.id === id ? "on" : ""}
+              onClick={() => { setPick(s.id); setView(null); }}>{s.id.replace(/^claude-code-/, "Claude Code · ")}</button>
+          ))}
+        </div>
+      )}
       <section className="panel ag-head">
         <div className="ag-id">
           <span className={`live-dot ${fresh ? "pulse" : ""}`} />

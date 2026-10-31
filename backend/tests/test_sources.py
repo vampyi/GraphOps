@@ -68,9 +68,9 @@ def test_agent_access_activity_and_paths(src_api, neo4j_driver):
         {"tool": "Read", "target": "secret:work/.env", "detail": "Read .env"}]})
     v = src_api.get("/api/agents/claude-code-test").json()
     assert v["summary"]["secrets"] == 1 and v["summary"]["critical_services"] == 1
-    assert {s["id"]: s["used"] for s in v["secrets"]} == {"secret:work/.env": 1}
+    assert {s["id"]: s["used"] for s in v["secrets"]} == {"claude-code-test/secret:work/.env": 1}
     assert [p["nodes"] for p in v["attack_paths"]] == [
-        ["internet", "claude-code-test", "folder:work", "secret:work/.env", "svc:db"]]
+        ["internet", "claude-code-test", "claude-code-test/folder:work", "claude-code-test/secret:work/.env", "svc:db"]]
     assert v["attack_paths"][0]["types"] == ["FeedsUntrustedInput", "CanRead", "Contains", "HoldsKeyFor"]
 
     # loading another day rebuilds the graph; the agent is drawn back in with its activity
@@ -89,3 +89,19 @@ def test_laptop_and_agent_side_by_side(src_api):
     assert r.json()["stored"] == 1
     assert not [a for a in src_api.get("/api/alerts").json() if a.get("source_tool") == "osquery"]
     assert {s["id"]: s["kind"] for s in src_api.get("/api/sources").json()} == {"laptop-test": "endpoint", "claude-code-test": "ai_agent"}
+
+
+def test_two_agents_keep_their_own_folders_and_share_services(src_api, neo4j_driver):
+    other = {**AGENT, "agent": {**AGENT["agent"], "id": "claude-code-other", "host": "other laptop"}}
+    for sid, inv in (("claude-code-test", AGENT), ("claude-code-other", other)):
+        src_api.post(f"/api/sources/{sid}/inventory", json={"kind": "ai_agent", "inventory": inv}, headers=TOKEN)
+    # the first agent redraws: the second keeps its folder, its secret and its route to the shared database
+    src_api.post("/api/sources/claude-code-test/inventory", json={"kind": "ai_agent", "inventory": AGENT}, headers=TOKEN)
+    v = src_api.get("/api/agents/claude-code-other").json()
+    assert [p["nodes"] for p in v["attack_paths"]] == [
+        ["internet", "claude-code-other", "claude-code-other/folder:work", "claude-code-other/secret:work/.env", "svc:db"]]
+    with neo4j_driver.session() as s:
+        assert s.run("MATCH (n {id: 'svc:db'}) RETURN count(n) AS n").single()["n"] == 1
+        assert s.run("MATCH (:AIAgent)-[:CanRead]->()-[:Contains]->()-[:HoldsKeyFor]->(:CloudResource {id: 'svc:db'}) "
+                     "RETURN count(*) AS n").single()["n"] == 2
+

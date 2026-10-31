@@ -1,5 +1,7 @@
 # Connect a Claude Code agent to GraphOps
 
+Teammates: the step-by-step guide for your laptop and your Claude Code, including a prompt that lets Claude Code do the setup, is [docs/connect-your-laptop.md](../../docs/connect-your-laptop.md).
+
 GraphOps treats an AI coding agent as an identity, like a person or a machine. This collector shows a real one: Claude Code on a team laptop. It appears in the **AI agents** tab and in the graph, with what it **can** reach, what it **did**, and the routes an attacker could take through it (for example a web page with hidden instructions, read by the agent, which holds a key to a production service).
 
 Two scripts:
@@ -40,7 +42,7 @@ Two scripts:
    python3 collectors/claude_code/scan.py <your working folder>
    ```
 
-4. Turn on live activity: add a `PostToolUse` hook to `.claude/settings.json` in the folder you work in:
+4. Turn on live activity: add a `PostToolUse` hook to `.claude/settings.local.json` in your GraphOps folder (personal, ignored by git, and only active for Claude Code sessions started in that folder):
 
    ```json
    {"hooks": {"PostToolUse": [{"matcher": "*", "hooks": [{"type": "command",
@@ -53,4 +55,4 @@ On a Mac with Python from python.org, which ships without root certificates, the
 
 ## Stop
 
-Remove the hook from `.claude/settings.json`, or point `url` in `~/.graphops/config.json` at `http://localhost:8000` so nothing reaches the public site.
+Delete `.claude/settings.local.json`, or point `url` in `~/.graphops/config.json` at `http://localhost:8000` so nothing reaches the public site.

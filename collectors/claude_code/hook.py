@@ -61,15 +61,22 @@ def main():
         return
     event = {"time": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
              "tool": call.get("tool_name"), "target": tgt, "detail": detail}
-    # send from a child process so the agent never waits on the network
-    if os.fork() == 0:
-        try:
-            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-            from common import config, post
-            post(f"/api/sources/{config()['source']}/events", {"events": [event]}, timeout=5)
-        except Exception:
-            pass
+    # send from a child process so the agent never waits on the network. windows has no fork, so there the hook
+    # sends directly with a short timeout instead
+    if not hasattr(os, "fork"):
+        send(event, timeout=3)
+    elif os.fork() == 0:
+        send(event, timeout=5)
         os._exit(0)
+
+
+def send(event, timeout):
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from common import config, post
+        post(f"/api/sources/{config()['source']}/events", {"events": [event]}, timeout=timeout)
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

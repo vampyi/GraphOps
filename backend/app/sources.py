@@ -194,30 +194,33 @@ def _draw_alerts(session, source_id):
 def _draw_agent(session, source_id, inv):
     agent = inv["agent"]
     aid = agent["id"]
-    # remove this source's previous drawing, then draw the current inventory
+    own = lambda x: _own(source_id, x)
+    # remove this source's previous drawing: its edges, its own nodes (agent, folders, secrets), then any shared
+    # service or tool no agent points at any more. several agents can reach the same service, so services and
+    # tools are shared nodes; folders and secret files belong to one laptop, so their ids carry the source
+    session.run("MATCH ()-[r {source: $sid}]->() DELETE r", sid=source_id)
     session.run("MATCH (n:Entity {source: $sid}) DETACH DELETE n", sid=source_id)
     nodes = [{"id": aid, "label": "AIAgent", "name": agent.get("name", aid), "location": "onprem",
               "platform": agent.get("platform"), "host": agent.get("host"), "mode": agent.get("mode"),
               "allow": agent.get("allow", [])[:50], "deny": agent.get("deny", [])[:50], "real": True}]
-    nodes += [{"id": f["id"], "label": "Folder", "name": f.get("name", f["id"]), "path": f.get("path"),
+    nodes += [{"id": own(f["id"]), "label": "Folder", "name": f.get("name", f["id"]), "path": f.get("path"),
                "location": "onprem"} for f in inv.get("folders", [])]
-    nodes += [{"id": s["id"], "label": "Secret", "name": s.get("name", s["id"]), "path": s.get("path"),
+    nodes += [{"id": own(s["id"]), "label": "Secret", "name": s.get("name", s["id"]), "path": s.get("path"),
                "location": "onprem"} for s in inv.get("secrets", [])]
-    nodes += [{"id": s["id"], "label": "CloudResource", "name": s.get("name", s["id"]), "location": "cloud",
+    shared = [{"id": s["id"], "label": "CloudResource", "name": s.get("name", s["id"]), "location": "cloud",
                "resourcetype": s.get("type", "service"), "critical": bool(s.get("critical"))}
               for s in inv.get("services", [])]
-    nodes += [{"id": t["id"], "label": "Tool", "name": t.get("name", t["id"]), "location": "onprem",
-               "kind": "mcp_server" if t.get("mcp") else "built_in"} for t in inv.get("tools", [])]
-    for label in {n["label"] for n in nodes}:
-        rows = [{k: v for k, v in n.items() if k != "label"} for n in nodes if n["label"] == label]
-        # MERGE so a service already in the graph (for example the internet) is reused, not duplicated
-        session.run(f"UNWIND $rows AS props MERGE (n:{label}:Entity {{id: props.id}}) "
-                    "SET n += props, n.source = $sid", rows=rows, sid=source_id)
+    shared += [{"id": t["id"], "label": "Tool", "name": t.get("name", t["id"]), "location": "onprem",
+                "kind": "mcp_server" if t.get("mcp") else "built_in"} for t in inv.get("tools", [])]
+    for group, tail in ((nodes, "SET n += props, n.source = $sid"), (shared, "SET n += props, n.shared = true REMOVE n.source")):
+        for label in {n["label"] for n in group}:
+            rows = [{k: v for k, v in n.items() if k != "label"} for n in group if n["label"] == label]
+            session.run(f"UNWIND $rows AS props MERGE (n:{label}:Entity {{id: props.id}}) {tail}", rows=rows, sid=source_id)
 
-    edges = [{"src": aid, "type": "CanRead", "dst": f["id"]} for f in inv.get("folders", [])]
+    edges = [{"src": aid, "type": "CanRead", "dst": own(f["id"])} for f in inv.get("folders", [])]
     for s in inv.get("secrets", []):
-        edges.append({"src": s["folder"], "type": "Contains", "dst": s["id"]})
-        edges += [{"src": s["id"], "type": "HoldsKeyFor", "dst": svc} for svc in s.get("services", [])]
+        edges.append({"src": own(s["folder"]), "type": "Contains", "dst": own(s["id"])})
+        edges += [{"src": own(s["id"]), "type": "HoldsKeyFor", "dst": svc} for svc in s.get("services", [])]
     edges += [{"src": aid, "type": "SignedInTo", "dst": a["service"], "account": a.get("account")}
               for a in inv.get("accounts", [])]
     edges += [{"src": aid, "type": "HasToolAccess", "dst": t["id"]} for t in inv.get("tools", [])]
@@ -234,6 +237,13 @@ def _draw_agent(session, source_id, inv):
             MERGE (a)-[r:{etype}]->(b)
             SET r.family = 'granted', r.source = $sid, r.account = row.account, r.via = row.via
             """, rows=[e for e in edges if e["type"] == etype], sid=source_id)
+    session.run("MATCH (n:Entity {shared: true}) WHERE NOT (n)--() DELETE n")
+
+
+def _own(source_id, target):
+    """folders and secret files are one laptop's own: their graph ids carry the source, so two agents that both
+    have a home folder or ~/.aws/credentials do not share one node."""
+    return f"{source_id}/{target}" if target.startswith(("folder:", "secret:")) else target
 
 
 def _draw_used(session, source_id):
@@ -247,7 +257,8 @@ def _draw_used(session, source_id):
     session.run(
         """
         MATCH (e:SourceEvent {source: $sid}) WHERE e.time >= $since
-        WITH e.target AS target, count(*) AS n, max(e.time) AS last
+        WITH CASE WHEN e.target STARTS WITH 'folder:' OR e.target STARTS WITH 'secret:' THEN $sid + '/' + e.target
+                  ELSE e.target END AS target, count(*) AS n, max(e.time) AS last
         MATCH (a:AIAgent {id: $aid}), (t:Entity {id: target})
         MERGE (a)-[r:UsedAccess]->(t)
         SET r.count = n, r.last_seen = last, r.family = 'observed'
@@ -297,29 +308,30 @@ def agent_view(session, source_id):
                coalesce(u.count, 0) AS used
         ORDER BY id
         """, aid=aid).data()
+    svcs = [x["id"] for x in inv.get("services", [])]  # the services this agent's scan found, shared with other agents
     services = session.run(
         """
         MATCH (a:AIAgent {id: $aid})
-        MATCH (svc:CloudResource {source: $sid})
+        MATCH (svc:CloudResource) WHERE svc.id IN $svcs
         OPTIONAL MATCH direct = (a)-[:SignedInTo]->(svc)
         OPTIONAL MATCH via = (a)-[:CanRead]->()-[:Contains]->()-[:HoldsKeyFor]->(svc)
         OPTIONAL MATCH (a)-[u:UsedAccess]->(svc)
         RETURN svc.id AS id, svc.name AS name, coalesce(svc.critical, false) AS critical,
                direct IS NOT NULL AS signed_in, via IS NOT NULL AS via_secret, coalesce(u.count, 0) AS used
         ORDER BY critical DESC, id
-        """, aid=aid, sid=source_id).data()
+        """, aid=aid, svcs=svcs).data()
     rel = "|".join(ATTACK_EDGES)
     # for each critical service this agent can reach, the shortest route from the open web through the agent
     paths = session.run(
         f"""
         MATCH (i:Internet {{id: 'internet'}}), (a:AIAgent {{id: $aid}})
-        MATCH (c:CloudResource {{source: $sid, critical: true}})
+        MATCH (c:CloudResource {{critical: true}}) WHERE c.id IN $svcs
         MATCH p = shortestPath((i)-[:{rel}*..8]->(c))
         WHERE a IN nodes(p)
         RETURN c.id AS target, c.name AS target_name, [n IN nodes(p) | n.id] AS nodes,
                [r IN relationships(p) | type(r)] AS types
         ORDER BY length(p) DESC, target
-        """, aid=aid, sid=source_id).data()
+        """, aid=aid, svcs=svcs).data()
     events = session.run(
         "MATCH (e:SourceEvent {source: $sid}) RETURN e.time AS time, e.tool AS tool, e.target AS target, "
         "e.detail AS detail ORDER BY e.time DESC LIMIT 40", sid=source_id).data()
@@ -327,7 +339,7 @@ def agent_view(session, source_id):
     hist = inv.get("history") or {}
     ever = hist.get("targets", {})
     for row in reach + secrets + services:
-        row["ever"] = ever.get(row["id"], {}).get("count", 0)
+        row["ever"] = ever.get(row["id"].removeprefix(f"{source_id}/"), {}).get("count", 0)
     used = sum(1 for r in reach if r["used"]) + sum(1 for s in secrets if s["used"])
     granted = len(reach) + len(secrets)
     return {

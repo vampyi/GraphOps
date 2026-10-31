@@ -42,3 +42,6 @@ data/raw/
 # local planning notes
 docs/plan.md
 !backend/tests/fixtures/**/*.zip
+
+# personal claude code settings (each teammate's graphops hook)
+.claude/settings.local.json

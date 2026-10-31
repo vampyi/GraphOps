@@ -325,7 +325,7 @@ Picking a scenario or pressing Stream live in the preview changes the live site 
 
 **Never run `python -m app.seed` or `python -m app.evaluate_all` with the hosted database's `NEO4J_*` values.** Both wipe the database they point at. Use the local Neo4j from Docker.
 
-**Real sources** need `INGEST_TOKEN` set on the server; the collectors send it. Connect a laptop: [collectors/osquery](collectors/osquery/README.md). Connect a Claude Code agent: [collectors/claude_code](collectors/claude_code/README.md).
+**Real sources** need `INGEST_TOKEN` set on the server; the collectors send it. Connect a laptop: [collectors/osquery](collectors/osquery/README.md). Connect a Claude Code agent: [collectors/claude_code](collectors/claude_code/README.md). Teammates connecting both, step by step: [docs/connect-your-laptop.md](docs/connect-your-laptop.md).
 
 **Live replay** plays the sample day through Kafka instead of loading it in one batch. With the backend running and `KAFKA_BOOTSTRAP=localhost:9092` in `.env`:
 
