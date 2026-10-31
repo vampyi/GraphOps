@@ -165,8 +165,13 @@ def _draw_alerts(session, source_id):
         return
     hid = _host_id(json.loads(rec["inv"]))
     rows = []
+    # one alert per kind of change and subject, the newest: a collector restarted with no memory reports the same
+    # weak settings again, and that is not a new change
+    latest = {}
     for e in session.run("MATCH (e:SourceEvent {source: $id}) RETURN e.time AS time, e.kind AS kind, e.subject AS subject, "
                          "e.detail AS detail ORDER BY e.time", id=source_id):
+        latest[(e["kind"], e["subject"])] = e
+    for e in latest.values():
         spec = EVENT_ALERTS[e["kind"]]
         aid = f"rl-{source_id}-{e['kind']}-{e['time']}"[:120]
         involves = [hid] + ([f"{e['subject']}@{hid}"] if e["kind"] in ("admin_added", "user_signed_in") and e["subject"] else [])

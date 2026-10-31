@@ -42,11 +42,17 @@ def test_laptop_in_graph_changes_as_alerts_and_kept_on_reload(src_api, neo4j_dri
         {"time": "2026-10-30T10:01:00+00:00", "kind": "admin_added", "subject": "user-bbbb", "detail": "now admin"},
         {"time": "2026-10-30T10:02:00+00:00", "kind": "made_up", "subject": "x"}]})
     assert r.json()["stored"] == 2
+    # the same weak setting reported again (a restarted collector) is not a second alert
+    src_api.post("/api/sources/laptop-test/events", headers=TOKEN, json={"events": [
+        {"time": "2026-10-30T11:00:00+00:00", "kind": "firewall_off", "subject": "", "detail": "the host firewall is off"}]})
+    with neo4j_driver.session() as s:
+        seed.load(s)
     alerts = {a["name"]: a for a in src_api.get("/api/alerts").json() if a.get("source_tool") == "osquery"}
+    assert len([a for a in src_api.get("/api/alerts").json() if a.get("source_tool") == "osquery"]) == 2
     assert set(alerts) == {"Firewall turned off", "New local administrator account: user-bbbb"}
     assert alerts["Firewall turned off"]["technique_id"] == "T1686"
     src = src_api.get("/api/sources").json()[0]
-    assert src["label"] == "Test laptop" and src["admins"] == 1 and src["firewall"] is False and src["events"] == 2
+    assert src["label"] == "Test laptop" and src["admins"] == 1 and src["firewall"] is False and src["events"] == 3
     with neo4j_driver.session() as s:
         seed.load(s)  # a reload wipes the graph; the laptop and its alerts are drawn back
         assert s.run("MATCH (:User {id: 'user-aaaa@laptop-test'})-[:AdminTo]->(:Computer {id: 'laptop-test'}) "
