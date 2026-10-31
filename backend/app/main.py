@@ -406,7 +406,13 @@ def load_scenario(scenario_id: str):
         try:
             for attempt in range(3):
                 try:
-                    return scenarios.load_scenario(s, scenario_id)
+                    result = scenarios.load_scenario(s, scenario_id)
+                    if _KAFKA:  # the new day starts the stream at its end: old messages are never replayed into it
+                        try:
+                            stream.skip_to_end(s, _get_consumer())
+                        except Exception:
+                            log.exception("could not move the stream to its end after loading %s", scenario_id)
+                    return result
                 except TransientError:
                     if attempt == 2:
                         raise HTTPException(503, "the demo data is busy; try again in a few seconds")
