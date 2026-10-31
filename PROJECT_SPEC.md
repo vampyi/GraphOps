@@ -112,7 +112,7 @@ The first flow proved the idea on one scripted day. This flow turns GraphOps int
 
 - No ranking model trained on verdicts yet. Verdicts now carry analyst and time so training is possible later.
 - No plain-English question box. Every analytic has a fixed, read-only Cypher or Python path and shows its numbers.
-- No sign-in. The hosted site is a demo on synthetic data.
+- No sign-in. The hosted site is a public demo: a real lab recording and a synthetic company, with real laptops and an AI agent reporting in.
 - The sample organisation stays as it is. Realism work (default rights, hubs, normal first-time routes) belongs in a separate dataset, as the research recommends.
 - Field maps for SIEM formats are written from public documentation and sample payloads we wrote. They are starting points to check against a real tenant, not certified connectors.
 

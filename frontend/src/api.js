@@ -28,11 +28,8 @@ export const simulateExposure = (body) => post("/exposure/simulate", body);
 // access and communities
 export const getAccess = (id, days = 30) => call(`/entities/${encodeURIComponent(id)}/access?days=${days}`);
 export const getAccessOverview = (days = 30) => call(`/access/overview?days=${days}`);
-export const getCommunities = () => call("/communities");
 
 // evaluation and scenarios (credibility)
-export const getEvaluation = () => call("/evaluation");
-export const getLearning = () => call("/learning");
 export const getScenarios = () => call("/scenarios");
 export const loadScenario = (id) => post(`/scenarios/${id}/load`);
 

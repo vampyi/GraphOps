@@ -41,58 +41,6 @@ export function MiniBar({ breakdown }) {
   );
 }
 
-// every alert on one time strip, with the selected incident lit up
-export function AlertStrip({ alerts, incidentId, selectedId, onPick }) {
-  const [tip, setTip] = useState(null);
-  if (!alerts.length) return null;
-  // alert times have no timezone, so read them as plain clock times
-  const clock = (iso) => { const [h, m] = iso.slice(11, 16).split(":").map(Number); return h * 60 + m; };
-  const times = alerts.map((a) => clock(a.time));
-  const t0 = Math.min(...times), t1 = Math.max(...times);
-  const span = t1 - t0 || 1;
-  const hours = [];
-  for (let t = Math.ceil(t0 / 30) * 30; t <= t1; t += 30) hours.push(t);
-  return (
-    <div className="strip">
-      <div className="strip-title">Today's alerts over time <small>dot size = score{incidentId ? `, lit = ${incidentId}` : ""}</small></div>
-      <div className="strip-track">
-        {hours.map((t) => (
-          <span key={t} className={`strip-hour ${t % 60 ? "half" : ""}`} style={{ left: `${((t - t0) / span) * 100}%` }}>{String(Math.floor(t / 60)).padStart(2, "0")}:{t % 60 ? "30" : "00"}</span>
-        ))}
-        {alerts.map((a) => {
-          const x = ((clock(a.time) - t0) / span) * 100;
-          const size = 6 + (a.score / 100) * 16;
-          const lit = incidentId && a.incident_id === incidentId;
-          return (
-            <button
-              key={a.id}
-              className={`strip-dot ${lit ? "lit" : ""} ${a.id === selectedId ? "sel" : ""}`}
-              style={{ left: `${x}%`, width: size, height: size }}
-              onMouseEnter={() => setTip({ a, x })}
-              onMouseLeave={() => setTip(null)}
-              onClick={() => onPick(a)}
-            />
-          );
-        })}
-        {tip && <StripTip {...tip} />}
-      </div>
-    </div>
-  );
-}
-
-function StripTip({ a, x }) {
-  const top = Object.entries(a.breakdown || {}).filter(([k]) => k !== "severity").sort((p, q) => q[1] - p[1])[0];
-  return (
-    <div className="strip-tip" style={{ left: `clamp(125px, ${x}%, calc(100% - 125px))` }}>
-      <div className="tt-time">{a.time.slice(11, 16)} · {a.source_tool}</div>
-      <div className="tt-name">{a.name}</div>
-      <div className="tt-row">Score <b>{Math.round(a.score)}</b> · severity <b>{a.severity}</b></div>
-      <div className="tt-row">On <b>{a.involves.join(", ")}</b></div>
-      <div className="tt-row">Incident <b>{a.incident_id}</b>{top && top[1] > 0 ? <> · biggest reason <b>{REASON_LABELS[top[0]].toLowerCase()}</b></> : null}</div>
-    </div>
-  );
-}
-
 export function StageTimeline({ alerts, selectedId }) {
   return (
     <ol className="stages">

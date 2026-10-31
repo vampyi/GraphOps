@@ -27,13 +27,8 @@ export const groupName = (g) => (g === "none" ? "No activity" : GROUP_NAME[g] ||
 export const groupOfNode = (n, mode) =>
   n.critical ? "critical" : mode === "community" ? (n.community ? `c${n.community}` : "none") : mode === "zones" ? (n.location || "onprem") : n.kind;
 
-// columns by attack distance: how many attack steps each node is from the nearest critical asset, worked out
-// backwards from the critical assets along the attack steps. critical assets sit on the right, nodes with no
-// route to one on the left, so the picture reads left to right as the attacker's way in.
-export const COLUMNS = [
-  { key: "none", label: "No route" }, { key: 4, label: "4+ steps" }, { key: 3, label: "3 steps" },
-  { key: 2, label: "2 steps" }, { key: 1, label: "1 step" }, { key: 0, label: "Critical assets" },
-];
+// attack distance: how many attack steps each node is from the nearest critical asset, worked out backwards from
+// the critical assets along the attack steps
 export function distances(data) {
   const into = {};
   data.edges.filter((e) => e.attack).forEach((e) => (into[e.dst] ||= []).push(e.src));
