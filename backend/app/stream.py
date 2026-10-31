@@ -189,7 +189,8 @@ def reset(session, cons=None, network=None):
     from .seed import load_network
     load_network(session, network=network)
     run_all(session)
-    session.run("CREATE (:StreamState {id: 'live', seq: 0, rescore: false, network: false})")
+    # open: this day's replay may stream in. loading a day wipes this node, which closes the stream for that day
+    session.run("CREATE (:StreamState {id: 'live', seq: 0, rescore: false, network: false, open: true})")
     if cons is not None:
         skip_to_end(session, cons)
 

@@ -609,7 +609,10 @@ def live(since: int = 0):
     """read whatever is new, update the graph and return alerts that are new or changed since `since`."""
     with _driver.session() as s:
         ingested = 0
-        if _KAFKA and _consumer_lock.acquire(blocking=False):
+        # only a replay started on the loaded day may stream in: a replay still sending from before a reload, or
+        # started on another day, must not land in this one
+        stream_open = s.run("MATCH (st:StreamState {id: 'live'}) WHERE st.open RETURN 1 AS ok").single() is not None
+        if _KAFKA and stream_open and _consumer_lock.acquire(blocking=False):
             # only one reader at a time per server. a call that finds it busy just returns what is saved.
             try:
                 ingested = stream.ingest_once(s, _get_consumer())["events"]
