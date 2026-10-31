@@ -134,8 +134,11 @@ def apply_batch(tx, events):
             MATCH (e {id: x}) WHERE NOT e:Alert AND NOT e:Event
             MERGE (a)-[:Involves]->(e)
             """,
+            # rule, rule_author and rule_link come with alerts from public detection rules (a Sigma match must keep its
+            # rule's author); like evidence, they are stored when the alert carries them, as the batch load does
             rows=[{"id": e["id"], "involves": e["involves"],
-                   "props": {k: e.get(k) for k in ("id", "time", "name", "severity", "tactic_id", "technique_id", "source_tool")}}
+                   "props": {k: e.get(k) for k in ("id", "time", "name", "severity", "tactic_id", "technique_id", "source_tool",
+                                                   "rule", "rule_author", "rule_link", "evidence")}}
                   for e in alerts])
         result["alerts"] = len(alerts)
     return result

@@ -1,0 +1,6408 @@
+{
+ "name": "APT29 day 1, Sigma rules (real lab recording)",
+ "description": "Real Windows, Sysmon and PowerShell logs of MITRE's APT29 emulation, from OTRF Security Datasets (MIT licence). Alerts are public SigmaHQ rules matched on the real events; each keeps its rule's author and link (Detection Rule License 1.1). The day's real logons, process starts and connections stream through the Kafka topics. Attack or noise labels are ours, from the attacker's process trees, and are used only to score the ranking.",
+ "source": "https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1",
+ "rules": {
+  "source": "SigmaHQ",
+  "release": "r2026-07-01",
+  "package": "sigma_core+",
+  "scope": "rules/windows",
+  "licence": "Detection Rule License 1.1",
+  "licence_url": "https://github.com/SigmaHQ/Detection-Rule-License"
+ },
+ "network": {
+  "nodes": [
+   {
+    "id": "scranton",
+    "label": "Computer",
+    "name": "SCRANTON",
+    "os": "Windows 10",
+    "zone": "normal",
+    "owner": "pbeesly",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "nashua",
+    "label": "Computer",
+    "name": "NASHUA",
+    "os": "Windows 10",
+    "zone": "normal",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "utica",
+    "label": "Computer",
+    "name": "UTICA",
+    "os": "Windows 10",
+    "zone": "normal",
+    "critical": false,
+    "location": "onprem"
+   },
+   {
+    "id": "newyork",
+    "label": "Computer",
+    "name": "NEWYORK",
+    "os": "Windows Server",
+    "zone": "server",
+    "critical": true,
+    "location": "onprem",
+    "note": "domain controller: the only machine issuing Kerberos tickets in the recording"
+   },
+   {
+    "id": "pbeesly",
+    "label": "User",
+    "name": "pbeesly",
+    "location": "onprem"
+   }
+  ],
+  "granted": [
+   {
+    "src": "pbeesly",
+    "type": "AdminTo",
+    "dst": "scranton",
+    "note": "UAC bypass and service install as pbeesly"
+   },
+   {
+    "src": "pbeesly",
+    "type": "AdminTo",
+    "dst": "nashua",
+    "note": "PsExec service installed on NASHUA as pbeesly"
+   },
+   {
+    "src": "scranton",
+    "type": "HasSession",
+    "dst": "pbeesly"
+   }
+  ],
+  "observed": [
+   {
+    "src": "pbeesly",
+    "type": "LoggedInto",
+    "dst": "scranton",
+    "first_seen": "2020-05-02T02:40:00",
+    "last_seen": "2020-05-02T03:20:49",
+    "count": 3
+   },
+   {
+    "src": "pbeesly",
+    "type": "LoggedInto",
+    "dst": "nashua",
+    "first_seen": "2020-05-02T03:09:24",
+    "last_seen": "2020-05-02T03:15:00",
+    "count": 8
+   },
+   {
+    "src": "scranton",
+    "type": "RemoteLogon",
+    "dst": "newyork",
+    "first_seen": "2020-05-02T02:40:00",
+    "last_seen": "2020-05-02T03:20:48",
+    "count": 6
+   }
+  ]
+ },
+ "events": [
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T02:56:11",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T02:59:16",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "udp",
+   "time": "2020-05-02T03:01:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:01:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:01:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:01:43",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T03:02:25",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "123",
+   "protocol": "udp",
+   "time": "2020-05-02T03:02:59",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "123",
+   "protocol": "udp",
+   "time": "2020-05-02T03:03:00",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "123",
+   "protocol": "udp",
+   "time": "2020-05-02T03:03:33",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:04:04",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:04:04",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:04:05",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:05:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:05:37",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:06:09",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:09:04",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:09:04",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:09:06",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:09:06",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "5985",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:09:23",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:10:23",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:10:23",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:10:24",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:10:24",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:10:24",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:10:25",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "udp",
+   "time": "2020-05-02T03:10:39",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:10:39",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:10:39",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:10:40",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:11:18",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:11:18",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:11:18",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:11:20",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:11:40",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:11:40",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:11:41",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:11:41",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T03:11:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:12:25",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:12:25",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:12:25",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:12:26",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:12:46",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:12:46",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:12:47",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:12:47",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:13:28",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:13:28",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:13:28",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:13:30",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:13:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:13:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:13:51",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:13:51",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:14:20",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:14:20",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:14:22",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:14:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:14:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:14:42",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "nashua",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:14:44",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:15:03",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:15:03",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:15:05",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "nashua",
+   "time": "2020-05-02T03:15:05",
+   "source_tool": "Windows Security",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T03:16:53",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "nashua",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:17:59",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T03:19:20",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:19:20",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "udp",
+   "time": "2020-05-02T03:19:24",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:19:25",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:19:25",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:19:59",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "123",
+   "protocol": "udp",
+   "time": "2020-05-02T03:20:03",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "123",
+   "protocol": "udp",
+   "time": "2020-05-02T03:20:37",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49675",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:42",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "88",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:46",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:46",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:46",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:20:47",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:20:47",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "RemoteLogon",
+   "dst": "newyork",
+   "user": "pbeesly",
+   "time": "2020-05-02T03:20:48",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "scranton",
+   "time": "2020-05-02T03:20:49",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "pbeesly",
+   "type": "LoggedInto",
+   "dst": "scranton",
+   "time": "2020-05-02T03:20:49",
+   "source_tool": "Windows Security",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:09",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "53",
+   "protocol": "udp",
+   "time": "2020-05-02T03:21:10",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:49",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:57",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:57",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:21:57",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "udp",
+   "time": "2020-05-02T03:22:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:22:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:22:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "utica",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "445",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:22:32",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:24:14",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:24:14",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "scranton",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:24:14",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "135",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:25:31",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "49667",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:25:31",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "src": "nashua",
+   "type": "ConnectedTo",
+   "dst": "newyork",
+   "port": "389",
+   "protocol": "tcp",
+   "time": "2020-05-02T03:25:31",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  }
+ ],
+ "process_starts": [
+  {
+   "time": "2020-05-02T02:55:56",
+   "host": "scranton",
+   "process": "cod.3aka3.scr",
+   "parent": "explorer.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:56:04",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cod.3aka3.scr",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:56:04",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "cod.3aka3.scr",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:56:14",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:57:01",
+   "host": "scranton",
+   "process": "SearchProtocolHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:57:01",
+   "host": "scranton",
+   "process": "SearchFilterHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:57:12",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cod.3aka3.scr",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:57:12",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "cod.3aka3.scr",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:57:15",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:42",
+   "host": "scranton",
+   "process": "sdclt.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:42",
+   "host": "scranton",
+   "process": "sdclt.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:42",
+   "host": "scranton",
+   "process": "consent.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "host": "scranton",
+   "process": "sdclt.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "host": "scranton",
+   "process": "control.exe",
+   "parent": "sdclt.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "host": "scranton",
+   "process": "dllhost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:58:44",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "control.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:44",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:45",
+   "host": "scranton",
+   "process": "csc.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:58:45",
+   "host": "scranton",
+   "process": "cvtres.exe",
+   "parent": "csc.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:04",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:15",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:15",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:17",
+   "host": "scranton",
+   "process": "BackgroundTransferHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:18",
+   "host": "scranton",
+   "process": "BackgroundTransferHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:23",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:24",
+   "host": "scranton",
+   "process": "BackgroundTransferHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T02:59:33",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:34",
+   "host": "nashua",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:36",
+   "host": "nashua",
+   "process": "BackgroundTransferHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:36",
+   "host": "nashua",
+   "process": "BackgroundTransferHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:38",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T02:59:49",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:00:08",
+   "host": "scranton",
+   "process": "SearchProtocolHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:00:08",
+   "host": "scranton",
+   "process": "SearchFilterHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:00:08",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:00:13",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:00:13",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:01:28",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:31",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:32",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:34",
+   "host": "newyork",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:42",
+   "host": "scranton",
+   "process": "gpupdate.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:42",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "gpupdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:01:42",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:04",
+   "host": "scranton",
+   "process": "sdelete64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:02:44",
+   "host": "scranton",
+   "process": "provtool.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:44",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:44",
+   "host": "scranton",
+   "process": "TrustedInstaller.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:45",
+   "host": "scranton",
+   "process": "TiWorker.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:46",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:02:46",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:14",
+   "host": "scranton",
+   "process": "sdelete64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:03:18",
+   "host": "newyork",
+   "process": "sppsvc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:18",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:32",
+   "host": "newyork",
+   "process": "CollectGuestLogs.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:32",
+   "host": "newyork",
+   "process": "conhost.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:32",
+   "host": "newyork",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:33",
+   "host": "scranton",
+   "process": "sdelete64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:03:41",
+   "host": "newyork",
+   "process": "cmd.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:03:41",
+   "host": "newyork",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:04:04",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:04:29",
+   "host": "scranton",
+   "process": "SearchProtocolHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:04:29",
+   "host": "scranton",
+   "process": "SearchFilterHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:04:34",
+   "host": "scranton",
+   "process": "accessChk.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:24",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:24",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:25",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:25",
+   "host": "nashua",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:26",
+   "host": "nashua",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:27",
+   "host": "nashua",
+   "process": "WerFault.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:27",
+   "host": "nashua",
+   "process": "WerFault.exe",
+   "parent": "SkypeApp.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:27",
+   "host": "nashua",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:27",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:28",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:28",
+   "host": "nashua",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:28",
+   "host": "nashua",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:29",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:29",
+   "host": "scranton",
+   "process": "WerFault.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:29",
+   "host": "scranton",
+   "process": "WerFault.exe",
+   "parent": "SkypeApp.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:30",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:30",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:05:56",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:05:56",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:06:08",
+   "host": "scranton",
+   "process": "notepad.exe",
+   "parent": "explorer.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:12",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:13",
+   "host": "newyork",
+   "process": "UsoClient.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:13",
+   "host": "newyork",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:14",
+   "host": "newyork",
+   "process": "dsregcmd.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:14",
+   "host": "newyork",
+   "process": "conhost.exe",
+   "parent": "dsregcmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:08:03",
+   "host": "scranton",
+   "process": "csc.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:08:03",
+   "host": "scranton",
+   "process": "cvtres.exe",
+   "parent": "csc.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:08:09",
+   "host": "scranton",
+   "process": "SearchFilterHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:08:47",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:08:50",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:08:50",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:08:51",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:09:23",
+   "host": "nashua",
+   "process": "wsmprovhost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:10:22",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:10:23",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:10:23",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:10:23",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:10:39",
+   "host": "nashua",
+   "process": "gpupdate.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:10:39",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "gpupdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:10:39",
+   "host": "nashua",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:11:18",
+   "host": "scranton",
+   "process": "PsExec64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:11:39",
+   "host": "nashua",
+   "process": "PSEXESVC.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:11:40",
+   "host": "nashua",
+   "process": "python.exe",
+   "parent": "PSEXESVC.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:11:40",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:12:25",
+   "host": "scranton",
+   "process": "PsExec64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:12:46",
+   "host": "nashua",
+   "process": "PSEXESVC.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:12:46",
+   "host": "nashua",
+   "process": "python.exe",
+   "parent": "PSEXESVC.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:12:46",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:13:28",
+   "host": "scranton",
+   "process": "PsExec64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:13:49",
+   "host": "nashua",
+   "process": "PSEXESVC.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:13:49",
+   "host": "nashua",
+   "process": "python.exe",
+   "parent": "PSEXESVC.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:13:49",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:14:15",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:15",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:17",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:17",
+   "host": "scranton",
+   "process": "TrustedInstaller.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:17",
+   "host": "scranton",
+   "process": "TiWorker.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:25",
+   "host": "nashua",
+   "process": "consent.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:14:25",
+   "host": "nashua",
+   "process": "dllhost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:14:25",
+   "host": "nashua",
+   "process": "rundll32.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:14:33",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:14:34",
+   "host": "nashua",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:14:42",
+   "host": "scranton",
+   "process": "PsExec64.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:15:03",
+   "host": "nashua",
+   "process": "PSEXESVC.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:15:03",
+   "host": "nashua",
+   "process": "python.exe",
+   "parent": "PSEXESVC.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:15:03",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:15:04",
+   "host": "nashua",
+   "process": "python.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:15:48",
+   "host": "nashua",
+   "process": "powershell.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:16:19",
+   "host": "nashua",
+   "process": "Rar.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:16:20",
+   "host": "nashua",
+   "process": "SearchProtocolHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:20",
+   "host": "nashua",
+   "process": "SearchFilterHost.exe",
+   "parent": "SearchIndexer.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:28",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:33",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:35",
+   "host": "newyork",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:40",
+   "host": "nashua",
+   "process": "cmd.exe",
+   "parent": "python.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "host": "nashua",
+   "process": "sdelete64.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:17:11",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:17:11",
+   "host": "nashua",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:17:18",
+   "host": "nashua",
+   "process": "sdelete64.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:17:25",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:17:41",
+   "host": "nashua",
+   "process": "sdelete64.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:17:44",
+   "host": "nashua",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:18:28",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:30",
+   "host": "scranton",
+   "process": "LogonUI.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:33",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:33",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:34",
+   "host": "scranton",
+   "process": "dxgiadaptercache.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:38",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:38",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:39",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:39",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:42",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:42",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:18:54",
+   "host": "scranton",
+   "process": "smss.exe",
+   "parent": "System",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:05",
+   "host": "scranton",
+   "process": "autochk.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "smss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "csrss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "smss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "wininit.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "csrss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "winlogon.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "services.exe",
+   "parent": "wininit.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:09",
+   "host": "scranton",
+   "process": "lsass.exe",
+   "parent": "wininit.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "fontdrvhost.exe",
+   "parent": "wininit.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "fontdrvhost.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "LogonUI.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:10",
+   "host": "scranton",
+   "process": "dwm.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "upfc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "VSSVC.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:12",
+   "host": "scranton",
+   "process": "dsregcmd.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "wermgr.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "dxgiadaptercache.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "spoolsv.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "NetworkWatcherAgent.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "ClipRenew.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:13",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "javamtsup.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "WaAppAgent.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "WindowsAzureGuestAgent.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "WindowsAzureTelemetryService.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "WindowsAzureNetAgent.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "rundll32.exe",
+   "parent": "javamtsup.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:15",
+   "host": "scranton",
+   "process": "wevtutil.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:15",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "wevtutil.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "netsh.exe",
+   "parent": "NetworkWatcherAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "dsregcmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "netsh.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "VFPlugin.exe",
+   "parent": "WindowsAzureNetAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "VFPlugin.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "unsecapp.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:18",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:18",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:18",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:19",
+   "host": "scranton",
+   "process": "wevtutil.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:19",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "wevtutil.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:19",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:21",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:22",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:23",
+   "host": "scranton",
+   "process": "dispdiag.exe",
+   "parent": "netsh.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:23",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "dispdiag.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "ipconfig.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ipconfig.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "ROUTE.EXE",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ROUTE.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "netsh.exe",
+   "parent": "NetworkWatcherAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:24",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "netsh.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:25",
+   "host": "scranton",
+   "process": "ARP.EXE",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:25",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ARP.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:28",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:29",
+   "host": "scranton",
+   "process": "ipconfig.exe",
+   "parent": "WindowsAzureTelemetryService.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:29",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:29",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:30",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ipconfig.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:30",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:30",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:33",
+   "host": "scranton",
+   "process": "ROUTE.EXE",
+   "parent": "WindowsAzureTelemetryService.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:34",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:35",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ROUTE.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:40",
+   "host": "scranton",
+   "process": "ARP.EXE",
+   "parent": "WindowsAzureTelemetryService.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:41",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:42",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ARP.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:42",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:44",
+   "host": "scranton",
+   "process": "logman.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:44",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "logman.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:47",
+   "host": "scranton",
+   "process": "sc.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:48",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "sc.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:48",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:49",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:51",
+   "host": "scranton",
+   "process": "sc.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:52",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "sc.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:53",
+   "host": "scranton",
+   "process": "BfeToolWin8.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:54",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "BfeToolWin8.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:55",
+   "host": "scranton",
+   "process": "WmiApSrv.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:56",
+   "host": "scranton",
+   "process": "sc.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:56",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "sc.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:57",
+   "host": "scranton",
+   "process": "ipconfig.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:58",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ipconfig.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:58",
+   "host": "scranton",
+   "process": "FindVolume.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:19:58",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "FindVolume.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:00",
+   "host": "scranton",
+   "process": "ROUTE.EXE",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:01",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ROUTE.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:04",
+   "host": "scranton",
+   "process": "ARP.EXE",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:04",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "ARP.EXE",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:13",
+   "host": "scranton",
+   "process": "sppsvc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:18",
+   "host": "scranton",
+   "process": "WaSecAgentProv.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:18",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "WaSecAgentProv.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:24",
+   "host": "scranton",
+   "process": "WaSecAgentProv.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:24",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "WaSecAgentProv.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:25",
+   "host": "scranton",
+   "process": "CollectGuestLogs.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:26",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "AntimalwareConfig.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "AntimalwareConfig.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "JsonADDomainExtension.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "WmiApSrv.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "NetworkWatcherAgent.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "host": "scranton",
+   "process": "NetworkWatcherAgent.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:42",
+   "host": "scranton",
+   "process": "NetworkWatcherAgent.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:42",
+   "host": "scranton",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:42",
+   "host": "scranton",
+   "process": "smss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:42",
+   "host": "scranton",
+   "process": "csrss.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:42",
+   "host": "scranton",
+   "process": "winlogon.exe",
+   "parent": "smss.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "host": "scranton",
+   "process": "WUDFHost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "host": "scranton",
+   "process": "LogonUI.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "host": "scranton",
+   "process": "fontdrvhost.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "host": "scranton",
+   "process": "dwm.exe",
+   "parent": "winlogon.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:44",
+   "host": "scranton",
+   "process": "dxgiadaptercache.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:44",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "WindowsAzureGuestAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:44",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:44",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:45",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:45",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:46",
+   "host": "scranton",
+   "process": "CustomScriptHandler.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:46",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "TSTheme.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "rdpclip.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "sihost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:48",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "host": "scranton",
+   "process": "ctfmon.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:49",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:50",
+   "host": "scranton",
+   "process": "userinit.exe",
+   "parent": "winlogon.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:51",
+   "host": "scranton",
+   "process": "explorer.exe",
+   "parent": "userinit.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:53",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:54",
+   "host": "scranton",
+   "process": "dllhost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:55",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:55",
+   "host": "scranton",
+   "process": "StartMenuExperienceHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:57",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:58",
+   "host": "scranton",
+   "process": "SearchIndexer.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:58",
+   "host": "scranton",
+   "process": "SearchUI.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:59",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:20:59",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:01",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:01",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:01",
+   "host": "scranton",
+   "process": "ApplicationFrameHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:01",
+   "host": "scranton",
+   "process": "MicrosoftEdge.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:05",
+   "host": "scranton",
+   "process": "browser_broker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:05",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:05",
+   "host": "scranton",
+   "process": "Windows.WARP.JITService.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:06",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:06",
+   "host": "scranton",
+   "process": "MicrosoftEdgeSH.exe",
+   "parent": "RuntimeBroker.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:06",
+   "host": "scranton",
+   "process": "MicrosoftEdgeCP.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:07",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:08",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:11",
+   "host": "scranton",
+   "process": "GoogleCrashHandler.exe",
+   "parent": "GoogleUpdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:11",
+   "host": "scranton",
+   "process": "GoogleCrashHandler64.exe",
+   "parent": "GoogleUpdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:11",
+   "host": "scranton",
+   "process": "mobsync.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:15",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:15",
+   "host": "scranton",
+   "process": "SgrmBroker.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:15",
+   "host": "scranton",
+   "process": "GoogleCrashHandler.exe",
+   "parent": "GoogleUpdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:15",
+   "host": "scranton",
+   "process": "sppsvc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:15",
+   "host": "scranton",
+   "process": "GoogleCrashHandler64.exe",
+   "parent": "GoogleUpdate.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:16",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:16",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:16",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:18",
+   "host": "scranton",
+   "process": "smartscreen.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:18",
+   "host": "scranton",
+   "process": "SecurityHealthSystray.exe",
+   "parent": "explorer.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:18",
+   "host": "scranton",
+   "process": "SecurityHealthService.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:19",
+   "host": "scranton",
+   "process": "cmd.exe",
+   "parent": "explorer.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:19",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:19",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "cmd.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:20",
+   "host": "scranton",
+   "process": "wlrmdr.exe",
+   "parent": "winlogon.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:22",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:22",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:26",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "consent.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "hostui.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "hostui.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "hostui.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:21:27",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:21:28",
+   "host": "scranton",
+   "process": "powershell.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:21:29",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "powershell.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:48",
+   "host": "scranton",
+   "process": "dsregcmd.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:48",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "dsregcmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:54",
+   "host": "nashua",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:21:55",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:01",
+   "host": "nashua",
+   "process": "sppsvc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:02",
+   "host": "nashua",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:11",
+   "host": "scranton",
+   "process": "sc.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:11",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "sc.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:11",
+   "host": "scranton",
+   "process": "svchost.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:12",
+   "host": "scranton",
+   "process": "wermgr.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:29",
+   "host": "utica",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:31",
+   "host": "nashua",
+   "process": "CollectGuestLogs.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:31",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:35",
+   "host": "utica",
+   "process": "sppsvc.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:36",
+   "host": "utica",
+   "process": "WmiPrvSE.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:41",
+   "host": "nashua",
+   "process": "cmd.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:41",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:22:50",
+   "host": "scranton",
+   "process": "backgroundTaskHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:06",
+   "host": "utica",
+   "process": "CollectGuestLogs.exe",
+   "parent": "WaAppAgent.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:06",
+   "host": "utica",
+   "process": "conhost.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:07",
+   "host": "scranton",
+   "process": "SecurityHealthHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:07",
+   "host": "scranton",
+   "process": "ShellExperienceHost.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:09",
+   "host": "scranton",
+   "process": "RuntimeBroker.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:13",
+   "host": "scranton",
+   "process": "WMIADAP.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:14",
+   "host": "utica",
+   "process": "cmd.exe",
+   "parent": "CollectGuestLogs.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:23:14",
+   "host": "utica",
+   "process": "conhost.exe",
+   "parent": "cmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:24:13",
+   "host": "scranton",
+   "process": "dsregcmd.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:24:13",
+   "host": "scranton",
+   "process": "conhost.exe",
+   "parent": "dsregcmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:24:18",
+   "host": "nashua",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "attack"
+  },
+  {
+   "time": "2020-05-02T03:24:18",
+   "host": "nashua",
+   "process": "TrustedInstaller.exe",
+   "parent": "services.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:24:18",
+   "host": "nashua",
+   "process": "TiWorker.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:25:30",
+   "host": "nashua",
+   "process": "dsregcmd.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:25:30",
+   "host": "nashua",
+   "process": "conhost.exe",
+   "parent": "dsregcmd.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:25:33",
+   "host": "nashua",
+   "process": "UsoClient.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:25:33",
+   "host": "nashua",
+   "process": "usocoreworker.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:25:48",
+   "host": "scranton",
+   "process": "taskhostw.exe",
+   "parent": "svchost.exe",
+   "user": "pbeesly",
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:26:11",
+   "host": "utica",
+   "process": "UsoClient.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  },
+  {
+   "time": "2020-05-02T03:26:11",
+   "host": "utica",
+   "process": "usocoreworker.exe",
+   "parent": "svchost.exe",
+   "user": null,
+   "source_tool": "Sysmon",
+   "scenario": "noise"
+  }
+ ],
+ "alerts": [
+  {
+   "time": "2020-05-02T02:57:18",
+   "name": "Removal of Potential COM Hijacking Registry Keys",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0003",
+   "technique_id": "T1112",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "96f697b0-b499-4e5d-9908-a67bec11cdb6",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_delete/registry_delete_removal_com_hijacking_registry_key.yml",
+   "evidence": "powershell.exe; registry S-1-5-21-1830255721-3727074217-2423397540-1107_Classes\\Folder\\shell\\open\\command (2 matching events)",
+   "id": "sig-01"
+  },
+  {
+   "time": "2020-05-02T02:58:30",
+   "name": "Bypass UAC Using DelegateExecute",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1548.002",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "46dd5308-4572-4d12-aa43-8938f0184d4f",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_bypass_uac_using_delegateexecute.yml",
+   "evidence": "powershell.exe; registry 721-3727074217-2423397540-1107_Classes\\Folder\\shell\\open\\command\\DelegateExecute (1 matching event)",
+   "id": "sig-02"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "name": "Potential UAC Bypass Via Sdclt.EXE",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1548.002",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "40f9af16-589d-4984-b78d-8c2aec023197",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_uac_bypass_sdclt.yml",
+   "evidence": "sdclt.exe; started by cmd.exe; command: \"C:\\windows\\system32\\sdclt.exe\"  (1 matching event)",
+   "id": "sig-03"
+  },
+  {
+   "time": "2020-05-02T02:58:43",
+   "name": "Sdclt Child Processes",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1548.002",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "da2738f2-fadb-4394-afa7-0a0674885afa",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sdclt_child_process.yml",
+   "evidence": "control.exe; started by sdclt.exe; command: \"C:\\Windows\\System32\\control.exe\"  /name Microsoft.BackupAndRestoreCenter (1 matching event)",
+   "id": "sig-04"
+  },
+  {
+   "time": "2020-05-02T02:58:44",
+   "name": "Change PowerShell Policies to an Insecure Level",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "87e3c4e8-a6a8-4ad9-bb4f-46e7ff99a180",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_powershell_set_policies_to_unsecure_level.yml",
+   "evidence": "powershell.exe; started by control.exe; command: \"PowerShell.exe\" -noni -noexit -ep bypass -window hidden -c \"sal a New-Object;Add-Type -AssemblyName 'System.Drawing'; $g=a System.Drawing.B (1 matching event)",
+   "id": "sig-05"
+  },
+  {
+   "time": "2020-05-02T02:58:44",
+   "name": "Suspicious PowerShell Parameter Substring",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "36210e0d-5b19-485d-a087-c096088885f0",
+   "rule_author": "Florian Roth (Nextron Systems), Daniel Bohannon (idea), Roberto Rodriguez (Fix)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_powershell_susp_parameter_variation.yml",
+   "evidence": "powershell.exe; started by control.exe; command: \"PowerShell.exe\" -noni -noexit -ep bypass -window hidden -c \"sal a New-Object;Add-Type -AssemblyName 'System.Drawing'; $g=a System.Drawing.B (1 matching event)",
+   "id": "sig-06"
+  },
+  {
+   "time": "2020-05-02T02:58:45",
+   "name": "Dynamic .NET Compilation Via Csc.EXE",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1027.004",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "dcaa3f04-70c3-427a-80b4-b870d73c94c4",
+   "rule_author": "Florian Roth (Nextron Systems), X__Junior (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_csc_susp_dynamic_compilation.yml",
+   "evidence": "csc.exe; started by powershell.exe; command: \"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe\" /noconfig /fullpaths @\"C:\\Users\\pbeesly\\AppData\\Local\\Temp\\qkbkqqbs\\qkbkqqbs.cmdli (2 matching events)",
+   "id": "sig-07"
+  },
+  {
+   "time": "2020-05-02T02:59:37",
+   "name": "New Root or CA or AuthRoot Certificate to Store",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0040",
+   "technique_id": "T1490",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "noise",
+   "rule": "d223b46b-5621-4037-88fe-fda32eead684",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_install_root_or_ca_certificat.yml",
+   "evidence": "lsass.exe; registry Certificates\\AuthRoot\\Certificates\\A8985D3A65E5E5C4B2D7D66D40C6DD2FB19C5436\\Blob (3 matching events)",
+   "id": "sig-08"
+  },
+  {
+   "time": "2020-05-02T03:00:25",
+   "name": "Potential Binary Or Script Dropper Via PowerShell",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0003",
+   "technique_id": null,
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "7047d730-036f-4f40-b9d8-1c63e36d5e62",
+   "rule_author": "frack113, Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_event/file_event_win_powershell_drop_binary_or_script.yml",
+   "evidence": "powershell.exe; file psping.exe (292 matching events)",
+   "id": "sig-09"
+  },
+  {
+   "time": "2020-05-02T03:00:29",
+   "name": "Cred Dump Tools Dropped Files",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "8fbf3271-1ef6-4e94-8210-03c2317947f6",
+   "rule_author": "Teymur Kheirkhabarov, oscd.community",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_event/file_event_win_cred_dump_tools_dropped_files.yml",
+   "evidence": "powershell.exe; file procdump64.exe (2 matching events)",
+   "id": "sig-10"
+  },
+  {
+   "time": "2020-05-02T03:01:29",
+   "name": "Alternate PowerShell Hosts - PowerShell Module",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "64e8e417-c19a-475a-8d19-98ea705394cc",
+   "rule_author": "Roberto Rodriguez @Cyb3rWard0g",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_module/posh_pm_alternate_powershell_hosts.yml",
+   "evidence": "PowerShell script content (not copied) (954 matching events)",
+   "id": "sig-11"
+  },
+  {
+   "time": "2020-05-02T03:01:29",
+   "name": "PSScriptPolicyTest Creation By Uncommon Process",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": null,
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "1027d292-dd87-4a1a-8701-2abe04d7783c",
+   "rule_author": "Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_event/file_event_win_ps_script_policy_test_creation_by_uncommon_process.yml",
+   "evidence": "wmiprvse.exe; file __PSScriptPolicyTest_2ab3lc5i.kxr.ps1 (4 matching events)",
+   "id": "sig-12"
+  },
+  {
+   "time": "2020-05-02T03:01:29",
+   "name": "PowerShell Core DLL Loaded By Non PowerShell Process",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "092bc4b9-3d1d-43b4-a6b4-8c8acd83522f",
+   "rule_author": "Tom Kern, oscd.community, Natalia Shornikova, Tim Shelton, Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/image_load/image_load_dll_system_management_automation_susp_load.yml",
+   "evidence": "WmiPrvSE.exe (2 matching events)",
+   "id": "sig-13"
+  },
+  {
+   "time": "2020-05-02T03:01:29",
+   "name": "Suspicious WSMAN Provider Image Loads",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "ad1f4bb9-8dfb-4765-adb6-2a7cfb6c0f94",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/image_load/image_load_wsman_provider_image_load.yml",
+   "evidence": "WmiPrvSE.exe (2 matching events)",
+   "id": "sig-14"
+  },
+  {
+   "time": "2020-05-02T03:02:04",
+   "name": "PUA - Sysinternals Tools Execution - Registry",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0042",
+   "technique_id": "T1588.002",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "c7da8edc-49ae-45a2-9e61-9fd860e4e73d",
+   "rule_author": "Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_pua_sysinternals_susp_execution_via_eula.yml",
+   "evidence": "sdelete64.exe; registry 1830255721-3727074217-2423397540-1107\\Software\\Sysinternals\\SDelete\\EulaAccepted (7 matching events)",
+   "id": "sig-15"
+  },
+  {
+   "time": "2020-05-02T03:02:04",
+   "name": "Potential File Overwrite Via Sysinternals SDelete",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0040",
+   "technique_id": "T1485",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "a4824fca-976f-4964-b334-0621379e84c4",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_sdelete.yml",
+   "evidence": "sdelete64.exe; started by powershell.exe; command: \"C:\\Program Files\\SysinternalsSuite\\sdelete64.exe\" /accepteula C:\\programdata\\victim\\???cod.3aka3.scr (3 matching events)",
+   "id": "sig-16"
+  },
+  {
+   "time": "2020-05-02T03:02:04",
+   "name": "Suspicious Execution Of Renamed Sysinternals Tools - Registry",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0042",
+   "technique_id": "T1588.002",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "f50f3c09-557d-492d-81db-9064a8d4e211",
+   "rule_author": "Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_pua_sysinternals_renamed_execution_via_eula.yml",
+   "evidence": "sdelete64.exe; registry 1830255721-3727074217-2423397540-1107\\Software\\Sysinternals\\SDelete\\EulaAccepted (3 matching events)",
+   "id": "sig-17"
+  },
+  {
+   "time": "2020-05-02T03:03:14",
+   "name": "File Deleted Via Sysinternals SDelete",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1070.004",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "6ddab845-b1b8-49c2-bbf7-1a11967f64bc",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_delete/file_delete_win_sysinternals_sdelete_file_deletion.yml",
+   "evidence": "sdelete64.exe; file ZZZZZZZZZZZZZZZZZZZZZ.ZZZ (2 matching events)",
+   "id": "sig-18"
+  },
+  {
+   "time": "2020-05-02T03:03:17",
+   "name": "Password Policy Enumerated",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0007",
+   "technique_id": "T1201",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "12ba6a38-adb3-4d6b-91ba-a7fb248e3199",
+   "rule_author": "Zach Mathis",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_password_policy_enumerated.yml",
+   "evidence": "event 4661 in Security (11 matching events)",
+   "id": "sig-19"
+  },
+  {
+   "time": "2020-05-02T03:03:40",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (2 matching events)",
+   "id": "sig-20"
+  },
+  {
+   "time": "2020-05-02T03:03:41",
+   "name": "Elevated System Shell Spawned From Uncommon Parent Location",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1059",
+   "involves": [
+    "newyork"
+   ],
+   "scenario": "noise",
+   "rule": "178e615d-e666-498b-9630-9ed363038101",
+   "rule_author": "frack113, Tim Shelton (update fp)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_susp_elevated_system_shell_uncommon_parent.yml",
+   "evidence": "cmd.exe; started by CollectGuestLogs.exe; command: \"cmd\" (1 matching event)",
+   "id": "sig-21"
+  },
+  {
+   "time": "2020-05-02T03:04:23",
+   "name": "Potential Startup Shortcut Persistence Via PowerShell.EXE",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1547.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "92fa78e7-4d39-45f1-91a3-8b23f3f1088d",
+   "rule_author": "Christopher Peacock '@securepeacock', SCYTHE",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_event/file_event_win_powershell_startup_shortcuts.yml",
+   "evidence": "powershell.exe; file hostui.lnk (1 matching event)",
+   "id": "sig-22"
+  },
+  {
+   "time": "2020-05-02T03:04:23",
+   "name": "Startup Folder File Write",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1547.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "2aa0a6b4-a865-495b-ab51-c28249537b75",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_event/file_event_win_startup_folder_file_write.yml",
+   "evidence": "powershell.exe; file hostui.lnk (1 matching event)",
+   "id": "sig-23"
+  },
+  {
+   "time": "2020-05-02T03:04:34",
+   "name": "Potential Binary Impersonating Sysinternals Tools",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1218",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "7cce6fc8-a07f-4d84-a53e-96e1879843c9",
+   "rule_author": "frack113, Swachchhanda Shrawan Poudel (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_tools_masquerading.yml",
+   "evidence": "accessChk.exe; started by powershell.exe; command: \"C:\\Program Files\\SysinternalsSuite\\accesschk.exe\" (1 matching event)",
+   "id": "sig-24"
+  },
+  {
+   "time": "2020-05-02T03:04:57",
+   "name": "Certificate Exported Via PowerShell - ScriptBlock",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1552.004",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "aa7a3fce-bef5-4311-9cc1-5f04bb8c308c",
+   "rule_author": "Florian Roth (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_export_certificate.yml",
+   "evidence": "PowerShell script content (not copied) (1 matching event)",
+   "id": "sig-25"
+  },
+  {
+   "time": "2020-05-02T03:05:16",
+   "name": "Potential Credential Dumping Attempt Via PowerShell Remote Thread",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "fb656378-f909-47c1-8747-278bf09f4f4f",
+   "rule_author": "oscd.community, Natalia Shornikova",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/create_remote_thread/create_remote_thread_win_powershell_lsass.yml",
+   "evidence": "opened lsass.exe (1 matching event)",
+   "id": "sig-26"
+  },
+  {
+   "time": "2020-05-02T03:05:17",
+   "name": "LSASS Access From Non System Account",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "962fe167-e48d-4fd6-9974-11e5b9a5d6d1",
+   "rule_author": "Roberto Rodriguez @Cyb3rWard0g",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_lsass_access_non_system_account.yml",
+   "evidence": "event 4656 in Security (1 matching event)",
+   "id": "sig-27"
+  },
+  {
+   "time": "2020-05-02T03:05:17",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (2 matching events)",
+   "id": "sig-28"
+  },
+  {
+   "time": "2020-05-02T03:05:55",
+   "name": "Windows Screen Capture with CopyFromScreen",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0009",
+   "technique_id": "T1113",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "d4a11f63-2390-411c-9adf-d791fd152830",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_capture_screenshots.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-29"
+  },
+  {
+   "time": "2020-05-02T03:06:43",
+   "name": "PowerShell Get Clipboard",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0009",
+   "technique_id": "T1115",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "4cbd4f12-2e22-43e3-882f-bff3247ffb78",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_module/posh_pm_get_clipboard.yml",
+   "evidence": "PowerShell script content (not copied) (1 matching event)",
+   "id": "sig-30"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "name": "Malicious PowerShell Commandlets - ScriptBlock",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1482",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "89819aa4-bbd6-46bc-88ec-c7f7fe30efa6",
+   "rule_author": "Sean Metcalf, Florian Roth, Bartlomiej Czyz @bczyz1, oscd.community, Nasreddine Bencherchali, Tim Shelton, Mustafa Kaan Demir, Georg Lauenstein, Max Altgelt, Tobias Michalski, Austin Songer",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_malicious_commandlets.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-31"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "name": "Potential In-Memory Execution Using Reflection.Assembly",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1620",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "ddcd88cb-7f62-4ce5-86f9-1704190feb0a",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_dotnet_assembly_from_file.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-32"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "name": "Potential Suspicious PowerShell Keywords",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "1f49f2ab-26bc-48b3-96cc-dcffbc93eadf",
+   "rule_author": "Florian Roth (Nextron Systems), Perez Diego (@darkquassar), Tuan Le (NCSGroup)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_susp_keywords.yml",
+   "evidence": "PowerShell script content (not copied) (3 matching events)",
+   "id": "sig-33"
+  },
+  {
+   "time": "2020-05-02T03:06:59",
+   "name": "Powershell Keylogging",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1056.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "34f90d3c-c297-49e9-b26d-911b05a4866c",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_keylogging.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-34"
+  },
+  {
+   "time": "2020-05-02T03:08:03",
+   "name": "Suspicious New-PSDrive to Admin Share",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "1c563233-030e-4a07-af8c-ee0490a66d3a",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_susp_new_psdrive.yml",
+   "evidence": "PowerShell script content (not copied) (1 matching event)",
+   "id": "sig-35"
+  },
+  {
+   "time": "2020-05-02T03:08:50",
+   "name": "WebDav Client Execution Via Rundll32.EXE",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0010",
+   "technique_id": "T1048.003",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "2dbd9d3d-9e27-42a8-b8df-f13825c6c3d5",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_rundll32_webdav_client_execution.yml",
+   "evidence": "rundll32.exe; started by svchost.exe; command: rundll32.exe C:\\windows\\system32\\davclnt.dll,DavSetCookie 192.168.0.4 http://192.168.0.4/webdav (5 matching events)",
+   "id": "sig-36"
+  },
+  {
+   "time": "2020-05-02T03:09:23",
+   "name": "Remote PowerShell Session Host Process (WinRM)",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "734f8d9b-42b8-41b2-bcf5-abaf49d5a3c8",
+   "rule_author": "Roberto Rodriguez @Cyb3rWard0g",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_winrm_remote_powershell_session_process.yml",
+   "evidence": "wsmprovhost.exe; started by svchost.exe; command: C:\\windows\\system32\\wsmprovhost.exe -Embedding (1 matching event)",
+   "id": "sig-37"
+  },
+  {
+   "time": "2020-05-02T03:09:23",
+   "name": "Suspicious WSMAN Provider Image Loads",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "ad1f4bb9-8dfb-4765-adb6-2a7cfb6c0f94",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/image_load/image_load_wsman_provider_image_load.yml",
+   "evidence": "wsmprovhost.exe (1 matching event)",
+   "id": "sig-38"
+  },
+  {
+   "time": "2020-05-02T03:09:24",
+   "name": "Execute Invoke-command on Remote Host",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.006",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "7b836d7f-179c-4ba4-90a7-a7e60afb48e6",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_invoke_command_remote.yml",
+   "evidence": "PowerShell script content (not copied) (1 matching event)",
+   "id": "sig-39"
+  },
+  {
+   "time": "2020-05-02T03:09:29",
+   "name": "Remote LSASS Process Access Through Windows Remote Management",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "aa35a627-33fb-4d04-a165-d33b4afca3e8",
+   "rule_author": "Patryk Prauze - ING Tech",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_access/proc_access_win_lsass_remote_access_trough_winrm.yml",
+   "evidence": "opened lsass.exe (1 matching event)",
+   "id": "sig-40"
+  },
+  {
+   "time": "2020-05-02T03:09:29",
+   "name": "Suspicious Svchost Process Access",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0112",
+   "technique_id": "T1685.001",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "166e9c50-8cd9-44af-815d-d1f0c0e90dde",
+   "rule_author": "Tim Burrell",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_access/proc_access_win_svchost_susp_access_request.yml",
+   "evidence": "opened svchost.exe (74 matching events)",
+   "id": "sig-41"
+  },
+  {
+   "time": "2020-05-02T03:09:31",
+   "name": "LSASS Access From Non System Account",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "962fe167-e48d-4fd6-9974-11e5b9a5d6d1",
+   "rule_author": "Roberto Rodriguez @Cyb3rWard0g",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_lsass_access_non_system_account.yml",
+   "evidence": "event 4656 in Security (1 matching event)",
+   "id": "sig-42"
+  },
+  {
+   "time": "2020-05-02T03:09:31",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (1 matching event)",
+   "id": "sig-43"
+  },
+  {
+   "time": "2020-05-02T03:11:18",
+   "name": "Potential PsExec Remote Execution",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0042",
+   "technique_id": "T1587.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "ea011323-7045-460b-b2d7-0f7442ea6b38",
+   "rule_author": "Florian Roth (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_psexec_remote_execution.yml",
+   "evidence": "PsExec64.exe; started by powershell.exe; command: \"C:\\Program Files\\SysinternalsSuite\\PsExec64.exe\" -accepteula \\\\NASHUA -u dmevals\\pbeesly -p [removed] -i 2 C:\\Windows\\Temp\\python.exe (4 matching events)",
+   "id": "sig-44"
+  },
+  {
+   "time": "2020-05-02T03:11:18",
+   "name": "Psexec Execution",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1569",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "730fc21b-eaff-474b-ad23-90fd265d4988",
+   "rule_author": "omkar72",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_psexec_execution.yml",
+   "evidence": "PsExec64.exe; started by powershell.exe; command: \"C:\\Program Files\\SysinternalsSuite\\PsExec64.exe\" -accepteula \\\\NASHUA -u dmevals\\pbeesly -p [removed] -i 2 C:\\Windows\\Temp\\python.exe (4 matching events)",
+   "id": "sig-45"
+  },
+  {
+   "time": "2020-05-02T03:11:39",
+   "name": "PsExec Service Execution",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": null,
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "fdfcbd78-48f1-4a4b-90ac-d82241e368c5",
+   "rule_author": "Thomas Patzke, Romaissa Adjailia, Florian Roth (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_psexesvc.yml",
+   "evidence": "PSEXESVC.exe; started by services.exe; command: C:\\windows\\PSEXESVC.exe (4 matching events)",
+   "id": "sig-46"
+  },
+  {
+   "time": "2020-05-02T03:11:41",
+   "name": "First Time Seen Remote Named Pipe",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "52d8b0c6-53d6-439a-9e41-52ad442ad9ad",
+   "rule_author": "Samir Bousseaden",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_lm_namedpipe.yml",
+   "evidence": "event 5145 in Security (16 matching events)",
+   "id": "sig-47"
+  },
+  {
+   "time": "2020-05-02T03:11:41",
+   "name": "SCM Database Privileged Operation",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1548",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "dae8171c-5ec6-4396-b210-8466585b53e9",
+   "rule_author": "Roberto Rodriguez @Cyb3rWard0g, Tim Shelton",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_scm_database_privileged_operation.yml",
+   "evidence": "event 4674 in Security (8 matching events)",
+   "id": "sig-48"
+  },
+  {
+   "time": "2020-05-02T03:15:05",
+   "name": "Python Initiated Connection",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0007",
+   "technique_id": "T1046",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "bef0bc5a-b9ae-425d-85c6-7b2d705980c6",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/network_connection/net_connection_win_python.yml",
+   "evidence": "python.exe (348 matching events)",
+   "id": "sig-49"
+  },
+  {
+   "time": "2020-05-02T03:16:19",
+   "name": "Rar Usage with Password and Compression Level",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0009",
+   "technique_id": "T1560.001",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "faa48cae-6b25-4f00-a094-08947fef582f",
+   "rule_author": "@ROxPinTeddy",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_rar_compression_with_password.yml",
+   "evidence": "Rar.exe; started by powershell.exe; command: \"C:\\Windows\\Temp\\Rar.exe\" a -hp[removed] C:\\Users\\pbeesly\\Desktop\\working.zip C:\\Users\\pbeesly\\AppData\\Roaming\\working.zip (1 matching event)",
+   "id": "sig-50"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "name": "PUA - Sysinternals Tools Execution - Registry",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0042",
+   "technique_id": "T1588.002",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "c7da8edc-49ae-45a2-9e61-9fd860e4e73d",
+   "rule_author": "Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_pua_sysinternals_susp_execution_via_eula.yml",
+   "evidence": "sdelete64.exe; registry 1830255721-3727074217-2423397540-1107\\Software\\Sysinternals\\SDelete\\EulaAccepted (3 matching events)",
+   "id": "sig-51"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "name": "Potential File Overwrite Via Sysinternals SDelete",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0040",
+   "technique_id": "T1485",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "a4824fca-976f-4964-b334-0621379e84c4",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_sysinternals_sdelete.yml",
+   "evidence": "sdelete64.exe; started by cmd.exe; command: .\\sdelete64.exe  /accepteula \"C:\\Windows\\Temp\\Rar.exe\" (3 matching events)",
+   "id": "sig-52"
+  },
+  {
+   "time": "2020-05-02T03:16:52",
+   "name": "Suspicious Execution Of Renamed Sysinternals Tools - Registry",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0042",
+   "technique_id": "T1588.002",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "attack",
+   "rule": "f50f3c09-557d-492d-81db-9064a8d4e211",
+   "rule_author": "Nasreddine Bencherchali (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_pua_sysinternals_renamed_execution_via_eula.yml",
+   "evidence": "sdelete64.exe; registry 1830255721-3727074217-2423397540-1107\\Software\\Sysinternals\\SDelete\\EulaAccepted (3 matching events)",
+   "id": "sig-53"
+  },
+  {
+   "time": "2020-05-02T03:17:18",
+   "name": "File Deleted Via Sysinternals SDelete",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1070.004",
+   "involves": [
+    "nashua",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "6ddab845-b1b8-49c2-bbf7-1a11967f64bc",
+   "rule_author": "Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/file/file_delete/file_delete_win_sysinternals_sdelete_file_deletion.yml",
+   "evidence": "sdelete64.exe; file ZZZZZZZZZZZZZZZZZZZZZZZ.ZZZ (1 matching event)",
+   "id": "sig-54"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "name": "Bad Opsec Defaults Sacrificial Processes With Improper Arguments",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1218.011",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "a7c3d773-caef-227e-a7e7-c2f13c622329",
+   "rule_author": "Oleg Kolesnikov @securonix invrep_de, oscd.community, Florian Roth (Nextron Systems), Christian Burkard (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_susp_bad_opsec_sacrificial_processes.yml",
+   "evidence": "rundll32.exe; started by javamtsup.exe; command: rundll32.exe (1 matching event)",
+   "id": "sig-55"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "name": "Rundll32 Execution With Uncommon DLL Extension",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1218.011",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "c3a99af4-35a9-4668-879e-c09aeb4f2bdf",
+   "rule_author": "Tim Shelton, Florian Roth (Nextron Systems), Yassine Oukessou",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_rundll32_uncommon_dll_extension.yml",
+   "evidence": "rundll32.exe; started by javamtsup.exe; command: rundll32.exe (1 matching event)",
+   "id": "sig-56"
+  },
+  {
+   "time": "2020-05-02T03:19:14",
+   "name": "Rundll32 Execution Without Parameters",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0008",
+   "technique_id": "T1021.002",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "5bb68627-3198-40ca-b458-49f973db8752",
+   "rule_author": "Bartlomiej Czyz, Relativity",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_rundll32_without_parameters.yml",
+   "evidence": "rundll32.exe; started by javamtsup.exe; command: rundll32.exe (1 matching event)",
+   "id": "sig-57"
+  },
+  {
+   "time": "2020-05-02T03:19:17",
+   "name": "New Network Trace Capture Started Via Netsh.EXE",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0007",
+   "technique_id": "T1040",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "d3c3861d-c504-4c77-ba55-224ba82d0118",
+   "rule_author": "Kutepov Anton, oscd.community",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_netsh_packet_capture.yml",
+   "evidence": "netsh.exe; started by NetworkWatcherAgent.exe; command: C:\\windows\\system32\\netsh.exe trace start capture=yes traceFile=\"C:\\windows\\TEMP\\E7116ECA-DFE6-43C7-8FA8-8D3AC5AA8726\\B91E06C5-1C7C-4830-9A7 (1 matching event)",
+   "id": "sig-58"
+  },
+  {
+   "time": "2020-05-02T03:19:43",
+   "name": "HackTool - SysmonEnte Execution",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0112",
+   "technique_id": "T1685.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "d29ada0f-af45-4f27-8f32-f7b77c3dbc4e",
+   "rule_author": "Florian Roth (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_access/proc_access_win_hktl_sysmonente.yml",
+   "evidence": "opened Sysmon.exe (24 matching events)",
+   "id": "sig-59"
+  },
+  {
+   "time": "2020-05-02T03:20:41",
+   "name": "Elevated System Shell Spawned From Uncommon Parent Location",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1059",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "178e615d-e666-498b-9630-9ed363038101",
+   "rule_author": "frack113, Tim Shelton (update fp)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_susp_elevated_system_shell_uncommon_parent.yml",
+   "evidence": "cmd.exe; started by WindowsAzureGuestAgent.exe; command: C:\\windows\\system32\\cmd.exe /c \"\"C:\\Packages\\Plugins\\Microsoft.Compute.JsonADDomainExtension\\1.3.2\\enable.cmd\"\" (4 matching events)",
+   "id": "sig-60"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "name": "Disable Windows Defender Functionalities Via Registry Keys",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0112",
+   "technique_id": "T1685",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "0eb46774-f1ab-4a74-8238-1155855f2263",
+   "rule_author": "AlertIQ, Ján Trenčanský, frack113, Nasreddine Bencherchali, Swachchhanda Shrawan Poudel",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_windows_defender_tamper.yml",
+   "evidence": "MsMpEng.exe; registry FTWARE\\Microsoft\\Windows Defender\\Real-Time Protection\\DisableRealtimeMonitoring (1 matching event)",
+   "id": "sig-61"
+  },
+  {
+   "time": "2020-05-02T03:20:43",
+   "name": "Windows Defender Exclusions Added - Registry",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0112",
+   "technique_id": "T1685",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "a982fc9c-6333-4ffb-a51d-addb04e8b529",
+   "rule_author": "Christian Burkard (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/registry/registry_set/registry_set_defender_exclusions.yml",
+   "evidence": "MsMpEng.exe; registry HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Extensions\\.bat (13 matching events)",
+   "id": "sig-62"
+  },
+  {
+   "time": "2020-05-02T03:20:47",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "noise",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (2 matching events)",
+   "id": "sig-63"
+  },
+  {
+   "time": "2020-05-02T03:21:28",
+   "name": "Malicious Base64 Encoded PowerShell Keywords in Command Lines",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "f26c6093-6f14-4b12-800f-0fcb46f5ffd0",
+   "rule_author": "John Lambert (rule)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_powershell_base64_hidden_flag.yml",
+   "evidence": "powershell.exe; started by powershell.exe; command: \"C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -nop -w hidden -e aQBmACgAWwBJAG4AdABQAHQAcgBdADoAOgBTAGkAegBlACAALQBlAHEAIAA0AC (1 matching event)",
+   "id": "sig-64"
+  },
+  {
+   "time": "2020-05-02T03:21:28",
+   "name": "PowerShell Base64 Encoded FromBase64String Cmdlet",
+   "severity": "high",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1140",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "fdb62a13-9a81-4e5c-a38f-ea93a16f6d7c",
+   "rule_author": "Florian Roth (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_powershell_base64_frombase64string.yml",
+   "evidence": "powershell.exe; started by powershell.exe; command: \"C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -nop -w hidden -e aQBmACgAWwBJAG4AdABQAHQAcgBdADoAOgBTAGkAegBlACAALQBlAHEAIAA0AC (1 matching event)",
+   "id": "sig-65"
+  },
+  {
+   "time": "2020-05-02T03:21:28",
+   "name": "Suspicious Execution of Powershell with Base64",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton",
+    "pbeesly"
+   ],
+   "scenario": "attack",
+   "rule": "fb843269-508c-4b76-8b8d-88679db22ce7",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_powershell_encode.yml",
+   "evidence": "powershell.exe; started by powershell.exe; command: \"C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -nop -w hidden -e aQBmACgAWwBJAG4AdABQAHQAcgBdADoAOgBTAGkAegBlACAALQBlAHEAIAA0AC (1 matching event)",
+   "id": "sig-66"
+  },
+  {
+   "time": "2020-05-02T03:21:31",
+   "name": "Suspicious FromBase64String Usage On Gzip Archive - Ps Script",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0011",
+   "technique_id": "T1132.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "df69cb1d-b891-4cd9-90c7-d617d90100ce",
+   "rule_author": "frack113",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_frombase64string_archive.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-67"
+  },
+  {
+   "time": "2020-05-02T03:21:31",
+   "name": "Suspicious PowerShell WindowStyle Option",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0005",
+   "technique_id": "T1564.003",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "313fbb0a-a341-4682-848d-6d6f8c4fab7c",
+   "rule_author": "frack113, Tim Shelton (fp AWS)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_susp_windowstyle.yml",
+   "evidence": "PowerShell script content (not copied) (1 matching event)",
+   "id": "sig-68"
+  },
+  {
+   "time": "2020-05-02T03:21:32",
+   "name": "Malicious PowerShell Keywords",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0002",
+   "technique_id": "T1059.001",
+   "involves": [
+    "scranton"
+   ],
+   "scenario": "attack",
+   "rule": "f62176f3-8128-4faa-bf6c-83261322e5eb",
+   "rule_author": "Sean Metcalf (source), Florian Roth (Nextron Systems)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/powershell/powershell_script/posh_ps_malicious_keywords.yml",
+   "evidence": "PowerShell script content (not copied) (2 matching events)",
+   "id": "sig-69"
+  },
+  {
+   "time": "2020-05-02T03:22:39",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "noise",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (2 matching events)",
+   "id": "sig-70"
+  },
+  {
+   "time": "2020-05-02T03:22:41",
+   "name": "Elevated System Shell Spawned From Uncommon Parent Location",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1059",
+   "involves": [
+    "nashua"
+   ],
+   "scenario": "noise",
+   "rule": "178e615d-e666-498b-9630-9ed363038101",
+   "rule_author": "frack113, Tim Shelton (update fp)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_susp_elevated_system_shell_uncommon_parent.yml",
+   "evidence": "cmd.exe; started by CollectGuestLogs.exe; command: \"cmd\" (1 matching event)",
+   "id": "sig-71"
+  },
+  {
+   "time": "2020-05-02T03:23:13",
+   "name": "Potentially Suspicious AccessMask Requested From LSASS",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0006",
+   "technique_id": "T1003.001",
+   "involves": [
+    "utica"
+   ],
+   "scenario": "noise",
+   "rule": "4a1b6da0-d94f-4fc3-98fc-2d9cb9e5ee76",
+   "rule_author": "Roberto Rodriguez, Teymur Kheirkhabarov, Dimitrios Slamaris, Mark Russinovich, Aleksey Potapov, oscd.community (update)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/builtin/security/win_security_susp_lsass_dump_generic.yml",
+   "evidence": "event 4656 in Security (2 matching events)",
+   "id": "sig-72"
+  },
+  {
+   "time": "2020-05-02T03:23:14",
+   "name": "Elevated System Shell Spawned From Uncommon Parent Location",
+   "severity": "medium",
+   "source_tool": "Sigma",
+   "tactic_id": "TA0004",
+   "technique_id": "T1059",
+   "involves": [
+    "utica"
+   ],
+   "scenario": "noise",
+   "rule": "178e615d-e666-498b-9630-9ed363038101",
+   "rule_author": "frack113, Tim Shelton (update fp)",
+   "rule_link": "https://github.com/SigmaHQ/sigma/blob/r2026-07-01/rules/windows/process_creation/proc_creation_win_susp_elevated_system_shell_uncommon_parent.yml",
+   "evidence": "cmd.exe; started by CollectGuestLogs.exe; command: \"cmd\" (1 matching event)",
+   "id": "sig-73"
+  }
+ ]
+}

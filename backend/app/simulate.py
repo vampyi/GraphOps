@@ -56,11 +56,22 @@ def build(attack=False, seed=7, sample=SAMPLE, day_path=None):
                **{k: v for k, v in alert.items() if k != "scenario"}}
         out.append(("alerts", alert["involves"][0], msg))
 
+    # the day's own activity. attack events come only with the attack; the rest always (a real lab recording brings
+    # its logons, connections and process starts; the hand-written days bring a few logons)
     if attack:
         for n, ev in enumerate(e for e in day["events"] if e["scenario"] == "attack"):
-            msg = {"event_id": f"id-atk-{n + 1:03d}", "time": ev["time"], "source_tool": "Active Directory",
-                   "kind": ev["type"], "src": ev["src"], "dst": ev["dst"], "user": ev.get("user")}
-            out.append(("identity", ev["src"], msg))
+            out.append(_activity(ev, f"id-atk-{n + 1:03d}"))
+    for n, ev in enumerate(e for e in day["events"] if e["scenario"] != "attack"):
+        out.append(_activity(ev, f"id-bg-{n + 1:04d}"))
+    for n, p in enumerate(day.get("process_starts", [])):
+        if p["scenario"] == "attack" and not attack:
+            continue
+        msg = {"event_id": f"edr-day-{n + 1:04d}", "time": p["time"], "source_tool": p.get("source_tool", "EDR"),
+               "kind": "ProcessStart", "host": p["host"], "process": p["process"]}
+        msg.update({k: p[k] for k in ("parent", "user") if p.get(k)})
+        out.append(("edr", p["host"], msg))
+
+    if attack:
         # the attacker's process starts are scripted for the sample day's laptop only
         for n, (t, proc, parent) in enumerate(ATTACK_PROCESSES if day_path == sample / "alerts.json" else []):
             out.append(("edr", "laptop-42", {"event_id": f"edr-atk-{n + 1:03d}", "time": t, "source_tool": "EDR",
@@ -71,6 +82,18 @@ def build(attack=False, seed=7, sample=SAMPLE, day_path=None):
     # at the same second, inventory and activity come before the alert they explain
     out.sort(key=lambda x: (x[2]["time"], TOPIC_ORDER.index(x[0]), x[2]["event_id"]))
     return out
+
+
+def _activity(ev, event_id):
+    """one of the day's activity events as a stream message: logons on the identity topic, connections on flows."""
+    if ev["type"] == "ConnectedTo":
+        msg = {"event_id": event_id, "time": ev["time"], "source_tool": ev.get("source_tool", "Network flows"),
+               "kind": "Connection", "src": ev["src"], "dst": ev["dst"]}
+        msg.update({k: ev[k] for k in ("port", "protocol") if ev.get(k) is not None})
+        return "flows", ev["src"], msg
+    msg = {"event_id": event_id, "time": ev["time"], "source_tool": ev.get("source_tool", "Active Directory"),
+           "kind": ev["type"], "src": ev["src"], "dst": ev["dst"], "user": ev.get("user")}
+    return "identity", ev["src"], msg
 
 
 def everyday(network, rng, count=EVERYDAY_EVENTS, start=DAY_START, end=DAY_END):
