@@ -30,7 +30,7 @@ export default function Sources() {
       {endpoints.length === 0
         ? <p className="rs-note">No laptop is reporting. See collectors/osquery/README.md to connect one.</p>
         : (
-          <table className="ag-table">
+          <table className="proof-table">
             <thead><tr><th>Laptop</th><th>OS</th><th>Accounts</th><th>Listening ports</th><th>Disk encryption</th><th>Firewall</th><th>Changes</th><th>Last report</th></tr></thead>
             <tbody>
               {endpoints.map((s) => {
