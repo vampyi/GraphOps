@@ -229,7 +229,7 @@ export default function Landing() {
         <div className="lp-wrap">
           <div className="lp-brand"><Logo />GraphOps</div>
           <p>Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mohamad and SK MD Mahasin.</p>
-          <p className="lp-muted">The console runs on a fictional sample organisation. All data is synthetic.</p>
+          <p className="lp-muted">The console opens on MITRE's real APT29 lab recording with public SigmaHQ rules, next to a synthetic demo company; team laptops and an AI agent report into it live.</p>
         </div>
       </footer>
     </div>

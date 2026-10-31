@@ -126,7 +126,7 @@ def apply_one(session, source_id):
 
 
 def _host_id(inv):
-    return f"ep:{inv['host']}"
+    return inv["host"]
 
 
 def _draw_endpoint(session, source_id, inv):
@@ -145,7 +145,7 @@ def _draw_endpoint(session, source_id, inv):
     session.run(
         """
         UNWIND $users AS u
-        MERGE (n:User:Entity {id: $hid + '/' + u.name})
+        MERGE (n:User:Entity {id: u.name + '@' + $hid})
         SET n.name = u.name, n.location = 'onprem', n.source = $sid, n.real = true, n.admin = u.admin
         WITH n, u
         MATCH (c:Computer {id: $hid})
@@ -169,7 +169,7 @@ def _draw_alerts(session, source_id):
                          "e.detail AS detail ORDER BY e.time", id=source_id):
         spec = EVENT_ALERTS[e["kind"]]
         aid = f"rl-{source_id}-{e['kind']}-{e['time']}"[:120]
-        involves = [hid] + ([f"{hid}/{e['subject']}"] if e["kind"] in ("admin_added", "user_signed_in") and e["subject"] else [])
+        involves = [hid] + ([f"{e['subject']}@{hid}"] if e["kind"] in ("admin_added", "user_signed_in") and e["subject"] else [])
         rows.append({"id": aid, "time": e["time"][:19], "involves": involves,
                      "props": {**spec, "id": aid, "time": e["time"][:19], "source_tool": "osquery",
                                "name": f"{spec['name']}: {e['subject']}" if e["subject"] else spec["name"],

@@ -158,7 +158,11 @@ export default function Dashboard() {
         </div>
       </nav>
       <div className="subnav">
-        <span className="tag">Synthetic data</span>
+        {(() => {
+          const real = scenarios?.scenarios.find((sc) => sc.id === scenarios.active)?.real;
+          return <span className={`tag ${real ? "real" : ""}`} title="Team laptops and AI agents report live on top of every day">
+            {real ? "Real lab logs" : "Synthetic company"} <em>+ live laptops & AI agents</em></span>;
+        })()}
         {scenarios && scenarios.scenarios.length > 1 && (
           <label className="scenario-pick">Scenario
             <select value={scenarios.active} disabled={switching} onChange={(e) => switchScenario(e.target.value)}>

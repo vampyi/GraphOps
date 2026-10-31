@@ -386,7 +386,7 @@ def proof():
 def list_scenarios():
     """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
     with _driver.session() as s:
-        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.catalog(), "busy": scenarios.busy(s)}
+        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.picker(), "busy": scenarios.busy(s)}
 
 
 @app.post("/api/scenarios/{scenario_id}/load")

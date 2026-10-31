@@ -49,7 +49,7 @@ def test_laptop_in_graph_changes_as_alerts_and_kept_on_reload(src_api, neo4j_dri
     assert src["label"] == "Test laptop" and src["admins"] == 1 and src["firewall"] is False and src["events"] == 2
     with neo4j_driver.session() as s:
         seed.load(s)  # a reload wipes the graph; the laptop and its alerts are drawn back
-        assert s.run("MATCH (:User {id: 'ep:laptop-test/user-aaaa'})-[:AdminTo]->(:Computer {id: 'ep:laptop-test'}) "
+        assert s.run("MATCH (:User {id: 'user-aaaa@laptop-test'})-[:AdminTo]->(:Computer {id: 'laptop-test'}) "
                      "RETURN count(*) AS n").single()["n"] == 1
         assert s.run("MATCH (a:Alert {source_tool: 'osquery'}) RETURN count(a) AS n").single()["n"] == 2
 

@@ -67,6 +67,7 @@ code { font-family: var(--mono); font-size: 11px; background: var(--surface2); b
 .dash { min-height: 100vh; display: flex; flex-direction: column; }
 .dnav { display: flex; align-items: center; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .tag { font-size: 12px; color: var(--amber); }
+.tag.real { color: var(--ok); } .tag em { font-style: normal; color: var(--muted); margin-left: 4px; }
 .sort { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
 .sort button, .verdicts button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
 .sort button.on { background: var(--paper); color: var(--on-paper); border-color: var(--paper); font-weight: 600; }

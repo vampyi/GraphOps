@@ -250,10 +250,12 @@ def test_evaluation_graphops_beats_severity_only(api):
     assert ev["graphops"]["last_attack_rank"] < ev["severity"]["last_attack_rank"]
 
 
-def test_scenarios_list_includes_the_held_out_day(api):
+def test_picker_offers_the_real_day_first_and_held_out_days_stay_loadable(api):
     body = api.get("/api/scenarios").json()
-    ids = {s["id"] for s in body["scenarios"]}
-    assert {"sample", "finance_breach"} <= ids and body["active"] == "sample"
+    assert [s["id"] for s in body["scenarios"]] == ["apt29_day1_sigma", "sample"] and body["active"] == "sample"
+    assert body["scenarios"][0]["real"] and not body["scenarios"][1]["real"]
+    # held-out days are proof test days: not in the picker, still loadable by id
+    assert api.post("/api/scenarios/finance_breach/load").json()["id"] == "finance_breach"
 
 
 def test_held_out_scenario_is_not_overfit(api):

@@ -35,7 +35,8 @@ def target(tool, inp, root):
             return "folder:home", f"{tool} a file in the home folder"
         return None, None
     if tool == "Bash":
-        word = (inp.get("command") or "").strip().split(" ")[0].split("/")[-1]
+        words = [w for w in (inp.get("command") or "").split() if not re.match(r"^\w+=", w)]
+        word = re.sub(r"[^\w.-]", "", (words[0] if words else "").split("/")[-1]) or "a command"
         return CMD_SERVICE.get(word, "tool:bash"), f"ran {word}"
     if tool in ("WebFetch", "WebSearch"):
         return "tool:webfetch", tool

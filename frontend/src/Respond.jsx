@@ -34,7 +34,7 @@ export default function Respond({ incident, onError, onDraft }) {
       const r = await notifyIncident(incident.id, to, window.location.href);
       setPlan(r.plan); setSent(r.sent); setTo([]);
     } catch (e) {
-      onError(e.message.startsWith("503") ? "Email is not set up on this server." : `Could not send: ${e.message}`);
+      onError(e.message.startsWith("503") ? "Email alerts are not switched on in this demo." : `Could not send: ${e.message}`);
     }
     setSending(false);
   };
@@ -82,7 +82,7 @@ export default function Respond({ incident, onError, onDraft }) {
 
       <h3 className="pane-h">Notify by email<Info text="Sends a real email with how it started, who is involved, the containment steps and the CERT-In deadline. Only the team contacts set up on this server can be emailed, a few per incident." /></h3>
       {!plan.email_ready
-        ? <p className="rs-note">Email is not set up on this server.</p>
+        ? <p className="rs-note">Built and ready: emails the people above with the incident, steps and CERT-In deadline. Not switched on in this public demo.</p>
         : (
           <>
             <div className="rs-contacts">
