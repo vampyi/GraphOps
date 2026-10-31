@@ -386,7 +386,10 @@ def proof():
 def list_scenarios():
     """the labelled days GraphOps can load: the sample day the weights are tuned on, plus held-out scenarios."""
     with _driver.session() as s:
-        return {"active": scenarios.active(s)["id"], "scenarios": scenarios.picker(), "busy": scenarios.busy(s)}
+        active, days = scenarios.active(s)["id"], scenarios.picker()
+        # a test day loaded from outside the picker is still shown as what is loaded, never as another day
+        days += [c for c in scenarios.catalog() if c["id"] == active and active not in {d["id"] for d in days}]
+        return {"active": active, "scenarios": days, "busy": scenarios.busy(s)}
 
 
 @app.post("/api/scenarios/{scenario_id}/load")

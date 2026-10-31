@@ -256,6 +256,9 @@ def test_picker_offers_the_real_day_first_and_held_out_days_stay_loadable(api):
     assert body["scenarios"][0]["real"] and not body["scenarios"][1]["real"]
     # held-out days are proof test days: not in the picker, still loadable by id
     assert api.post("/api/scenarios/finance_breach/load").json()["id"] == "finance_breach"
+    body = api.get("/api/scenarios").json()
+    assert body["active"] == "finance_breach" and body["scenarios"][-1]["id"] == "finance_breach"
+    api.post("/api/scenarios/sample/load")
 
 
 def test_held_out_scenario_is_not_overfit(api):
