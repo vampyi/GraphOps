@@ -26,14 +26,20 @@ EDGES = {
     "CanPrompt":   {"p": 0.7, "tactic": "AML.TA0005", "technique": "AML.T0051.000", "step": "can prompt"},
     "HasToolAccess": {"p": 0.9, "tactic": None,   "technique": None,        "step": "can call the tool"},
     "CanAccess":   {"p": 0.9, "tactic": "TA0002", "technique": "T1059.001", "step": "can run commands on"},
+    # a real ai agent on a laptop (sources.py): the folders it works in, the secret files there, the services
+    # their keys open, and the accounts the agent is signed in to
+    "CanRead":     {"p": 1.0, "tactic": "TA0009", "technique": "T1005",     "step": "can read files in"},
+    "Contains":    {"p": 1.0, "tactic": None,     "technique": None,        "step": "contains"},
+    "HoldsKeyFor": {"p": 0.9, "tactic": "TA0006", "technique": "T1552.001", "step": "holds credentials for"},
+    "SignedInTo":  {"p": 0.9, "tactic": "TA0001", "technique": "T1078.004", "step": "is signed in to"},
 }
 ATTACK_EDGES = list(EDGES)
 
 # granted = a permission someone holds. observed = something the logs saw happen. a session is an observation
 # (who was signed in when the snapshot was taken), not a right, even though network.json lists it with the grants.
 GRANTED_EDGES = ["MemberOf", "AdminTo", "CanRDP", "GenericAll", "SyncedTo", "Owns", "RunsAs", "RoleOn",
-                 "CanPrompt", "HasToolAccess", "CanAccess"]
-USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool"]
+                 "CanPrompt", "HasToolAccess", "CanAccess", "CanRead", "SignedInTo"]
+USED_EDGES = ["LoggedInto", "RemoteLogon", "InvokedTool", "UsedAccess"]
 
 # mitre att&ck enterprise names, checked on attack.mitre.org. the dashboard copy in frontend/src/tactics.js matches.
 TACTICS = {
@@ -55,7 +61,8 @@ TECHNIQUES = {
     "T1176": "Browser Extensions", "T1133": "External Remote Services", "T1195": "Supply Chain Compromise",
     "T1190": "Exploit Public-Facing Application", "T1078.004": "Valid Accounts: Cloud Accounts",
     "T1098.001": "Additional Cloud Credentials", "T1555.006": "Cloud Secrets Management Stores",
-    "T1059.001": "PowerShell",
+    "T1059.001": "PowerShell", "T1005": "Data from Local System",
+    "T1552.001": "Unsecured Credentials: Credentials In Files",
     "AML.T0051.000": "LLM Prompt Injection: Direct", "AML.T0051.001": "LLM Prompt Injection: Indirect",
 }
 
@@ -99,5 +106,9 @@ def describe_removal(src, edge_type, dst):
         "CanPrompt": f"Limit who in {src} can instruct {dst}",
         "HasToolAccess": f"Remove the tool {dst} from {src}, or require human approval for each call",
         "CanAccess": f"Restrict what the tool {src} can run on {dst}",
+        "CanRead": f"Narrow {src}'s working folders so {dst} is outside them",
+        "Contains": f"Move {dst} out of {src}, into a secrets manager",
+        "HoldsKeyFor": f"Rotate the key in {src} and keep {dst}'s credentials in a secrets manager instead of a file",
+        "SignedInTo": f"Sign {src} out of {dst}, or give it a token limited to what it needs",
     }
     return fixes.get(edge_type, f"Remove {src} -{edge_type}-> {dst}")

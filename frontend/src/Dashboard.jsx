@@ -9,11 +9,13 @@ import Access from "./Access.jsx";
 import GraphEngine from "./GraphEngine.jsx";
 import Ask from "./Ask.jsx";
 import AttackPaths from "./AttackPaths.jsx";
+import Agents from "./Agents.jsx";
 
 const VIEWS = [
   { id: "triage", label: "Triage", hint: "Ranked alerts and their details" },
   { id: "paths", label: "Attack paths", hint: "Routes to critical assets before any attack, and what one system can reach" },
   { id: "access", label: "Access", hint: "Granted vs used access" },
+  { id: "agents", label: "AI agents", hint: "A real AI agent: its access and live activity" },
   { id: "graph", label: "Graph", hint: "The Neo4j graph, its algorithms and the proof that the ranking works" },
   { id: "ask", label: "Ask", hint: "Questions in plain language" },
 ];
@@ -174,6 +176,7 @@ export default function Dashboard() {
       {view === "triage" && <Triage key={dataVersion} alerts={alerts} changed={changed} live={live} onReload={load} onError={setError} />}
       {view === "paths" && <AttackPaths key={dataVersion} onError={setError} />}
       {view === "access" && <Access key={dataVersion} onError={setError} />}
+      {view === "agents" && <Agents key={dataVersion} onError={setError} />}
       {view === "graph" && <GraphEngine key={dataVersion} onError={setError} />}
       {view === "ask" && <Ask />}
 

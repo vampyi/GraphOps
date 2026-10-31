@@ -799,7 +799,8 @@ def languages():
     return {"languages": [{"code": k, "name": v} for k, v in LANGUAGES.items()], "llm": llm.available()}
 
 
-# real sources reporting from outside, such as team laptops running osquery. writes need the ingest token.
+# real sources reporting from outside: team laptops running osquery and ai agents such as claude code.
+# writes need the ingest token.
 class SourceInventory(BaseModel):
     kind: str
     inventory: dict
@@ -818,26 +819,28 @@ def _need_token(token):
 
 @app.post("/api/sources/{source_id}/inventory")
 def source_inventory(source_id: str, body: SourceInventory, x_graphops_token: str | None = Header(None)):
-    """what a source is and holds right now. redraws it into the graph and re-runs the analysis."""
+    """what a source is or can reach right now. redraws it into the graph and re-runs the analysis."""
     _need_token(x_graphops_token)
     if body.kind not in sources.KINDS:
         raise HTTPException(422, f"kind must be one of {', '.join(sorted(sources.KINDS))}")
     with _driver.session() as s:
-        sources.save_inventory(s, source_id[:60], body.kind, body.inventory)
+        sources.save_inventory(s, source_id[:80], body.kind, body.inventory)
         _reanalyse(s)
         return {"status": "ok"}
 
 
 @app.post("/api/sources/{source_id}/events")
 def source_events(source_id: str, body: SourceEvents, x_graphops_token: str | None = Header(None)):
-    """what changed on a source since its last report. each change becomes an alert; an empty list is a heartbeat."""
+    """what changed on a source since its last report: a laptop's changes become alerts, an agent's actions become
+    used-access edges. an empty list is a heartbeat."""
     _need_token(x_graphops_token)
     with _driver.session() as s:
         if not body.events:
-            sources.heartbeat(s, source_id[:60])
+            sources.heartbeat(s, source_id[:80])
             return {"stored": 0}
-        n = sources.save_events(s, source_id[:60], body.events)
-        _reanalyse(s)
+        n, alerts = sources.save_events(s, source_id[:80], body.events)
+        if alerts:
+            _reanalyse(s)
         return {"stored": n}
 
 
@@ -845,6 +848,15 @@ def source_events(source_id: str, body: SourceEvents, x_graphops_token: str | No
 def list_sources():
     with _driver.session() as s:
         return sources.list_sources(s)
+
+
+@app.get("/api/agents/{source_id}")
+def agent_view(source_id: str):
+    with _driver.session() as s:
+        view = sources.agent_view(s, source_id)
+        if view is None:
+            raise HTTPException(404, "no such agent source")
+        return view
 
 
 @app.get("/api/health")

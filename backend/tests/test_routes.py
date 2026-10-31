@@ -38,6 +38,7 @@ FRONTEND_ENDPOINTS = [
     ("POST", "/api/incidents/{incident_id}/steps"),
     ("GET", "/api/incidents/{incident_id}/cert-in"),
     ("POST", "/api/incidents/{incident_id}/notify"),
+    ("GET", "/api/agents/{source_id}"),
     ("GET", "/api/graph/reachability-proof"),
     ("GET", "/api/evaluation"),
     ("GET", "/api/learning"),

@@ -59,7 +59,7 @@ def load_network(session, network_path=SAMPLE / "network.json", network=None):
     # vulnerabilities for the software in the network, from the saved snapshot of the public sources
     from .vulns import refresh
     refresh(session, live=False)
-    # real sources reporting from outside (team laptops) are drawn back into the fresh graph
+    # real sources reporting from outside (team laptops, ai agents) are drawn back into the fresh graph
     from .sources import apply_all
     apply_all(session)
 

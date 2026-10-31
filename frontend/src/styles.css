@@ -1191,3 +1191,46 @@ h2 { font-weight: 600; letter-spacing: -0.01em; }
 .src-ok { color: var(--ok); } .src-bad { color: var(--red-soft); font-weight: 600; } .src-na { color: var(--faint); }
 .real-tag { margin-left: 6px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ok); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
 .proof-tag.real { color: var(--ok); border-color: var(--ok); }
+
+/* ===== ai agents ===== */
+.agents { padding: 12px 22px 22px; display: grid; gap: 12px; }
+.agents .panel { max-height: none; }
+.ag-head { padding-top: 16px; }
+.ag-id { display: flex; align-items: center; gap: 12px; }
+.ag-id h2 { font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.ag-real { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ok, #3fa35a); border: 1px solid currentColor; border-radius: 999px; padding: 1px 7px; }
+.ag-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.ag-stats div { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.ag-stats b { font-size: 24px; font-weight: 400; }
+.ag-stats span { font-size: 12px; color: var(--muted); }
+.ag-stats .warn b { color: var(--orange); } .ag-stats .crit b { color: var(--red-soft); }
+.ag-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; }
+.ag-path { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.ag-path-to { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.ag-path-to b { color: var(--red-soft); }
+.ag-path ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ag-path li { display: inline-flex; align-items: center; gap: 6px; }
+.ag-path code.crit { color: var(--red-soft); border-color: var(--red); }
+.ag-path em { font-style: normal; font-size: 11.5px; color: var(--muted); }
+.ag-path em span { font-family: var(--mono); font-size: 10px; color: var(--red-soft); }
+.ag-fix { margin-top: 8px; font-size: 12px; color: var(--text-2); border-top: 1px dashed var(--border); padding-top: 6px; }
+.ag-none { color: var(--muted); font-size: 13px; }
+.ag-feed { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow-y: auto; }
+.ag-feed li { display: grid; grid-template-columns: 74px 70px minmax(0, 1fr); gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.ag-feed .t { font-family: var(--mono); color: var(--faint); }
+.ag-feed .tool { font-weight: 600; }
+.ag-feed .what { font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-feed .tgt { grid-column: 3; color: var(--muted); font-size: 11px; }
+.ag-feed li.secret .what, .ag-feed li.secret .tgt { color: var(--red-soft); }
+.ag-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ag-table th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.ag-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.ag-table td.yes { color: var(--ok, #3fa35a); } .ag-table td.no { color: var(--faint); } .ag-table td.warn { color: var(--orange); }
+.ag-crit { margin-left: 6px; font-size: 10px; color: var(--red-soft); border: 1px solid var(--red); border-radius: 999px; padding: 0 6px; }
+@media (max-width: 1100px) { .ag-grid, .ag-stats { grid-template-columns: 1fr 1fr; } }
+.ag-hist { max-height: none; }
+.ag-hist-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.ag-hist-row div { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; }
+.ag-hist-row b { font-size: 22px; font-weight: 400; } .ag-hist-row span { font-size: 12px; color: var(--muted); }
+.ag-hist-row .crit b { color: var(--red-soft); } .ag-hist-row .ok b { color: var(--ok); }
+@media (max-width: 1100px) { .ag-hist-row { grid-template-columns: 1fr 1fr; } }
