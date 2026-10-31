@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getEntities, getExplore, getVulnerabilities, refreshVulnerabilities, setControl } from "./api.js";
 import RingGraph from "./RingGraph.jsx";
-import { Info } from "./parts.jsx";
+import { Info, shortId } from "./parts.jsx";
 
 const MODES = [
   { id: "shortest", label: "Shortest path", tip: "Fewest steps from this system to each critical asset." },
@@ -83,7 +83,7 @@ export default function Explore({ onError, focus, onFocus }) {
           <select value={id} onChange={(e) => setId(e.target.value)}>
             {PICK_ORDER.filter((k) => entities.some((e) => e.kind === k)).map((k) => (
               <optgroup key={k} label={KIND_LABEL[k]}>
-                {entities.filter((e) => e.kind === k).map((e) => <option key={e.id} value={e.id}>{e.id}{e.critical ? " (critical)" : ""}</option>)}
+                {entities.filter((e) => e.kind === k).map((e) => <option key={e.id} value={e.id}>{shortId(e.id)}{e.critical ? " (critical)" : ""}</option>)}
               </optgroup>
             ))}
           </select>
@@ -120,7 +120,7 @@ export default function Explore({ onError, focus, onFocus }) {
                     <span>{p.hops} step{p.hops > 1 ? "s" : ""} · {Math.round(p.likelihood * 100)}%</span>
                     {p.secured && <span className="sec-tag">secured</span>}
                   </div>
-                  <div className="ex-path-n">{p.nodes.join(" → ")}</div>
+                  <div className="ex-path-n">{p.nodes.map(shortId).join(" → ")}</div>
                   {picked === p && (
                     <div className="ex-steps" onClick={(e) => e.stopPropagation()}>
                       {p.steps.map((st, j) => {

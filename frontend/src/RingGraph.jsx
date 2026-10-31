@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { shortId } from "./parts.jsx";
 
 const W = 780;
 const H = 660;
@@ -185,7 +186,7 @@ export default function RingGraph({ data: full, onSelectNode, selectedNode, maxH
           >
             {(n.critical || n.hop === 0) && <circle cx={p.x} cy={p.y} r={r * 2.6} fill={n.critical ? "url(#halo-red)" : "url(#halo-amber)"} />}
             <Shape kind={n.kind} x={p.x} y={p.y} r={r} className="shape" />
-            {labels[n.id] && <text x={labels[n.id].x} y={labels[n.id].y} style={{ textAnchor: labels[n.id].anchor, fontSize: 15 * k }}>{n.id}</text>}
+            {labels[n.id] && <text x={labels[n.id].x} y={labels[n.id].y} style={{ textAnchor: labels[n.id].anchor, fontSize: 15 * k }}>{shortId(n.id)}</text>}
             {n.kev && <g className="kev-badge"><title>Runs software with a known-exploited vulnerability</title><circle cx={p.x + r} cy={p.y - r} r={7} /><text x={p.x + r} y={p.y - r + 4}>!</text></g>}
           </g>
         );

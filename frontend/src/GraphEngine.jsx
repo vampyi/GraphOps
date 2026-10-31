@@ -28,8 +28,8 @@ const KIND = { User: "User", Group: "Group", Computer: "Computer", CloudResource
 export default function GraphEngine({ onError }) {
   const [data, setData] = useState(null);
   const [nodes, setNodes] = useState({ sources: [], targets: [] });
-  const [src, setSrc] = useState("laptop-42");
-  const [dst, setDst] = useState("customer-db");
+  const [src, setSrc] = useState("");
+  const [dst, setDst] = useState("");
   const [proof, setProof] = useState(null);
   const [running, setRunning] = useState(false);
   const [openCypher, setOpenCypher] = useState(null);
@@ -43,10 +43,10 @@ export default function GraphEngine({ onError }) {
     getGraphFull().then(setGraph).catch(() => {});
     getExposure("all").then((e) => {
       setNodes({ sources: e.sources, targets: e.targets });
-      if (e.sources.length && !e.sources.includes("laptop-42")) setSrc(e.sources[0]);
-      if (e.targets.length && !e.targets.includes("customer-db")) setDst(e.targets[0]);
+      // open on a real route of the loaded day: the first path's ends, else the first start and target
+      const s = e.paths[0]?.source || e.sources[0], d = e.paths[0]?.target || e.targets[0];
+      if (s && d) { setSrc(s); setDst(d); run(s, d); }
     }).catch(() => {});
-    run("laptop-42", "customer-db");
   }, []); // eslint-disable-line
 
   async function run(s = src, d = dst) {

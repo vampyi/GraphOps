@@ -322,7 +322,7 @@ def post_exposure_simulate(body: Removal):
         return exposure.simulate_on(s, body.scope, body.nodes, body.edges, body.max_hops)
 
 
-@app.get("/api/entities/{entity_id}/access")
+@app.get("/api/entities/{entity_id:path}/access")
 def entity_access(entity_id: str, days: int = access.DEFAULT_DAYS):
     """one identity's granted reach, its used reach over the last `days` days, and the grants it never uses."""
     with _driver.session() as s:
@@ -752,7 +752,7 @@ def learning():
         return learn.from_verdicts(s)
 
 
-@app.get("/api/explore/{entity_id}")
+@app.get("/api/explore/{entity_id:path}")
 def explore_entity(entity_id: str, max_hops: int = 8):
     """everything one user, group or machine can reach, and its attack paths to critical assets."""
     from . import explore

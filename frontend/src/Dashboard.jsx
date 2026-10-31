@@ -33,7 +33,7 @@ function viewFromHash() {
 
 export default function Dashboard() {
   const [view, setView] = useState(viewFromHash);
-  const goView = (id) => { window.location.hash = id === "triage" ? "#/console" : `#/console/${id}`; setView(id); };
+  const goView = (id) => { window.location.hash = id === "triage" ? "#/console" : `#/console/${id}`; setView(id); setError(null); };
   useEffect(() => {
     const sync = () => setView(viewFromHash());
     window.addEventListener("hashchange", sync);

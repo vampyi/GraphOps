@@ -164,3 +164,6 @@ export function Cites({ ids }) {
     return <code key={c} title={m ? `${m[1]} ${m[2]} ${m[3]}` : undefined}>{m ? `${m[1]} → ${m[3]}` : c}</code>;
   });
 }
+
+// an ai agent's folders and secret files carry the agent's id in front (claude-code-x/secret:...); show them without it
+export const shortId = (id) => String(id).replace(/^claude-code-[^/]+\//, "");
