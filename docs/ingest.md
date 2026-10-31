@@ -1,6 +1,6 @@
 # Getting real data in
 
-GraphOps reads one event schema, through three doors. All three end at the same `events.apply_batch`, so every
+GraphOps reads one event schema, through three doors, plus a fourth for live real sources. All three end at the same `events.apply_batch`, so every
 door is idempotent (an event with an id it has seen changes nothing) and tested once.
 
 1. **Kafka** — the streaming path, five topics (`identity`, `edr`, `flows`, `alerts`, `cmdb`). See
@@ -8,8 +8,9 @@ door is idempotent (an event with an id it has seen changes nothing) and tested 
 2. **HTTP webhook** — `POST /api/ingest` for events already in the schema, and `POST /api/ingest/alerts` for
    alert payloads shaped like a named SIEM or EDR product. Good for a SOAR playbook or a quick integration.
 3. **File import** — a BloodHound / SharpHound collection for the permission graph.
+4. **Real sources** — `POST /api/sources/{id}/inventory` and `/events`, protected by the `INGEST_TOKEN` header. Team laptops report through osquery ([collectors/osquery](../collectors/osquery/README.md)) and a Claude Code agent reports its access and actions ([collectors/claude_code](../collectors/claude_code/README.md)). These are kept apart from the labelled days and survive every reload.
 
-All data in the repository and on the hosted site is synthetic. The field maps below are written from each
+The alert payloads used to test the SIEM and EDR maps are written by us. The field maps below are written from each
 product's public documentation and from sample payloads we wrote. They are starting points to check against a
 real tenant, not certified connectors.
 

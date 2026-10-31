@@ -64,7 +64,12 @@ This is standard engineering practice, not a new algorithm.
 | 5 | The sleeping alert wakes up (not in our data yet) | An alert low in the inbox jumps to the top when a new alert links it to a path toward the database. In our sample day this does not happen: the attack's first alert already arrives at #2, because its laptop is close to the crown jewels. Showing it needs a scenario built for it. |
 | 6 | Set the trap (bonus, not built) | GraphOps suggests where to place a decoy admin account on the most likely attack path. Backed by Adelaide and CSIRO research. We have not checked whether products already do this. |
 
-**Proof.** Time 2 or 3 people answering "what happened?" with the raw alert list, then with GraphOps. Show both times.
+| 7 | A real attack, ranked | Load the APT29 lab day: real logs of MITRE's APT29 emulation with alerts from public SigmaHQ rules. An attack alert is #1. Average precision 0.93 for GraphOps vs 0.87 for severity. |
+| 8 | A real laptop in the graph | A team laptop reports through osquery. Turn its firewall off and within a minute Triage shows "Firewall turned off", tagged REAL, ranked with everything else. |
+| 9 | If this AI agent is hijacked | The AI agents tab shows a real Claude Code agent: what it can reach, what it used, and the routes from the open web through it to critical services (a web page with hidden instructions → the agent → a `.env` file → the database). |
+| 10 | The 6-hour clock | Confirm an incident in the Respond panel: who to tell, the containment steps, the CERT-In deadline counting down and a report draft in CERT-In's form order. |
+
+**Proof.** The Proof table (Graph tab) shows, for 8 labelled days, how high the attack sits above the noise (average precision) for GraphOps and for sorting by severity. GraphOps does better on 7 of 8 days, including the real APT29 lab day; it loses on our own-rules build of the same day, and the table says so. Numbers: [evaluation.md](evaluation.md).
 
 ## Never say
 
@@ -83,18 +88,24 @@ This is standard engineering practice, not a new algorithm.
 | "Breaches take 247 days" (2026) | That number is not on IBM's release. |
 | "Microsoft's ranking is based on BM25" | Only secondary sources say this. |
 | Any AUC number on its own | AUC can look excellent while almost every alert is false. Report precision and alerts per day. |
+| "We trained our own AI model / LLM" | We did not. We use Sarvam's model; our small ranking model is built but off. |
+| "GraphOps always beats severity" | It lost on one of 8 days (our own-rules APT29 build). Say "on 7 of 8 labelled days". |
+| "We detect attacks on cloud resources and AI agents" | They are in the graph and on attack paths, but no labelled day has an alert on one. Say "AI agents sit on attack paths". |
+| "All our data is real" | One labelled day is a real lab recording; the demo company and five test days are written by us. The laptops and the Claude Code agent are real and live. |
 
 ## Hackathon rules and judging
 
-Read from the [hackFront India page](https://whereuelevate.com/drills/hackfrontindia-2026) on 7 October 2026.
+Read from the [hackFront India page](https://whereuelevate.com/drills/hackfrontindia-2026) on 7 October 2026 and the Prototype Submission Guidance Book (October 2026).
 
 ### Timeline (IST)
 
 | What | When |
 |---|---|
-| Registration closes | 23 October 2026, 11:59 PM |
+| Registration | Closed |
 | Prototype submission closes | 31 October 2026, 11:59 PM |
-| 30-hour in-person hackathon | 14 November 2026, 9:00 AM to 15 November 2026, 3:00 PM, New Delhi |
+| 22-hour in-person hackathon | 21 November 2026, 9:00 AM to 22 November 2026, 12:00 PM, IIIT Delhi |
+
+The submission form takes one track. We submit under the **Neo4j** track; Sarvam AI is used inside the product and shown on its own slide.
 
 ### Rules that affect us
 - "Solutions must be original work built during the league timeline, not pre existing products or prior submissions."
@@ -114,10 +125,10 @@ Read from the [hackFront India page](https://whereuelevate.com/drills/hackfronti
 | Technical execution | A working, clickable demo |
 | Scalability | Precomputed scores, capped searches, heavy jobs run ahead of time |
 | Real-world impact | SANS 73%, 29-minute breakout, CERT-In 6 hours, INR 25.5 crore per breach |
-| Deployable | Runs with one `docker compose up` |
+| Deployable | Runs with one `docker compose up`; live at graph-ops.vercel.app with real laptops and an AI agent reporting in |
 | Neo4j prize | Relationships are the whole product: paths, choke points, communities and blast radius |
 
 ### Partners worth knowing
 - **DSCI Cybersecurity Centre of Excellence** is the industry partner. Expect judges who know security well.
 - **Neo4j** is the track partner.
-- **Sarvam** is the AI partner and builds Indian-language AI. GraphOps uses it for the incident story and the Ask tab, with answers in English or 10 Indian languages (Sarvam Track).
+- **Sarvam** is the AI partner and builds Indian-language AI. GraphOps uses it for the incident story and the Ask tab, with answers in English or 10 Indian languages.

@@ -9,7 +9,7 @@ Your laptop reports to GraphOps once a minute through **osquery**, the open-sour
 | Local accounts, masked as `user-1a2b`, and which ones are admins | Your files or their contents |
 | Who is signed in right now | Browsing history, open apps or windows |
 | Network ports listening for connections, and the program behind each one | Command lines, passwords or keys |
-| Whether disk encryption and the firewall are on | IP addresses or network traffic |
+| Whether disk encryption (FileVault on a Mac, BitLocker on Windows) and the firewall are on | IP addresses or network traffic |
 | Your OS name and version | Anything at all after you stop the script |
 
 Each change, such as a new admin account, a new listening port, someone signing in, or the firewall being turned off, becomes one alert on the public demo site. Stop the script (Ctrl+C) and reporting stops.
@@ -57,7 +57,9 @@ Read the output. It's exactly what GraphOps will receive.
 python3 collectors/osquery/collect.py
 ```
 
-Leave it running in a terminal. It prints one line per report. Open https://graph-ops.vercel.app → **Graph** tab → **Connected sources**, and your laptop appears within a minute.
+Leave it running in a terminal. It prints one line per report. Your laptop shows in the graph under its host name, and each account as `user-xxxx@<host>`.
+
+On a Mac with Python from python.org, which ships without root certificates, the script uses the Mac's own system certificates for HTTPS. Nothing to install. Open https://graph-ops.vercel.app → **Graph** tab → **Connected sources**, and your laptop appears within a minute.
 
 ## For a demo moment
 

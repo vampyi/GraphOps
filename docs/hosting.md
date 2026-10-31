@@ -1,6 +1,6 @@
 # Hosting
 
-How the live site at [graph-ops.vercel.app](https://graph-ops.vercel.app) is set up. Everything runs on free plans. All data on it is synthetic.
+How the live site at [graph-ops.vercel.app](https://graph-ops.vercel.app) is set up. Everything runs on free plans. The site shows two labelled days (the real APT29 lab recording and a synthetic demo company) plus real sources reporting live: team laptops through osquery and a Claude Code agent.
 
 ## The three services
 
@@ -35,6 +35,8 @@ How we know where each runs: Vercel's `x-vercel-id` response header shows the fu
 | `KAFKA_PASSWORD` | Aiven Kafka password | Secret |
 | `KAFKA_CA_PEM` | Aiven's CA certificate, the whole text. It lets the app check it is really talking to Aiven. It is public, not a password. | Config |
 | `SARVAM_API_KEY` | Sarvam AI key for the incident story and the Ask tab | Secret |
+| `INGEST_TOKEN` | Shared token that real sources (laptops, AI agents) send in the `X-GraphOps-Token` header. Without it the source endpoints refuse every write. | Secret |
+| `SMTP_USER`, `SMTP_APP_PASSWORD`, `NOTIFY_CONTACTS` | Optional: a Gmail address with an app password, and the list of people the Respond panel may email. Not set on the public demo, so the email button says email is not set up. | Secret |
 
 Aiven signs clients in with a username and password (SASL, SCRAM-SHA-256) over TLS. This works on the free plan: we checked by connecting, creating the five topics and sending and reading back a test message on 13 October 2026.
 
@@ -61,7 +63,8 @@ Both changes were needed. Batching cut a full replay from 629 database queries t
 - **Aiven powers off an idle free service.** Its docs do not say after how long. Before a demo, check the service is running in the Aiven console and start it if not. Topic data is lost when it powers off, which does not matter to us because every event ends up in Neo4j.
 - **AuraDB Free pauses after a few days without use and deletes a database left unused for 30 days.** A paused database has to be resumed from the Neo4j console. A daily GitHub Action (`.github/workflows/keep-alive.yml`) queries the site to prevent both. Check it before a demo too.
 - **Vercel Hobby functions stop after 300 seconds.** A replay at the default 60x takes about 4 minutes, close to that limit. For demos use a higher speed.
-- **Replaying wipes the hosted alerts** and refills them. Anyone looking at the site during a replay sees a partly filled inbox.
+- **Replaying or switching the scenario reloads the hosted data for everyone.** Anyone looking at the site during a replay sees a partly filled inbox. A lock in the database (`Lock {id: 'demo'}`, 5 minutes) lets only one reload run at a time; a second one gets "someone else is reloading the demo data". Real laptops and agents survive a reload and are drawn back in.
+- **Never run `python -m app.seed` or `python -m app.evaluate_all` with the hosted `NEO4J_*` values.** Both wipe the database they point at. Use a local Neo4j for those.
 
 ## Running a replay on the live site
 

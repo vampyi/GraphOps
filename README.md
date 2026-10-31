@@ -10,45 +10,44 @@ GraphOps focuses on on-premises and hybrid networks: a company's own machines an
 
 ## Status
 
-**Live at [graph-ops.vercel.app](https://graph-ops.vercel.app)** (synthetic data only).
+**Live at [graph-ops.vercel.app](https://graph-ops.vercel.app).**
 
-The console now has three views for an analyst on shift: **Triage** (rank and investigate today's alerts),
-**Exposure** (attack paths and choke points before an attack) and **Access** (granted vs used access). The
-[analyst guide](docs/analyst-guide.md) walks through them. The second build's scope and its tests (R9 to R21)
-are in [PROJECT_SPEC.md](PROJECT_SPEC.md#flow-2-soc-ready-branch-featuresoc-ready-october-2026).
+What the site shows:
+- **A real attack.** The default day is MITRE's APT29 emulation, recorded on four lab machines by OTRF (real Windows, Sysmon and PowerShell logs), with alerts from the public SigmaHQ detection rules.
+- **A demo company.** A second day, written by us and labelled synthetic on screen: 37 users, groups and machines plus cloud resources and AI agents, so attack paths and access gaps have more to show.
+- **Real sources, live.** Team laptops report through osquery and a Claude Code agent reports its access and every action. They sit in the same graph and their alerts are tagged REAL.
+
+The console has six tabs: **Triage**, **Attack paths**, **Access**, **AI agents**, **Graph** and **Ask**. The [analyst guide](docs/analyst-guide.md) walks through them.
 
 | Part | Status |
 |---|---|
-| Triage: ranked alert inbox, blast radius, linked incident, incident story, verdict | Built. First-flow requirements R1 to R8 in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
-| Live dashboard: alerts arrive as the day streams through Kafka, replay and reset from the top bar | Built. Polls `/api/live`; new alerts slide into the inbox and rank changes are flagged. |
-| Exposure: attack paths from low-trust zones to critical assets, MITRE-tagged, with choke points and a minimum-cut remediation whose effect is recomputed exactly | Built. `GET /api/exposure`, `POST /api/exposure/simulate`. |
-| Access: granted vs used access per identity, the unused-access ranking, and blast radius over granted vs used routes | Built. `GET /api/entities/{id}/access`, `/api/access/overview`, blast-radius `mode=granted\|used`. |
-| Community detection (Louvain) and cross-community (lateral) incident flagging | Built. Runs on Neo4j GDS, falls back to networkx on AuraDB Free. |
+| Triage: ranked alert inbox with filters, why it ranks, blast radius, linked incident with "How it started", incident story, verdicts | Built. First-flow requirements R1 to R8 in [PROJECT_SPEC.md](PROJECT_SPEC.md). |
+| Respond: who to tell, containment steps recorded as requested, the CERT-In 6-hour clock and a report draft in CERT-In's form order | Built. Email to a fixed contact list is built (Gmail app password) but not enabled on the public demo. |
+| Live stream: **Stream live** replays the selected day through Kafka; alerts arrive one by one and re-rank as they land | Built. The APT29 day streams its real logons, connections and process starts too. |
+| Attack paths: routes from low-trust machines (or from anything) to critical assets, ATT&CK-tagged, choke points, fixes whose effect is recomputed on the graph, and what any one system can reach (shortest and most likely path) | Built. `GET /api/exposure`, `POST /api/exposure/simulate`, `GET /api/explore/{id}`. |
+| Access: granted vs used access per identity, the unused-access ranking, and blast radius over granted vs used routes | Built. `GET /api/entities/{id}/access`, `/api/access/overview`. |
+| AI agents: a real Claude Code agent's access (folders, secret files by name, the services their keys open, signed-in accounts, tools), its history, live activity and the routes from the open web through it to critical services | Built. `GET /api/agents/{id}`, [collectors/claude_code](collectors/claude_code/README.md). |
+| Real laptops through osquery: accounts, admins, signed-in users, listening ports, disk encryption and firewall; each change becomes a ranked alert | Built. [collectors/osquery](collectors/osquery/README.md). |
+| Cloud resources, AI agents and real CVEs (NIST NVD, CISA KEV, FIRST EPSS) in the attack graph | Built. An internet-facing machine with a remotely exploitable CVE gains an attack step from the internet. |
+| Graph tab: the whole graph drawn with Neo4j's NVL in five views (node types, Louvain communities, PageRank, betweenness choke points, on-prem/cloud/AI), the data model, a path finder with its Cypher, and the Proof table | Built. `GET /api/graph/full`, `/api/graph/algorithms`, `/api/graph/reachability-proof`. |
+| Proof: how high the attack sits above the noise (average precision), GraphOps vs severity, on 8 labelled days | Built. Better on 7 of 8, including the real APT29 day. [docs/evaluation.md](docs/evaluation.md). |
+| Incident story and Ask tab by Sarvam AI (`sarvam-105b`), in English or 10 Indian languages, every sentence citing its sources | Built. Tested live on the hosted site. |
 | Ingest beyond Kafka: HTTP webhook, Microsoft Sentinel / Splunk ES / Elastic / Wazuh alert maps, BloodHound import | Built. See [docs/ingest.md](docs/ingest.md). |
-| Analyst workflow: stable incident IDs across re-scoring, incident status and notes, benign verdicts, one-click incident report, mark-asset-critical | Built. |
-| Graph view: graph size, a path finder (shortest attack path between two systems, with the Cypher query behind it), the algorithms in use (shortest path, betweenness, PageRank, Louvain, connected components, minimum cut) and the query behind each view | Built. `GET /api/graph/algorithms`, `/api/graph/reachability-proof`. |
-| Remediation preview: selecting an Exposure fix shows the attack paths it cuts and recomputes the number still reachable | Built. |
-| Honest evaluation: precision@5, alerts-to-first-attack, false alarms before the first real one, average precision, GraphOps vs severity-only, plus a held-out scenario day to show it is not overfit | Built. `GET /api/evaluation`, `/api/scenarios`. |
 | Streaming through Kafka, and hosting on Vercel / AuraDB Free / Aiven | Built. [docs/streaming.md](docs/streaming.md), [docs/hosting.md](docs/hosting.md). |
 | Continuous integration: the backend tests and the dashboard build run on every push and pull request | Built. [.github/workflows/ci.yml](.github/workflows/ci.yml). |
-| Triage screen: a filterable alert list (search, severity, verdict, graph signals) next to one alert's details in tabs (why it ranks, blast radius, incident, story) | Built. Checked at 100% zoom on 1440×900 and 1280×800 screens. |
-| Incident story by Sarvam AI (`sarvam-105b`), in English or translated into 10 Indian languages with ids kept intact | Built. Tested live with Sarvam on 26 October 2026. Without a key the incident's facts are shown instead. |
-| Ask tab: plain-language questions answered by Sarvam AI from eight read-only GraphOps lookups, every sentence citing its sources | Built. Tested live on 26 October 2026; the citation check removed one sentence that cited a mistyped incident id. |
-| Ranking model that learns from analyst verdicts | Built, off by default. On our six synthetic days it ranked no better than the hand-set weights, so the hand-set weights stay in use. See [docs/evaluation.md](docs/evaluation.md). |
-| Four harder held-out days and an evaluation report | Built. [docs/evaluation.md](docs/evaluation.md). |
-| LANL evaluation | Planned, not built. |
+| Ranking model that learns from analyst verdicts | Built, off by default. On our labelled days it ranked no better than the hand-set weights. |
 
 ## Current state vs. roadmap to production
 
-GraphOps is a **working prototype, not a production deployment**. Everything in the Status table above runs today on synthetic data, and the evaluation numbers are measured, not estimated. Before a real SOC runs it on live incidents, five things stand between the prototype and production. We list them plainly, because the gap is part of an honest pitch.
+GraphOps is a **working prototype, not a production deployment**. Everything in the Status table above runs today, and the evaluation numbers are measured, not estimated. Before a real SOC runs it on live incidents, five things stand between the prototype and production. We list them plainly, because the gap is part of an honest pitch.
 
 | Dimension | Where it is today | What a production deployment needs |
 |---|---|---|
 | **Access control** | No login: anyone who can reach the port has full analyst control. | Authentication, per-analyst roles, and an audit trail of who triaged and remediated what. |
-| **Real feeds** | Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, built and unit-tested against sample payloads we wrote from public documentation. | A pilot against live SIEM and EDR feeds, where real data is messier and higher-volume than the fixtures. |
-| **Scale** | Run only on the synthetic sample organisation. Precompute and query times have not been measured. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
-| **Hardening** | Dev defaults: no rate limiting, no ingest size caps, a single app and database instance, CORS set to the dev origin. | Rate-limited and size-capped ingest behind the access control above, and a backup and high-availability story for Neo4j. |
-| **Field validation** | Measured against labelled synthetic days, including a held-out day it was never tuned on. | A supervised pilot on real incidents to confirm the ranking holds on live attacks. |
+| **Real feeds** | A real lab recording (APT29) with public Sigma rules, live team laptops through osquery and a live Claude Code agent. Alert maps for Microsoft Sentinel, Splunk ES, Elastic and Wazuh, and a BloodHound import, unit-tested against sample payloads we wrote from public documentation. | A pilot against a company's live SIEM and EDR feeds, where real data is messier and higher-volume. |
+| **Scale** | Run on graphs of tens of nodes (the lab, the demo company and a few live sources). Precompute and query times at scale have not been measured. | Load testing at the millions of nodes a real enterprise graph reaches, where the GDS-versus-networkx choice and precompute cost need re-measuring. |
+| **Hardening** | Real sources need a shared token (`INGEST_TOKEN`) and only one visitor can reload the shared data at a time. Otherwise dev defaults: no rate limiting, a single app and database instance. | Rate-limited and size-capped ingest behind the access control above, and a backup and high-availability story for Neo4j. |
+| **Field validation** | Measured on 8 labelled days: one real lab recording and days we wrote, most of them never used to set the weights. | A supervised pilot on real incidents to confirm the ranking holds on live attacks. |
 
 None of these are defects; they are the normal distance between a tested prototype and a deployed product. The build is complete and honest for what a hackathon judges: a live, measured demonstration that the graph beats sorting by severity. The list above is what turns it into a tool a SOC runs on shift.
 
@@ -75,9 +74,11 @@ None of these are defects; they are the normal distance between a tested prototy
 
 Companies now run AI agents that hold real permissions. GraphOps treats every AI agent as an identity in the same graph as users, so the features above apply to it:
 
-- **Granted vs used access:** "this agent holds 50 permissions and uses 3."
-- **Never-taken path:** "this agent just reached the finance database by a route it has never used."
+- **Granted vs used access:** what the agent can reach against what it actually used in the last 7 days.
+- **Attack paths through it:** a web page or email with hidden instructions (prompt injection, MITRE ATLAS AML.T0051) can steer an agent, so content it reads is an attack step. GraphOps draws the routes from the open web, through the agent, to the keys and services it can reach.
 - **Alert ranking:** an alert on an AI agent ranks high when the agent sits close to critical assets.
+
+The AI agents tab shows a real one: Claude Code on a team laptop, reporting its access (by name only, never contents) and every tool call live.
 
 IBM found that 13% of organisations reported breaches of AI models or applications and 97% of those lacked proper AI access controls (2025). BloodHound Enterprise and XM Cyber already map attack paths through AI agents. Our addition is applying granted vs used access, never-taken paths and alert ranking to them.
 
@@ -92,13 +93,13 @@ Each alert is scored on six questions answered from the graph:
 5. Do the linked alerts follow attack stages in order?
 6. Does it sit on a choke point?
 
-The weight of each question is our design choice, set by hand in `backend/app/scoring.py`. We plan to tune them on test data and later learn them from analyst verdicts.
+The weight of each question is our design choice, set by hand in `backend/app/scoring.py`, and was not changed after the test days were written. A model that learns the weights from analyst verdicts is built but off: on our labelled days it did no better.
 
 ## Where AI is used
 
 | Part | What it does | Tools | How we keep it honest | Status |
 |---|---|---|---|---|
-| 1. Ranking model | Learns how much each ranking question should count, from analysts marking alerts real, benign or false | Logistic regression written in plain Python (`backend/app/learn.py`), because the hosted site cannot install numpy or scikit-learn | Small and explainable: its weights are shown next to the hand-set ones on the Evaluation tab. It is not switched on automatically. | Built, off by default. No better than the hand-set weights on our synthetic days. |
+| 1. Ranking model | Learns how much each ranking question should count, from analysts marking alerts real, benign or false | Logistic regression written in plain Python (`backend/app/learn.py`), because the hosted site cannot install numpy or scikit-learn | Small and explainable: its weights can be compared with the hand-set ones (`GET /api/learning`). It is not switched on automatically. | Built, off by default. No better than the hand-set weights on our labelled days. |
 | 2. Incident story | Drafts a plain-English story of an incident from its alerts, users, machines and connections, then optionally translates it | Sarvam AI `sarvam-105b` for the story and `sarvam-translate:v1` for Indian languages, called over HTTPS with Python's standard library. Claude is a fallback when no Sarvam key is set. | Every sentence must cite ids from the incident; a checker drops any sentence that cites an id outside it, and the story is marked as needing analyst approval. Each connection is given to the model in plain words so it does not misread its direction. Ids are protected during translation. | Built. Tested live with Sarvam. |
 | 3. Ask tab | Answers questions such as "what can the intern's laptop reach?" in plain words | Sarvam AI `sarvam-105b` with tool calling over eight fixed lookups: top alerts, one alert, blast radius, an incident, attack paths, the access gap, ranking quality and entity search | The model can only read through those lookups; it cannot write or run free-form queries. Every sentence must cite ids the lookups returned, and other sentences are removed. The answer lists which lookups were used. | Built. Tested live with Sarvam. |
 
@@ -112,7 +113,7 @@ GraphOps is not a new algorithm. It brings these capabilities into one open, sel
 
 ## How it works
 
-GraphOps is six programs arranged in layers. Steps 1 to 3 handle data and graph maths. AI is used in steps 4 and 5. This section describes the full design. Parts not built yet are marked *(planned)*; the [Status](#status) table has the summary.
+GraphOps is six programs arranged in layers. Steps 1 to 3 handle data and graph maths. AI is used in steps 4 and 5. Real sources (laptops, AI agents) skip the simulator and report straight to the backend server; see [docs/ingest.md](docs/ingest.md).
 
 ```mermaid
 flowchart LR
@@ -142,10 +143,10 @@ Blue: data and streaming. Green: graph and ranking. Purple: AI. Pink: server and
 
 ### 1. Live data simulator
 
-We have no real company sending us live security data, so this Python script plays back saved data as if it were happening now.
+No company sends us its live security data, so this Python script plays back a saved day (the APT29 lab recording or the demo company) as if it were happening now.
 
-- It reads saved events in time order, for example "10:42:03, raja logged into server-7".
-- It waits the real gap between events, or a shorter gap: at the default 60x the sample day of about 4 hours plays in about 4 minutes.
+- It reads saved events in time order, for example "03:10:24, pbeesly logged on from SCRANTON to NASHUA".
+- It waits the real gap between events, or a shorter gap: at the default 60x the demo company's day of about 4 hours plays in about 4 minutes.
 - It mixes random everyday activity, such as normal logins, programs starting and file share traffic, in with the day's saved noise alerts, so the attack is not the only activity in the stream. It never creates a new route or a remote logon.
 - It injects the scripted attack only when asked, so we can show the inbox before and after the attack.
 - It sends each event to Kafka, into a topic for its source: logins and permissions to `identity`, programs started to `edr`, network connections to `flows`, security alerts to `alerts` and machine inventory to `cmdb`.
@@ -169,14 +170,14 @@ This Python code does the slow calculations ahead of time, so nothing slow happe
 
 - It counts how many steps each machine and account is from the nearest critical asset, such as the customer database, and saves that number on the node.
 - It finds choke points and saves a choke point score on each node.
-- *(planned)* It groups machines that normally work together into communities and saves the group number on each node.
+- It groups machines that normally work together into communities (Louvain) and saves the group number on each node. A login that crosses communities is flagged as lateral.
 
-### 4. Alert ranker (uses AI 1, planned)
+### 4. Alert ranker
 
 This Python program scores each new alert the moment it arrives.
 
 1. It answers the six ranking questions. Most answers are already saved on the nodes by step 3, so this takes milliseconds. For example: "server-7 is 2 steps from the customer database" and "server-7 is a choke point".
-2. It combines the answers into one score with hand-set weights. A small logistic regression can learn weights from analysts marking alerts real, benign or false; it is shown on the Evaluation tab but not switched on.
+2. It combines the answers into one score with hand-set weights. A small logistic regression can learn weights from analysts marking alerts real, benign or false (AI 1); it is not switched on.
 3. It links alerts that share a user or machine within 2 hours, or that are joined by a login from one alert's machine to the next within 45 minutes, into one incident.
 4. It saves the score, the reasons and the incident in Neo4j and passes the ranked alert on to the backend server.
 
@@ -202,12 +203,14 @@ A FastAPI web server that sits between the dashboard and the data.
 
 ### 6. Dashboard
 
-The React web app the analyst uses. The blast radius is drawn as rings in SVG.
+The React web app the analyst uses, in six tabs:
 
-- **Alert inbox:** every alert, highest score first, with the reasons for its rank.
-- **Blast radius rings:** click an alert to see everything 1, 2 and 3 steps away, with the shortest attack path to a critical asset.
-- **Incident view:** linked alerts in attack-stage order with the drafted story.
-- **Access comparison:** the blast radius over granted access next to the blast radius over used access, and the Access tab's least-privilege gap.
+- **Triage:** every alert, highest score first, with the reasons for its rank; the blast radius rings; the linked incident with "How it started"; the Respond panel; the AI story.
+- **Attack paths:** the routes to critical assets that exist before any attack, the choke points, the fixes that cut the most, and what any one system can reach.
+- **Access:** the least-privilege gap, granted vs used, for every account.
+- **AI agents:** a real Claude Code agent's access, history, live activity and the routes through it.
+- **Graph:** the Neo4j graph drawn with NVL in five algorithm views, the connected laptops, a path finder and the Proof table.
+- **Ask:** plain-language questions answered by Sarvam AI.
 
 ## Tech stack
 
@@ -245,20 +248,24 @@ The React web app the analyst uses. The blast radius is drawn as rings in SVG.
 
 | Source | What it gives us | Real or synthetic |
 |---|---|---|
-| ADSynth | A realistic company network: users, groups, computers and permissions in Active Directory and the cloud | Synthetic |
-| LANL 2015 (Los Alamos National Laboratory) | 58 days of authentication events and network flows from a real network, with one controlled red-team exercise | Real background activity, anonymised; the attack is a controlled exercise. Not loaded yet. |
-| Scripted attack scenario | A known attack replayed as live events and alerts | Synthetic |
+| APT29 day 1, [OTRF Security Datasets](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1) (MIT) | 196,081 Windows, Sysmon and PowerShell events from MITRE's APT29 emulation on four lab machines; the default day | Real logs of a real attack run on purpose in a lab |
+| [SigmaHQ](https://github.com/SigmaHQ/sigma) rules, release `r2026-07-01` (Detection Rule License 1.1) | The alerts on the APT29 day: 73 matches, each keeping its rule's id, author and link | Real public rules |
+| Team laptops through [osquery](https://osquery.io) | Accounts, admins, signed-in users, listening ports, disk encryption and firewall, and each change as an alert | Real, live, with the owner's consent |
+| A Claude Code agent on a team laptop | What the agent can reach and every tool call, names only | Real, live, with the owner's consent |
+| [NIST NVD](https://nvd.nist.gov/developers), [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog), [FIRST EPSS](https://www.first.org/epss/) | CVEs on the software each machine runs, whether they are exploited now and how likely they are to be | Real public data, a saved snapshot from 28 October 2026 |
+| Demo company | 37 users, groups and machines, cloud resources, AI agents and one scripted attack day | Synthetic, written by us, labelled on screen |
+| Five test days and an own-rules APT29 build | Labelled days for the Proof table only | Synthetic (the five days); real logs with our own rules (the APT29 build) |
 
-The console always states that its data is synthetic.
+The attack or noise label on every alert is ours and is used only to score the ranking, never by the ranker. Every source, its licence and its limits: [docs/data-sources.md](docs/data-sources.md). We tried LANL's 58-day dataset and a team AWS account and dropped both; the reasons are there too.
 
 ## How we test it
 
 | Test | What it proves |
 |---|---|
 | Known-answer graphs | On a small hand-made graph, attack paths, choke points and the minimum cut come out exactly right. Blast radius is checked on the sample organisation. |
-| Held-out scenarios | Five attack days the weights were never tuned on, each built around a known weakness, compared with sorting by severity. Results and limits in [docs/evaluation.md](docs/evaluation.md). |
-| Detection on a red-team exercise (planned) | On the LANL data we will measure precision, missed attacks and alerts per day against the red-team labels. We do not report AUC on its own. |
-| Attack replay | A scripted attack streamed through Kafka ends up as one incident, ranked near the top, the same as loading it in one batch. |
+| Labelled days | Eight days, ranked by GraphOps and by severity: the real APT29 lab day with public Sigma rules, the same day with our own rules, the demo company's day and five test days the weights were never tuned on, each built around a known weakness. Results and limits in [docs/evaluation.md](docs/evaluation.md). |
+| Attack replay | A scripted attack streamed through Kafka ends up as one incident, ranked near the top, the same as loading it in one batch. The APT29 day streams too. |
+| Real sources | A laptop's inventory and changes, and an agent's scan and activity, need the token, land in the graph, survive a reload and stay apart from each other. |
 | Speed | We send one alert straight to Kafka and check it shows in `/api/live` within 5 seconds. On the hosted site we timed a whole replayed day once (see [docs/hosting.md](docs/hosting.md)). |
 | Break tests | Empty events, very large events and malformed events are rejected without crashing the pipeline. |
 | AI checks | Incident stories that cite a node outside the incident are rejected. Planned: generated queries that try to write are refused, and a ranking model is compared against hand-set weights. |
@@ -305,7 +312,20 @@ npm install
 npm run dev
 ```
 
-**AI incident stories** use Claude through the Anthropic SDK. Log in once with `ant auth login` (Anthropic's command-line tool). No API key is stored in the project. The account needs API credit. Without access, the dashboard shows the incident's facts instead of a story.
+**AI incident stories and the Ask tab** use Sarvam AI: put `SARVAM_API_KEY` in `.env`. Without it the story shows the incident's facts and the Ask tab says no key is set. Claude through the Anthropic SDK is a fallback for the story when no Sarvam key is set.
+
+**Preview the dashboard against the live site's data** without a database or keys on your machine:
+
+```bash
+cd frontend
+API=https://graph-ops.vercel.app npm run dev     # Windows PowerShell: $env:API="https://graph-ops.vercel.app"; npm run dev
+```
+
+Picking a scenario or pressing Stream live in the preview changes the live site for everyone, as on the site itself.
+
+**Never run `python -m app.seed` or `python -m app.evaluate_all` with the hosted database's `NEO4J_*` values.** Both wipe the database they point at. Use the local Neo4j from Docker.
+
+**Real sources** need `INGEST_TOKEN` set on the server; the collectors send it. Connect a laptop: [collectors/osquery](collectors/osquery/README.md). Connect a Claude Code agent: [collectors/claude_code](collectors/claude_code/README.md).
 
 **Live replay** plays the sample day through Kafka instead of loading it in one batch. With the backend running and `KAFKA_BOOTSTRAP=localhost:9092` in `.env`:
 
@@ -316,7 +336,7 @@ curl -X POST localhost:8000/api/replay/start \
 curl 'localhost:8000/api/live?since=0'              # call again to see new alerts as they are scored
 ```
 
-The same day can be sent from a terminal with `.venv/bin/python -m app.simulate --attack`, and `.venv/bin/python -m app.stream` reads Kafka continuously without the server. Without `KAFKA_BOOTSTRAP`, the replay writes straight into Neo4j. To go back to the batch data, run `.venv/bin/python -m app.seed` again.
+The same day can be sent from a terminal with `.venv/bin/python -m app.simulate --attack`, and `.venv/bin/python -m app.stream` reads Kafka continuously without the server. Without `KAFKA_BOOTSTRAP`, the replay writes straight into Neo4j. To go back to the batch data, run `.venv/bin/python -m app.seed` again (on a local database).
 
 **Tests** start their own Neo4j and Kafka in Docker, so they never touch your data:
 
@@ -333,11 +353,12 @@ Team Pingu Haters: Deepthi Sree Dubasi, Vatanesh Sharma, Bhanu Sai Teja, Raja Mo
 
 As the hackFront India rules require, we list every AI tool, service, framework and dataset used in this project. This list is updated as we go and will be checked again before submission.
 
-- **AI tools used to build it:** Claude Code (Anthropic) wrote and reviewed code, documents and research with us. Every claim we use was checked at its original source.
+- **AI tools used to build it:** Claude Code (Anthropic) wrote and reviewed code, documents and research with us. Every claim we use was checked at its original source. Claude Code is also one of the real sources shown in the AI agents tab.
 - **AI inside the product:** Sarvam AI (`sarvam-105b` and `sarvam-translate:v1`) drafts incident stories, answers questions in the Ask tab and translates both into Indian languages. Claude through the Anthropic API is a fallback for the story when no Sarvam key is set.
 - **Hosted services (free plans and credits):** Vercel (hosting), Neo4j AuraDB Free (database), Aiven for Apache Kafka (streaming), Sarvam AI (language models, signup credits).
-- **Open source:** Neo4j Community, Graph Data Science, APOC, Apache Kafka, Python, FastAPI, Uvicorn, `confluent-kafka`, the Neo4j Python driver, `networkx`, `python-dotenv`, `certifi`, React, Vite, pytest, Testcontainers, Docker.
-- **Data:** all data in the repository and on the hosted site is synthetic, made up by us. Datasets planned for evaluation (ADSynth, LANL) are listed under [Data](#data).
+- **Open source:** Neo4j Community, Graph Data Science, APOC, Apache Kafka, Python, FastAPI, Uvicorn, `confluent-kafka`, the Neo4j Python driver, `networkx`, `python-dotenv`, `certifi`, React, Vite, pytest, Testcontainers, Docker, osquery, pySigma (only to build the APT29 day).
+- **Neo4j Visualization Library (NVL):** draws the Graph tab on the hosted site, which runs on Neo4j Aura as NVL's licence requires. Its telemetry is switched off.
+- **Data:** the APT29 lab recording by OTRF (MIT licence) with SigmaHQ rules (Detection Rule License 1.1, each alert keeps its rule's author and link); CVE data from NIST NVD, CISA KEV and FIRST EPSS ("This product uses the NVD API but is not endorsed or certified by the NVD."); MITRE ATT&CK and ATLAS technique IDs; live data from team laptops and a Claude Code agent with their owners' consent; the demo company and five test days are synthetic, written by us. See [Data](#data).
 
 ## Sources
 
@@ -346,3 +367,6 @@ As the hackFront India rules require, we list every AI tool, service, framework 
 - IBM, [Cost of a Data Breach 2026 release](https://newsroom.ibm.com/2026-07-29-ibm-study-one-in-four-malicious-breaches-are-ai-enabled,-costing-companies-6-million-on-average) and [IBM India 2026 release](https://in.newsroom.ibm.com/India-Records-its-Highest-Average-Cost-of-a-Data-Breach-2026).
 - CERT-In, [Directions under Section 70B of the IT Act, 28 April 2022](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf).
 - Neo4j, [neo4j-graphrag Python documentation](https://neo4j.com/docs/neo4j-graphrag-python/current/).
+- MITRE ATT&CK Evaluations APT29 and OTRF, [Security Datasets: APT29 day 1](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29/day1).
+- SigmaHQ, [Sigma rules](https://github.com/SigmaHQ/sigma) and the [Detection Rule License 1.1](https://github.com/SigmaHQ/Detection-Rule-License).
+- MITRE, [ATT&CK](https://attack.mitre.org) and [ATLAS](https://atlas.mitre.org).

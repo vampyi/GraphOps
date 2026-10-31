@@ -30,7 +30,7 @@ Each requirement can be tested.
 These are left out on purpose. They are not bugs.
 
 - No Kafka streaming. Data is loaded in one batch. Streaming is the next flow, designed in [docs/streaming.md](docs/streaming.md).
-- No LANL data. Only the sample organisation and scripted alerts.
+- No real data. Only the sample organisation and scripted alerts. (Later flows added the APT29 lab recording and live real sources; the LANL dataset was dropped.)
 - No training of the ranking model. Verdicts are saved for later training. Scores use hand-set weights.
 - No plain-English question box.
 - No granted vs used access view.
@@ -129,3 +129,19 @@ The first flow proved the idea on one scripted day. This flow turns GraphOps int
 2. Dashboard: view switcher (Triage, Exposure, Access), live mode, blast radius modes, critical toggle, incident workflow and report.
 3. Ingest: webhook and field maps, BloodHound and CSV importers, with fixtures and tests.
 4. Deployability: Dockerfiles, compose profile, GitHub Actions. Docs: README status, analyst guide, ingest guide, corrections from the research notes that touch this work.
+
+# Flow 3: real data and response (late October 2026)
+
+What changed after flow 2, all on `main`. Each part has tests in `backend/tests`.
+
+| Part | Where |
+|---|---|
+| Tabs merged to Triage, Attack paths (Exposure + Explore), Access, AI agents, Graph (with the Proof table) and Ask | `frontend/src/Dashboard.jsx` |
+| Real data: the APT29 lab recording with public SigmaHQ rules as the default day; the demo company kept as a second, labelled synthetic day; the other days used only for the Proof table | [docs/data-sources.md](docs/data-sources.md), [docs/evaluation.md](docs/evaluation.md) |
+| Live real sources: team laptops through osquery, a Claude Code agent's access and activity, behind `INGEST_TOKEN` | `backend/app/sources.py`, `collectors/` |
+| Cloud resources, AI agents and real CVEs (NVD, CISA KEV, EPSS) in the attack graph | `data/sample_org/cloud_ai.json`, `backend/app/vulns.py` |
+| Respond panel: who to tell, containment steps recorded as requested, the CERT-In 6-hour clock and report draft; email built but off on the public demo | `backend/app/respond.py`, `frontend/src/Respond.jsx` |
+| "How it started" on every incident and report | `backend/app/report.py` |
+| A lock so only one visitor reloads the shared demo data at a time | `backend/app/scenarios.py` |
+| The Graph tab drawn with Neo4j NVL on Aura, five algorithm views | `frontend/src/NvlMap.jsx`, `GraphEngine.jsx` |
+

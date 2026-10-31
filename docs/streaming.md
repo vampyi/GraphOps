@@ -1,10 +1,10 @@
 # Live data: simulator and streaming
 
-Status, 13 October 2026:
+Status, 31 October 2026:
 
 - **Built and working on a laptop and on the hosted site:** the simulator, Kafka (Docker on a laptop, Aiven when hosted), the ingest with saved read positions, re-scoring as alerts land and the `/api/replay/*` and `/api/live` endpoints. All the tests in the table at the end pass against a real Kafka (`backend/tests/test_streaming.py`).
 - **Measured on the hosted site:** replaying the sample day at 5,000x, all 30 alerts were read from Kafka, saved and ranked 2.4 seconds after they were sent. How the hosted site is set up, and how we got from 145 seconds to 2.4, is in [hosting.md](hosting.md).
-- **Not built yet:** the dashboard asking `/api/live` every 2 seconds, and the replay buttons.
+- **In the dashboard:** the **Stream live** button replays the selected day through Kafka and the inbox polls `/api/live` every 2 seconds, so alerts arrive one by one. The APT29 lab day streams its real logons, network connections and process starts too, not only its alerts (see [data-sources.md](data-sources.md#apt29-day-1-with-sigma-rules)).
 
 The first flow still loads one saved day in a single batch (`python -m app.seed`).
 

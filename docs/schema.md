@@ -1,10 +1,10 @@
 # Graph schema
 
-Draft for team review. This is the shared blueprint every program reads and writes. Change it here first, then in code.
+The shared blueprint every program reads and writes. Change it here first, then in code. Updated 31 October 2026 to match what is built; parts still planned are marked.
 
 ## Naming rules
 
-- **Node labels and edge types use the same names as BloodHound and ADSynth** (`User`, `Computer`, `MemberOf`, `AdminTo`). Anyone who knows BloodHound can read our graph.
+- **Node labels and edge types use the same names as BloodHound** (`User`, `Computer`, `MemberOf`, `AdminTo`). Anyone who knows BloodHound can read our graph.
 - Labels and edge types are written in PascalCase: `Computer`, `LoggedInto`.
 - Properties are written in snake_case: `first_seen`, `hops_to_critical`.
 - Every node has a unique `id` string.
@@ -15,7 +15,7 @@ The shrinking circle feature only works if these stay separate.
 
 | Family | Meaning | Comes from |
 |---|---|---|
-| **Granted** | What someone is allowed to do | ADSynth (permissions and group memberships) |
+| **Granted** | What someone is allowed to do | The sample network, a BloodHound import, real laptops (local admins) and the AI agent access scan |
 | **Observed** | What someone actually did | Telemetry (logins, network connections, processes) |
 | **Alert** | What a security tool flagged | Alerts |
 
@@ -23,20 +23,30 @@ The shrinking circle feature only works if these stay separate.
 
 | Label | What it is | Key properties | Source |
 |---|---|---|---|
-| `User` | A person or service account | `id`, `name`, `enabled`, `is_service_account` | ADSynth, LANL |
-| `Computer` | A laptop, server or virtual machine | `id`, `name`, `os`, `owner`, `critical`, `zone` | ADSynth, LANL, CMDB |
-| `Group` | A set of users or computers | `id`, `name`, `critical` | ADSynth |
-| `Domain` | An Active Directory domain | `id`, `name` | ADSynth |
-| `OU` | An organisational unit, a folder of AD objects | `id`, `name` | ADSynth |
+| `User` | A person or service account | `id`, `name`, `enabled`, `is_service_account` | Sample network, APT29 lab logs, BloodHound import, osquery laptops (`user-xxxx@<host>`) |
+| `Computer` | A laptop, server or virtual machine | `id`, `name`, `os`, `owner`, `critical`, `zone` | Sample network, APT29 lab logs, osquery laptops (`<host>`), CMDB |
+| `Group` | A set of users or computers | `id`, `name`, `critical` | Sample network, BloodHound import |
+| `Domain` | An Active Directory domain (planned) | `id`, `name` | BloodHound import |
+| `OU` | An organisational unit, a folder of AD objects (planned) | `id`, `name` | BloodHound import |
 | `Application` | A business application | `id`, `name`, `critical` | CMDB |
-| `Process` | A program that ran on a computer | `id`, `name` | EDR, LANL |
-| `Vulnerability` | A known weakness | `id` (the CVE ID), `cvss` | CMDB or scanner |
+| `Process` | A program that ran on a computer | `id`, `name` | EDR stream (the APT29 day's Sysmon process starts) |
+| `Vulnerability` | A known weakness | `id` (the CVE ID), `cvss`, `kev`, `epss` | NIST NVD, CISA KEV and FIRST EPSS, for the software each machine runs (`vulns.py`) |
 | `Alert` | One alert from a security tool | see Alert properties below | Alerts |
 | `Incident` | A group of linked alerts | `id`, `opened_at`, `score`, `stage_order` | Alert ranker |
 
-Cloud and hybrid nodes (cloud users, service principals, sync servers) keep the labels ADSynth gives them.
+Cloud, AI and exposure nodes (`data/sample_org/cloud_ai.json` and the real sources):
 
-**AI agents** are treated as identities. ADSynth stores them as `AZServicePrincipal` nodes with `isAIAgent = true`, `agentType` (for example Orchestrator) and `privilegeTier`. We keep those names.
+| Label | What it is | Source |
+|---|---|---|
+| `AIAgent` | An AI agent, treated as an identity with access | Sample network (`finance-agent`, `support-agent`, illustrative); a real Claude Code agent |
+| `Tool` | Something an agent can call: an MCP server, a shell, web fetch, a browser | Sample network; the agent access scan |
+| `ServiceIdentity` | A cloud service principal an agent runs as | Sample network |
+| `CloudResource` | A cloud resource or a service a key opens, such as a key vault, AWS or Neo4j AuraDB | Sample network; the agent access scan |
+| `Software` | A product and version running on a machine, used to look up CVEs | Sample network |
+| `Internet` | The open internet, the start of outside attack paths | Sample network |
+| `Folder`, `Secret` | A folder an agent can read, and a secret file in it (by name only) | The agent access scan |
+
+**AI agents** are identities: granted edges say what they can reach, observed edges what they used.
 
 ### Properties written by the background graph analysis
 
@@ -67,7 +77,7 @@ Stored on `User`, `Computer` and `Group` nodes. Recomputed when data is loaded, 
 
 ### Granted edges
 
-From ADSynth, using BloodHound's names.
+The sample network and a BloodHound import, using BloodHound's names.
 
 | Edge | Meaning |
 |---|---|
@@ -78,17 +88,22 @@ From ADSynth, using BloodHound's names.
 | `(Computer)-[:HasSession]->(User)` | The user was logged in when the snapshot was taken, so their credentials may be on that computer |
 | `(Domain\|OU)-[:Contains]->(OU\|User\|Computer\|Group)` | Folder structure. BloodHound treats it as an attack step, because rights set on an OU pass down to what it contains. We do not load it yet. |
 
-ADSynth generates more permission edges than these. We keep all of them and decide during week 2 which ones count for attack paths.
+BloodHound has more permission edges than these; the import keeps the ones above.
 
-### AI agent edges
+### AI agent, cloud and exposure edges
 
-Granted edges from ADSynth. ADSynth names these in upper case. There is no ADSynth loader yet.
+| Edge | Meaning | Source |
+|---|---|---|
+| `(Group)-[:CanPrompt]->(AIAgent)` | Can give the agent instructions | Sample network |
+| `(AIAgent)-[:HasToolAccess]->(Tool)` | The agent can call this tool | Sample network; agent scan |
+| `(AIAgent)-[:RunsAs]->(ServiceIdentity)` | The agent acts with this identity's rights | Sample network |
+| `(ServiceIdentity)-[:RoleOn]->(CloudResource)` | Holds a role on the resource | Sample network |
+| `(User)-[:SyncedTo]->(User)` | An on-premises account synced to a cloud account | Sample network |
+| `(Internet\|CloudResource)-[:FeedsUntrustedInput]->(AIAgent)` | The agent reads content an outsider can write: prompt injection (MITRE ATLAS AML.T0051) | Sample network; agent scan |
+| `(AIAgent)-[:CanRead]->(Folder)`, `(Folder)-[:Contains]->(Secret)`, `(Secret)-[:HoldsKeyFor]->(CloudResource)`, `(AIAgent)-[:SignedInTo]->(CloudResource)` | What a real agent can reach, and through which key | Agent scan |
+| `(Computer)-[:Runs]->(Software)`, `(Internet)-[:CanExploit]->(Computer)` | A machine runs this software; an internet-facing machine with a remotely exploitable CVE gains an attack step from the internet | Sample network; `vulns.py` |
 
-| Edge | Meaning |
-|---|---|
-| `(User)-[:DELEGATES_TO]->(AI agent)` | The user lets the agent act on their behalf |
-| `(AI agent)-[:ORCHESTRATES]->(AI agent)` | One agent directs another |
-| `(AI agent)-[:HAS_TOOL_ACCESS]->(AZKeyVault\|AZVM\|AZApp)` | The agent can use this cloud resource. In ADSynth's `generate_hybrid_v2`, the only mode that makes agents, it points at the tenant node instead. |
+Other edges in `cloud_ai.json`: `CanAccess`, `CanEmail`, `ExposedTo`, `Owns`.
 
 ### Observed edges
 
@@ -104,11 +119,12 @@ From telemetry. Every observed edge has these properties:
 
 | Edge | Meaning | Extra properties | Source |
 |---|---|---|---|
-| `(User)-[:LoggedInto]->(Computer)` | The user logged into the computer | `logon_type`, `auth_type` (planned; today edges carry only `first_seen`, `last_seen`, `count` and `user`) | LANL `auth`, identity logs |
-| `(Computer)-[:RemoteLogon]->(Computer)` | Someone used an account to log in from one computer to another. This is one hop of lateral movement. | `user`; `logon_type`, `auth_type` planned | LANL `auth` where source and destination computers differ |
-| `(Computer)-[:ConnectedTo]->(Computer)` | The two computers exchanged network traffic | `port`, `protocol` where `network.json` gives them; `bytes` planned (the stream drops port and bytes today) | LANL `flows`, network flow logs |
-| `(Computer)-[:Ran]->(Process)` | A program ran on the computer | `user` | LANL `proc`, EDR |
-| `(AI agent)-[:Accessed]->(resource)` | The agent actually used the resource | none | Scripted agent activity |
+| `(User)-[:LoggedInto]->(Computer)` | The user logged into the computer | `logon_type`, `auth_type` (planned; today edges carry only `first_seen`, `last_seen`, `count` and `user`) | Identity logs (Windows logon events on the APT29 day), osquery signed-in users |
+| `(Computer)-[:RemoteLogon]->(Computer)` | Someone used an account to log in from one computer to another. This is one hop of lateral movement. | `user`; `logon_type`, `auth_type` planned | Identity logs where source and destination computers differ |
+| `(Computer)-[:ConnectedTo]->(Computer)` | The two computers exchanged network traffic | `port`, `protocol` where the day's network gives them; `bytes` planned | Network flow logs (Sysmon connections on the APT29 day) |
+| `(Computer)-[:Ran]->(Process)` | A program ran on the computer | `user` | EDR (Sysmon process starts on the APT29 day) |
+| `(AIAgent)-[:InvokedTool]->(Tool)` | The agent actually called the tool | none | Sample network |
+| `(AIAgent)-[:UsedAccess]->(anything it can reach)` | A real agent touched it in the last 7 days | `count`, `last_seen` | The Claude Code hook |
 
 ### Alert edges
 
@@ -121,7 +137,7 @@ From telemetry. Every observed edge has these properties:
 
 | Edge | Meaning | Source |
 |---|---|---|
-| `(Computer)-[:HasVulnerability]->(Vulnerability)` | The computer has this known weakness | CMDB or scanner |
+| `(Software)-[:HasVuln]->(Vulnerability)` | This software version has this known weakness | NIST NVD (`vulns.py`) |
 | `(Application)-[:RunsOn]->(Computer)` | The application is hosted on this computer | CMDB |
 
 ## Granted vs used access
@@ -130,8 +146,8 @@ From telemetry. Every observed edge has these properties:
 |---|---|
 | **Granted access** of a user | `MemberOf`, followed through nested groups, then `AdminTo`, `CanRDP` and `GenericAll` |
 | **Used access** of a user | `LoggedInto` and `RemoteLogon` edges with `last_seen` inside the chosen window, for example the last 30 days |
-| **Granted access** of an AI agent | `HAS_TOOL_ACCESS`, `ORCHESTRATES` and its permission edges |
-| **Used access** of an AI agent | `Accessed` edges with `last_seen` inside the chosen window |
+| **Granted access** of an AI agent | `HasToolAccess`, `RunsAs` and the rights behind it, and for a real agent `CanRead`, `SignedInTo` and the keys it can reach |
+| **Used access** of an AI agent | `InvokedTool`, and for a real agent `UsedAccess` edges from its last 7 days of tool calls |
 
 The shrinking circle runs the same blast radius query twice: once over granted edges and once over used edges.
 
@@ -139,16 +155,16 @@ The shrinking circle runs the same blast radius query twice: once over granted e
 
 | Property | Values | How it is set |
 |---|---|---|
-| `critical` | true or false | Set from the CMDB, the BloodHound import (Tier Zero) or by an analyst. ADSynth's `highvalue` flag is not a good rule for this. |
+| `critical` | true or false | Set from the CMDB, the BloodHound import (Tier Zero) or by an analyst. |
 | `zone` | `low_trust` or `normal` | Set from the CMDB, for example guest Wi-Fi laptops and internet-facing machines are `low_trust` |
 
 Which assets are critical is a team decision.
 
 ## Edge risk for attack paths
 
-How easy each edge is for an attacker to cross. `p` is our starting guess at the chance an attacker can use the edge. The Exposure page's "most likely path" uses the cost `-log(p)`, so the cheapest path is the most likely one. Alert ranking and blast radius count hops and ignore `p`.
+How easy each edge is for an attacker to cross. `p` is our starting guess at the chance an attacker can use the edge. The Attack paths tab's "most likely path" uses the cost `-log(p)`, so the cheapest path is the most likely one. Alert ranking and blast radius count hops and ignore `p`.
 
-**These numbers are our design choice, not measured facts.** We tune them in week 2.
+**These numbers are our design choice, not measured facts.**
 
 | Edge | Starting `p` | Reasoning |
 |---|---|---|
@@ -180,20 +196,20 @@ The tactic order (Initial Access, Execution, Credential Access, Lateral Movement
 
 ## How each data source maps in
 
-### LANL 2015
+### Real sources
 
-| LANL file | Line format | Becomes |
-|---|---|---|
-| `auth` | `time, source user@domain, destination user@domain, source computer, destination computer, auth type, logon type, orientation, success/failure` | `User` and `Computer` nodes, a `LoggedInto` edge, and a `RemoteLogon` edge when the two computers differ. Only LogOn lines make edges; ticket requests do not. Failed logins are kept as a property. |
-| `flows` | `time, duration, source computer, source port, destination computer, destination port, protocol, packets, bytes` | `ConnectedTo` edge |
-| `proc` | `time, user@domain, computer, process name, start/end` | `Process` node and `Ran` edge |
-| `redteam` | `time, user@domain, source computer, destination computer` | Kept per event in a separate file, used only to measure detection. Never shown to the ranker. |
+| Source | Becomes |
+|---|---|
+| osquery laptop inventory | A `Computer` named by its host name, a `User` per local account (`user-xxxx@<host>`, masked), `AdminTo` for admins, `LoggedInto` and `HasSession` for whoever is signed in |
+| osquery laptop changes | One `Alert` per change (new admin, new listening port, sign-in, firewall off, disk encryption off), `source_tool: osquery`, `real: true` |
+| Claude Code access scan | `AIAgent`, `Folder`, `Secret`, `CloudResource`, `Tool` nodes and the granted edges above |
+| Claude Code hook | `UsedAccess` edges from the agent to what each tool call touched |
 
-Accounts ending in `$`, such as `C625$`, are computer accounts that log in automatically. They are kept but should be flagged as computer accounts (for example `is_computer_account = true`) so noise filters can skip them.
+These are stored as `SourceRecord` and `SourceEvent` nodes, which a reload never wipes, and drawn back into the graph after every load.
 
-### ADSynth
+### The APT29 lab day
 
-Not loaded yet. Its JSON Lines output needs an adapter: its labels and most edge types need mapping, and `highvalue` is not a good rule for critical.
+Windows logon events become `LoggedInto` and `RemoteLogon`, Sysmon network connections between lab machines become `ConnectedTo`, Sysmon process starts become `Process` and `Ran`, and the SigmaHQ rule matches become `Alert` nodes. Details in [data-sources.md](data-sources.md#apt29-day-1-with-sigma-rules).
 
 ### CMDB
 
@@ -222,6 +238,6 @@ A CSV file with one row per machine or application: `id, name, owner, critical, 
 
 1. Which assets count as critical in our sample organisation?
 2. Which machines are low-trust?
-3. Which ADSynth permission edges beyond the ones above should count for attack paths?
+3. Which BloodHound permission edges beyond the ones above should count for attack paths?
 4. How long is the "used access" window: 7, 30 or 90 days?
 5. Are the starting edge risk values sensible?

@@ -10,6 +10,8 @@ Like [research.md](research.md), it is written for teammates who are new to cybe
 
 **This is research only.** Nothing in it is built. No code, data, tests or settings were changed to write it, and no tests were run. Every source was checked on 14 October 2026.
 
+**What came of it (31 October 2026).** From this research we built the APT29 lab day with public SigmaHQ rules (the site's default day) and live team laptops through osquery. LANL Cyber1 was dropped: its 7.2 GB login file was not downloaded in time. What is in the demo now: [data-sources.md](data-sources.md).
+
 ## How to read this document
 
 - The research sections (1 to 3) end with their sources. Repository references look like [scoring.py L77-L78](../backend/app/scoring.py#L77-L78). Their line numbers were read on branch `raja` at commit `7f3e171`. The links open the current version of each file, so the lines may move as the code changes.

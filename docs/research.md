@@ -314,6 +314,8 @@ Sources: [Neo4j Graph Data Science docs](https://neo4j.com/docs/graph-data-scien
 
 Our view: use all three. ADSynth for the network, a slice of LANL for testing detection and scripted alerts for the end-to-end flow.
 
+**What we did in the end (31 October 2026).** Neither ADSynth nor LANL was loaded: we hand-wrote the demo company's network, and LANL's 7.2 GB login file was not downloaded in time. Our real-data day is OTRF's recording of MITRE's APT29 emulation with alerts from the public SigmaHQ rules. See [data-sources.md](data-sources.md).
+
 Sources: [ADSynth](https://github.com/AUCyberLab/ADSynth), [LANL 2015 dataset](https://csr.lanl.gov/data/cyber1/).
 
 ---
