@@ -49,7 +49,7 @@ def _alert_rows(s, since=None):
                a.source_tool AS source_tool, involves,
                {hops: a.f_hops, blast: a.f_blast, linked: a.f_linked, never_taken: a.f_never_taken,
                 stages: a.f_stages, choke: a.f_choke, severity: a.f_severity} AS features
-        ORDER BY a.score DESC, a.time
+        ORDER BY coalesce(a.score, 0) DESC, a.time
         """, since=since)])
 
 
@@ -464,9 +464,12 @@ def patch_asset(asset_id: str, body: AssetPatch):
         return {"id": r["id"], "kind": r["kind"], "critical": r["critical"], "zone": r["zone"]}
 
 
-def _reanalyse(s):
-    from .analysis import run_all
-    run_all(s)
+def _reanalyse(s, graph_changed=True):
+    """re-score after new data. the graph algorithms re-run only when the graph changed; a laptop's change events
+    add alerts, not machines or permissions, so re-scoring is enough and stays fast with many laptops reporting."""
+    if graph_changed:
+        from .analysis import run_all
+        run_all(s)
     score_all(s)
     seq = (s.run("MATCH (st:StreamState {id: 'live'}) RETURN st.seq AS seq").single() or {"seq": 0})["seq"]
     s.run("MATCH (a:Alert) SET a.changed_seq = $seq", seq=(seq or 0) + 1)
@@ -863,7 +866,7 @@ def source_events(source_id: str, body: SourceEvents, x_graphops_token: str | No
             return {"stored": 0}
         n, alerts = sources.save_events(s, source_id[:80], body.events)
         if alerts:
-            _reanalyse(s)
+            _reanalyse(s, graph_changed=False)
         return {"stored": n}
 
 
